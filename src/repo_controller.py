@@ -6,6 +6,7 @@ import os
 import tempfile
 import shutil
 import sqlite3
+import re
 
 class RepoController():
     def __init__(self, repo_path: str, debug=False) -> None:
@@ -58,6 +59,7 @@ class RepoController():
         print("###MOCK### pulling remote repository")
         self.clear_working_dir()
         self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
+        assert not self.repo.bare
         if not self.debug:
             raise NotImplementedError
     
@@ -91,15 +93,28 @@ class RepoController():
             # for diff_item in diff_index.iter_change_type('M'):
             #     print("A blob:\n{}".format(diff_item.a_blob.data_stream.read().decode('utf-8')))
             #     print("B blob:\n{}".format(diff_item.b_blob.data_stream.read().decode('utf-8')))
-            print(self.repo.git.diff(latest_commit, current_commit))
-            
+            diff = self.repo.git.diff(latest_commit, current_commit)
+            print(diff)
 
-
+            pattern = re.compile('\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@')
+            changes = re.findall(pattern, diff)
+            result = []
+            for change in changes:
+                # check if change affects a python file
+                if not change[0].endswith(".py"):
+                    continue
+                result.append({
+                    "filename": self.working_dir + "/" + change[0],
+                    "start": int(change[3]),
+                    "lines_changed": int(change[4])
+                    })
+                print(result[-1])
+            return result
            
             return [{"type": "method",
                      "content": 'def multiply(a: int,b: int): -> int\n\t"""multiply two numbers\n\n\t:param a: first number\n\t:type a: int\n\t:param b: second number\n\t:type b: int\n\t:returns: a*b\n\t:rtype: int"""\n\treturn a*b',
                      "signature": "def multiply(a: int,b: int): -> int",
-                     "filenames": "main.py",
+                     "filename": "main.py",
                      "start": 0,
                      "end": 9}]
     
