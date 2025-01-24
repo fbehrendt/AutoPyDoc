@@ -5,6 +5,7 @@ from git import Repo
 import os
 import tempfile
 import shutil
+import sqlite3
 
 class RepoController():
     def __init__(self, repo_path: str, debug=False) -> None:
@@ -23,10 +24,22 @@ class RepoController():
             self.pull_repo()
         else:
             self.copy_repo(repo_path)
+            raise NotImplementedError
         # self.repo = {} # {file_name: 'filename', 'methods': {'name': 'method_name', 'content': 'method content'}, 'classes': {'name': 'classname', 'methods' = {'name': 'method_name', 'content': 'method content'}}}
+        self.get_latest_commit()
         if not self.debug:
             raise NotImplementedError
     
+    def get_latest_commit(self):
+        connection = sqlite3.connect("repos.db")
+        cursor = connection.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS repo_states (url PRIMARY KEY, last_commit)")
+        row = cursor.execute(f"SELECT url, last_commit FROM repo_states WHERE 'url'='{self.repo_url}'")
+        if row.fetchone() is None:
+            self.latest_commit = None
+        else:
+            self.latest_commit = row[1]
+
     def clear_working_dir(self):
         """ Cleans the working directory"""
         if (os.path.exists(self.working_dir)):
@@ -39,7 +52,7 @@ class RepoController():
         """ Pulls a repository into the working_repo folder"""
         print("###MOCK### pulling remote repository")
         self.clear_working_dir()
-        repo = Repo.clone_from(self.repo_url, self.working_dir) 
+        self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
         if not self.debug:
             raise NotImplementedError
     
@@ -145,6 +158,17 @@ class RepoController():
         else:
             return "A developer comment"
             
+    def update_latest_commit(self):
+        current_commit = self.repo.head.commit.hexsha  # get most recent commit
+        print(current_commit)
+        # connection = sqlite3.connect("repos.db")
+        # cursor = connection.cursor()
+        # cursor.execute("CREATE TABLE IF NOT EXISTS repo_states (url PRIMARY KEY, last_commit)")
+        # row = cursor.execute(f"INSERT OR REPLACE INTO repo_states VALUES({self.repo_url},{current_commit})")
+        # connection.commit()
+        
+        if not self.debug:
+            raise NotImplementedError
 
     def apply_changes(self, changes: list|str = "all") -> None:
         """ Applies new docstrings to the repo in the way configured in src/config.ini
@@ -155,6 +179,7 @@ class RepoController():
         print("###MOCK### Applying changes")
         config = configparser.ConfigParser()
         config.read('src/config.ini')
+        self.update_latest_commit()
         # if repo_path is local filepath:
             # if config['Default']['local_repo_behaviour'] == "commit":
                 # commit changes
@@ -173,5 +198,6 @@ class RepoController():
                 # push changes
             # else:
                 # raise error
+        shutil.rmtree(self.working_dir)
         if not self.debug:
             raise NotImplementedError
