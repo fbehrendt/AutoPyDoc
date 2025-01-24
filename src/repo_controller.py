@@ -36,16 +36,21 @@ class RepoController():
         cursor.execute("CREATE TABLE IF NOT EXISTS repo_states (url PRIMARY KEY, last_commit)")
         row = cursor.execute(f"SELECT url, last_commit FROM repo_states WHERE 'url'='{self.repo_url}'")
         if row.fetchone() is None:
-            self.latest_commit = None
+            self.latest_commit_hash = None
+            self.initial_run = True
         else:
-            self.latest_commit = row[1]
+            self.latest_commit_hash = row[1]
+            self.initial_run = False
 
     def clear_working_dir(self):
         """ Cleans the working directory"""
         if (os.path.exists(self.working_dir)):
-            tmp = tempfile.mktemp(dir=os.path.dirname(self.working_dir))
-            shutil.move(self.working_dir, tmp)
-            shutil.rmtree(tmp)
+            #tmp = tempfile.mktemp(dir=os.path.dirname(self.working_dir))
+            #shutil.move(self.working_dir, tmp)
+            #shutil.rmtree(tmp)
+            #shutil.rmtree(self.working_dir)
+            print("Please remove working_dir folder manually, then rerun")
+            quit()
         os.makedirs(self.working_dir)
 
     def pull_repo(self):
@@ -76,6 +81,21 @@ class RepoController():
         if not self.debug:
             raise NotImplementedError
         else:
+            current_commit = self.repo.head.commit  # get most recent commit
+            if self.initial_run:
+                latest_commit = self.repo.commit("e2676eba2dcaa478268d1b24397df0c9d0236d16")
+                # TODO change
+            else:
+                latest_commit = self.repo.commit(self.latest_commit_hash)
+            #diff_index = latest_commit.diff(current_commit)
+            # for diff_item in diff_index.iter_change_type('M'):
+            #     print("A blob:\n{}".format(diff_item.a_blob.data_stream.read().decode('utf-8')))
+            #     print("B blob:\n{}".format(diff_item.b_blob.data_stream.read().decode('utf-8')))
+            print(self.repo.git.diff(latest_commit, current_commit))
+            
+
+
+           
             return [{"type": "method",
                      "content": 'def multiply(a: int,b: int): -> int\n\t"""multiply two numbers\n\n\t:param a: first number\n\t:type a: int\n\t:param b: second number\n\t:type b: int\n\t:returns: a*b\n\t:rtype: int"""\n\treturn a*b',
                      "signature": "def multiply(a: int,b: int): -> int",
@@ -198,6 +218,5 @@ class RepoController():
                 # push changes
             # else:
                 # raise error
-        shutil.rmtree(self.working_dir)
         if not self.debug:
             raise NotImplementedError
