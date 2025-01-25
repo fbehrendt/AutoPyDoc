@@ -1,4 +1,8 @@
 working_repo
+*.dot
+*.png
+*.svg
+*.html
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
