@@ -1,5 +1,4 @@
 import configparser
-
 import validators
 from git import Repo
 import os
@@ -7,6 +6,9 @@ import tempfile
 import shutil
 import sqlite3
 import re
+import pathlib
+
+from get_context import FunctionDependencies
 
 class RepoController():
     def __init__(self, repo_path: str, debug=False) -> None:
@@ -17,7 +19,10 @@ class RepoController():
         :param debug: toggle debug mode
         :type debug: boolean
         """
-        self.working_dir = 'working_repo'
+        parent_dir = pathlib.Path().resolve()
+        dir = "working_repo"
+        self.working_dir = os.path.join(parent_dir, dir)
+
         self.debug = debug
         self.is_local_repo = validators.url(repo_path)
         if self.is_local_repo:
@@ -26,10 +31,20 @@ class RepoController():
         else:
             self.copy_repo(repo_path)
             raise NotImplementedError
+        
+        self.function_dependencies = FunctionDependencies(filename=None)
+        for file in self.get_files_in_repo():
+            self.function_dependencies.add_file(file)
         # self.repo = {} # {file_name: 'filename', 'methods': {'name': 'method_name', 'content': 'method content'}, 'classes': {'name': 'classname', 'methods' = {'name': 'method_name', 'content': 'method content'}}}
         self.get_latest_commit()
         if not self.debug:
             raise NotImplementedError
+    
+    def get_files_in_repo(self):
+        if not hasattr(self, 'repo_files'):
+            repo_files = [os.path.join(dirpath,f) for (dirpath, dirnames, filenames) in os.walk(self.working_dir) for f in filenames]
+            self.repo_files = [file for file in repo_files if file.endswith(".py")]
+        return self.repo_files
     
     def get_latest_commit(self):
         connection = sqlite3.connect("repos.db")
@@ -45,6 +60,7 @@ class RepoController():
 
     def clear_working_dir(self):
         """ Cleans the working directory"""
+        # TODO not working. Permission denied
         if (os.path.exists(self.working_dir)):
             #tmp = tempfile.mktemp(dir=os.path.dirname(self.working_dir))
             #shutil.move(self.working_dir, tmp)
@@ -118,7 +134,12 @@ class RepoController():
                      "start": 0,
                      "end": 9}]
     
-    def get_context(self, code_obj) -> list[dict]:
+    @staticmethod
+    def get_method_name(changed_method):
+        pattern = re.compile('def ([^\(]+)')
+        return re.findall(pattern, changed_method)[0]
+
+    def get_context(self, function_name) -> list[dict]:
         """ Returns context of a given method/class/module
         
         :param code_obj: A dictionary with details regarding a method/class/module
@@ -127,9 +148,12 @@ class RepoController():
         :rtype: list[dict]
         """
         print("###MOCK### Gathering context")
+        context = self.function_dependencies.get_function_context(function_name)
+        
         if not self.debug:
             raise NotImplementedError
         else:
+            return context
             return [{"type": "method",
               "content": 'def context_method_1():\n\t"""this is context method 1\n\n\t"""\n\tpass',
               "signature": "def context_method_1():",

@@ -22,7 +22,8 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
             raise NotImplementedError
         for changed_method in changed_methods:
             print(changed_method["content"], "\n")
-            change_context = repo.get_context(changed_method) # get methods called by this method, get methods calling this this method, if this method is part of a class, get the class, get the module. Instead of the full methods/class/module, their docstring may be used
+            method_name = repo.get_method_name(changed_method["content"])
+            change_context = repo.get_context(method_name) # get methods called by this method, get methods calling this this method, if this method is part of a class, get the class, get the module. Instead of the full methods/class/module, their docstring may be used
             change_old_docstring = repo.extract_docstring(changed_method)
             change_code = repo.extract_code(changed_method)
             args_types_exceptions = repo.extract_args_types_exceptions(change)
