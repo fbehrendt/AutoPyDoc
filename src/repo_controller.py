@@ -73,11 +73,17 @@ class RepoController():
     def pull_repo(self):
         """ Pulls a repository into the working_repo folder"""
         print("###MOCK### pulling remote repository")
-        self.clear_working_dir()
-        self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
-        assert not self.repo.bare
-        if not self.debug:
-            raise NotImplementedError
+        dir = os.listdir(self.working_dir) 
+        if len(dir) == 0:
+            self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
+            assert not self.repo.bare
+        elif self.debug:
+            self.repo = Repo(self.working_dir)
+            return
+        else:
+            self.clear_working_dir()
+            self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
+            assert not self.repo.bare
     
     def copy_repo(self, repo_path):
         """ Copies local files into the working_repo folder
