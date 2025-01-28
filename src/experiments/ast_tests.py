@@ -3,7 +3,9 @@ class Class_a():
         pass
 
 def func_a():
+    some_class = Class_a()
     func_b()
+    
 
 def func_b():
     print()

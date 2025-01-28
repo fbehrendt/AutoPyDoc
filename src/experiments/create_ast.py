@@ -14,10 +14,58 @@ class CodeParser():
         dir = pathlib.Path().resolve()
         self.full_path = os.path.join(dir, filename)
         self.tree = ast.parse(open(self.full_path).read())
-        self.parse_tree(tree=self.tree)
+        self.get_file_modules_classes_and_methods(tree=self.tree)
+        # TODO first read all files, then do the call dependencies
+        for code_obj in self.code_representer.objects.values():
+            self.get_class_and_method_calls(parent_obj=code_obj)
+        self.get_file_level_class_and_method_calls(tree=self.tree)
 
-    def parse_tree(self, tree, parent = None):
-        for node in ast.walk(tree):
+    def get_file_modules_classes_and_methods(self, tree):
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef):
+                func_def_name = node.name
+                print("Function def:", func_def_name)
+                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node)
+                self.code_representer.add_code_obj(method_obj)
+            if isinstance(node, ast.AsyncFunctionDef):
+                func_def_name = node.name
+                print("Async function def:", func_def_name)
+                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node)
+                self.code_representer.add_code_obj(method_obj)
+            if isinstance(node, ast.Lambda):
+                print("Lambda")
+            if isinstance(node, ast.ClassDef):
+                class_def_name = node.name
+                print("Class def:", class_def_name)
+                class_obj = Class_obj(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node)
+                self.code_representer.add_code_obj(class_obj)
+                self.get_class_methods_and_sub_classes(class_tree=node, class_obj_id=class_obj.id)
+            if isinstance(node, ast.Module):
+                print("Module")
+
+    def get_class_methods_and_sub_classes(self, class_tree, class_obj_id):
+        for node in class_tree.body:
+            if isinstance(node, ast.FunctionDef):
+                func_def_name = node.name
+                print("Function def:", func_def_name)
+                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id)
+                self.code_representer.add_code_obj(method_obj)
+            if isinstance(node, ast.AsyncFunctionDef):
+                func_def_name = node.name
+                print("Async function def:", func_def_name)
+                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id)
+                self.code_representer.add_code_obj(method_obj)
+            if isinstance(node, ast.Lambda):
+                print("Lambda")
+            if isinstance(node, ast.ClassDef):
+                class_def_name = node.name
+                print("Class def:", class_def_name)
+                inner_class_obj = Class_obj(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id)
+                self.code_representer.add_code_obj(inner_class_obj)
+                self.get_class_methods_and_sub_classes(class_tree=node, class_obj_id=inner_class_obj.id)
+    
+    def get_class_and_method_calls(self, parent_obj):
+        for node in ast.walk(parent_obj.ast_tree):
             # ast.get_docstring(node, clean=True)
             # ast.get_source_segment(source, node.body[0])
             if isinstance(node, ast.Call):
@@ -25,46 +73,36 @@ class CodeParser():
                     called_func_name = node.func.id
                 else:
                     called_func_name = node.func.attr
-                print()
-                print("Function call:", called_func_name)
-                print("Called by:", parent)
-                print()
-            if isinstance(node, ast.FunctionDef):
-                func_def_name = node.name
-                print("Function def:", func_def_name)
-                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body)
-                self.code_representer.add_code_obj(method_obj)
-                print("###Begin subtree of", func_def_name, "###")
-                for sub_tree in node.body:
-                    self.parse_tree(tree=sub_tree, parent=parent)
-                print("###END subtree of", func_def_name, "###")
-            if isinstance(node, ast.AsyncFunctionDef):
-                func_def_name = node.name
-                print("Async function def:", func_def_name)
-                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body)
-                self.code_representer.add_code_obj(method_obj)
-                print("###Begin subtree of", func_def_name, "###")
-                for sub_tree in node.body:
-                    self.parse_tree(tree=sub_tree, parent=func_def_name)
-                print("###END subtree of", func_def_name, "###")
-            if isinstance(node, ast.Lambda):
-                print("Lambda")
-            if isinstance(node, ast.ClassDef):
-                class_def_name = node.name
-                print("Class def:", class_def_name)
-                class_obj = Class_obj(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body)
-                self.code_representer.add_code_obj(class_obj)
-                print("###Begin subtree of", class_def_name, "###")
-                for sub_tree in node.body:
-                    self.parse_tree(tree=sub_tree, parent=class_def_name)
-                print("###END subtree of", class_def_name, "###")
-            if isinstance(node, ast.Module):
-                print("Module")
-                print("###Begin subtree of Module###")
-                for sub_tree in node.body:
-                    self.parse_tree(sub_tree, parent="Module")
-                print("###END subtree of Module###")
+                if self.full_path + "_" + "method" + "_" + called_func_name in self.code_representer.objects.keys():
+                    called_func_type = "method"
+                    called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
+                    parent_obj.add_called_method(called_func_id)
+                elif self.full_path + "_" + "class" + "_" + called_func_name in self.code_representer.objects.keys():
+                    called_func_type = "class"
+                    called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
+                    parent_obj.add_called_class(called_func_id)
+                else:
+                    print("Called code not found. (Happens when calling a class or method not defined in the file)")
+                    return
 
+                if parent_obj.type == "method":
+                    self.code_representer.objects[called_func_id].add_caller_method(parent_obj.id)
+                elif parent_obj.type == "class":
+                    self.code_representer.objects[called_func_id].add_caller_class(parent_obj.id)
+                else:
+                    print("Unmatched parent type:", parent_obj.type)
+                    
+
+
+                print()
+                print("Call:", called_func_name)
+                print("Call type:", called_func_type)
+                print("Called by:", parent_obj.id)
+                print()
+
+    def get_file_level_class_and_method_calls(self, tree):
+        raise NotImplementedError
+    
 code_parser = CodeParser(CodeRepresenter())
 code_parser.add_file()
 print("finished")
