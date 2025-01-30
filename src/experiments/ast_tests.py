@@ -1,3 +1,5 @@
+"""A module docstring"""
+
 class Class_a():
     """A simple test class"""
     def __init__():

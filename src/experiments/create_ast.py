@@ -109,6 +109,7 @@ class CodeParser():
         module_name = self.full_path + "_module"
         docstring = ast.get_docstring(node=tree, clean=True)
         module_obj = Code_obj(name=module_name, filename=self.full_path, code_type="module", body=tree.body, ast_tree=tree, docstring=docstring)
+        code_parser.code_representer.objects[module_name] = module_obj
         for node in tree.body:
             if isinstance(node, ast.Call):
                 if hasattr(node.func, "id"):
