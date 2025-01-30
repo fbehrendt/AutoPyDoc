@@ -18,6 +18,7 @@ class CodeParser():
         # TODO first read all files, then do the call dependencies
         for code_obj in self.code_representer.objects.values():
             self.get_class_and_method_calls(parent_obj=code_obj)
+            self.get_exceptions(parent_obj=code_obj)
         self.get_file_level_class_and_method_calls(self.tree)
 
     def get_file_modules_classes_and_methods(self, tree):
@@ -36,12 +37,12 @@ class CodeParser():
                     arguments.append({"name": arg.arg, "type": arg.annotation.id, "default": value})
                 if hasattr(node.returns, "id"):
                     print("Returns", node.returns.id)
-                    return_value = node.returns.id
+                    return_type = node.returns.id
                 else:
-                    return_value = None
+                    return_type = None
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
-                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code, arguments=arguments, return_value=return_value)
+                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code, arguments=arguments, return_type=return_type)
                 self.code_representer.add_code_obj(method_obj)
             if isinstance(node, ast.AsyncFunctionDef):
                 func_def_name = node.name
@@ -116,14 +117,20 @@ class CodeParser():
                     self.code_representer.objects[called_func_id].add_caller_class(parent_obj.id)
                 else:
                     print("Unmatched parent type:", parent_obj.type)
-                    
-
 
                 print()
                 print("Call:", called_func_name)
                 print("Call type:", called_func_type)
                 print("Called by:", parent_obj.id)
                 print()
+    
+    def get_exceptions(self, parent_obj):
+        exceptions = []
+        for node in ast.walk(parent_obj.ast_tree):
+            # ast.get_source_segment(source, node.body[0])
+            if isinstance(node, ast.Raise):
+                parent_obj.add_exception(node.exc.id)
+        
 
     # TODO deduplicate
     # TODO that's not how modules work
