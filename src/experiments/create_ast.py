@@ -18,7 +18,7 @@ class CodeParser():
         # TODO first read all files, then do the call dependencies
         for code_obj in self.code_representer.objects.values():
             self.get_class_and_method_calls(parent_obj=code_obj)
-        self.get_file_level_class_and_method_calls(tree=self.tree)
+        # self.get_file_level_class_and_method_calls(tree=self.tree)
 
     def get_file_modules_classes_and_methods(self, tree):
         for node in tree.body:
@@ -105,4 +105,7 @@ class CodeParser():
     
 code_parser = CodeParser(CodeRepresenter())
 code_parser.add_file()
+for code_obj in code_parser.code_representer.objects.values():
+    docstring = ast.get_docstring(node=code_obj.ast_tree)
+    print(docstring)
 print("finished")
