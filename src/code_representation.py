@@ -96,3 +96,8 @@ class CodeRepresenter():
         if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "docstring"):
             return self.objects[code_obj_id].docstring
         return None
+
+    def get_code(self, code_obj_id):
+        if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "code"):
+            return self.objects[code_obj_id].code
+        return None
