@@ -25,9 +25,23 @@ class CodeParser():
             if isinstance(node, ast.FunctionDef):
                 func_def_name = node.name
                 print("Function def:", func_def_name)
+                print("Arguments")
+                arguments = []
+                for arg, default in zip(node.args.args, node.args.defaults):
+                    if isinstance(default, ast.Constant):
+                        value = default.value
+                    elif isinstance(default, ast.List):
+                        value = [item.value for item in default.elts]
+                    print(arg.arg, arg.annotation.id, value)
+                    arguments.append({"name": arg.arg, "type": arg.annotation.id, "default": value})
+                if hasattr(node.returns, "id"):
+                    print("Returns", node.returns.id)
+                    return_value = node.returns.id
+                else:
+                    return_value = None
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
-                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code)
+                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code, arguments=arguments, return_value=return_value)
                 self.code_representer.add_code_obj(method_obj)
             if isinstance(node, ast.AsyncFunctionDef):
                 func_def_name = node.name

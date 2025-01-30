@@ -1,5 +1,5 @@
 class Code_obj():
-    def __init__(self, name, filename, code_type, body, ast_tree, docstring=None, code=None):
+    def __init__(self, name, filename, code_type, body, ast_tree, docstring=None, code=None, arguments=None, return_value=None):
         self.name = name
         self.filename = filename
         self.type = code_type
@@ -10,6 +10,11 @@ class Code_obj():
         self.ast_tree=ast_tree
         if code:
             self.code = code
+        if arguments:
+            self.arguments = arguments
+        self.ast_tree=ast_tree
+        if return_value:
+            self.return_value = return_value
         self.called_methods = []
         self.called_classes = []
         self.called_by_methods = []
@@ -50,11 +55,11 @@ class Code_obj():
         }
 
 class Class_obj(Code_obj):
-    def __init__(self, name, filename, signature, body, ast_tree, class_obj_id=None, module_obj_id=None, docstring=None, code=None):
+    def __init__(self, name, filename, signature, body, ast_tree, class_obj_id=None, module_obj_id=None, docstring=None, code=None, arguments=None, return_value=None):
         self.signature = signature
         self.class_obj_id = class_obj_id
         self.module_obj_id = module_obj_id
-        super().__init__(name, filename, "class", body=body, ast_tree=ast_tree, docstring=docstring, code=code)
+        super().__init__(name, filename, "class", body=body, ast_tree=ast_tree, docstring=docstring, code=code, arguments=arguments, return_value=return_value)
 
     def add_module(self, module_obj):
         self.module_obj = module_obj
@@ -66,11 +71,11 @@ class Class_obj(Code_obj):
         return result
 
 class Method_obj(Code_obj):
-    def __init__(self, name, filename, signature, body, ast_tree, class_obj_id=None, module_obj_id=None, docstring=None, code=None):
+    def __init__(self, name, filename, signature, body, ast_tree, class_obj_id=None, module_obj_id=None, docstring=None, code=None, arguments=None, return_value=None):
         self.signature = signature
         self.class_obj_id = class_obj_id
         self.module_obj_id = module_obj_id
-        super().__init__(name, filename, "method", body, ast_tree, docstring=docstring, code=code)
+        super().__init__(name, filename, "method", body, ast_tree, docstring=docstring, code=code, arguments=arguments, return_value=return_value)
 
     def add_module(self, module_obj_id):
         self.module_obj_id = module_obj_id
