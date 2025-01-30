@@ -8,7 +8,8 @@ import sqlite3
 import re
 import pathlib
 
-from get_context import FunctionDependencies
+from get_context import CodeParser
+from code_representation import CodeRepresenter
 
 class RepoController():
     def __init__(self, repo_path: str, debug=False) -> None:
@@ -32,9 +33,9 @@ class RepoController():
             self.copy_repo(repo_path)
             raise NotImplementedError
         
-        self.function_dependencies = FunctionDependencies(filename=None)
+        self.code_parser = CodeParser(CodeRepresenter())
         for file in self.get_files_in_repo():
-            self.function_dependencies.add_file(file)
+            self.code_parser.add_file(file)
         # self.repo = {} # {file_name: 'filename', 'methods': {'name': 'method_name', 'content': 'method content'}, 'classes': {'name': 'classname', 'methods' = {'name': 'method_name', 'content': 'method content'}}}
         self.get_latest_commit()
         if not self.debug:
@@ -126,7 +127,7 @@ class RepoController():
                 if not change[0].endswith(".py"):
                     continue
                 result.append({
-                    "filename": self.working_dir + "/" + change[0],
+                    "filename": self.working_dir.replace("/", "\\") + "\\" + change[0].replace("/", "\\"),
                     "start": int(change[3]),
                     "lines_changed": int(change[4])
                     })
@@ -141,11 +142,12 @@ class RepoController():
                      "end": 9}]
     
     @staticmethod
-    def get_method_name(changed_method):
+    def get_method_id(changed_method):
         pattern = re.compile('def ([^\(]+)')
-        return re.findall(pattern, changed_method)[0]
+        method_name = re.findall(pattern, changed_method["content"])[0]
+        return changed_method["filename"] + "_" + changed_method["type"] + "_" + method_name
 
-    def get_context(self, function_name) -> list[dict]:
+    def get_context(self, code_obj_id) -> list[dict]:
         """ Returns context of a given method/class/module
         
         :param code_obj: A dictionary with details regarding a method/class/module
@@ -154,7 +156,9 @@ class RepoController():
         :rtype: list[dict]
         """
         print("###MOCK### Gathering context")
-        context = self.function_dependencies.get_function_context(function_name)
+        if code_obj_id in self.code_parser.code_representer.objects.keys():
+            return self.code_parser.code_representer.objects[code_obj_id].get_context()
+        return None
         
         if not self.debug:
             raise NotImplementedError

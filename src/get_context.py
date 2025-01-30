@@ -2,71 +2,142 @@ import ast
 import os
 import pathlib
 
-class FunctionDependencies():
-    def __init__(self, filename="working_repo\main.py"):
-        self.file_to_tree = {}
-        self.caller_to_callee = {} #str -> list(str)
-        self.callee_to_caller = {} #str -> list(str)
-        self.function_calls = [] # if function is called, but has no caller, the function is called when the file itself is executed
-        self.called_by_file = []
+from code_representation import Code_obj, Class_obj, Method_obj, CodeRepresenter
 
-        if filename:
-            self.add_file(filename=filename)
+code = CodeRepresenter()
 
-    def add_file(self, filename="working_repo\main.py"):
+class CodeParser():
+    def __init__(self, code_representer):
+        self.code_representer = code_representer
+
+    def add_file(self, filename="src\experiments\\ast_tests.py"):
         dir = pathlib.Path().resolve()
         self.full_path = os.path.join(dir, filename)
         self.tree = ast.parse(open(self.full_path).read())
-        self.file_to_tree[self.full_path] = self.tree
+        self.get_file_modules_classes_and_methods(tree=self.tree)
+        # TODO first read all files, then do the call dependencies
+        for code_obj in self.code_representer.objects.values():
+            self.get_class_and_method_calls(parent_obj=code_obj)
+        self.get_file_level_class_and_method_calls(self.tree)
 
-        # TODO idk how lambdas are treated at this point
-        # TODO add file and class information to function information
-        # TODO handle function calls to and from other files
-        for node in ast.walk(self.tree):
+    def get_file_modules_classes_and_methods(self, tree):
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef):
+                func_def_name = node.name
+                print("Function def:", func_def_name)
+                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node)
+                self.code_representer.add_code_obj(method_obj)
+            if isinstance(node, ast.AsyncFunctionDef):
+                func_def_name = node.name
+                print("Async function def:", func_def_name)
+                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node)
+                self.code_representer.add_code_obj(method_obj)
+            if isinstance(node, ast.Lambda):
+                print("Lambda")
+            if isinstance(node, ast.ClassDef):
+                class_def_name = node.name
+                print("Class def:", class_def_name)
+                docstring = ast.get_docstring(node=node, clean=True)
+                class_obj = Class_obj(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring)
+                self.code_representer.add_code_obj(class_obj)
+                self.get_class_methods_and_sub_classes(class_tree=node, class_obj_id=class_obj.id)
+            if isinstance(node, ast.Module):
+                print("Module")
+
+    def get_class_methods_and_sub_classes(self, class_tree, class_obj_id):
+        for node in class_tree.body:
+            if isinstance(node, ast.FunctionDef):
+                func_def_name = node.name
+                print("Function def:", func_def_name)
+                docstring = ast.get_docstring(node=node, clean=True)
+                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id, docstring=docstring)
+                self.code_representer.add_code_obj(method_obj)
+            if isinstance(node, ast.AsyncFunctionDef):
+                func_def_name = node.name
+                print("Async function def:", func_def_name)
+                docstring = ast.get_docstring(node=node, clean=True)
+                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id, docstring=docstring)
+                self.code_representer.add_code_obj(method_obj)
+            if isinstance(node, ast.Lambda):
+                print("Lambda")
+            if isinstance(node, ast.ClassDef):
+                class_def_name = node.name
+                print("Class def:", class_def_name)
+                docstring = ast.get_docstring(node=node, clean=True)
+                inner_class_obj = Class_obj(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id, docstring=docstring)
+                self.code_representer.add_code_obj(inner_class_obj)
+                self.get_class_methods_and_sub_classes(class_tree=node, class_obj_id=inner_class_obj.id)
+    
+    def get_class_and_method_calls(self, parent_obj):
+        for node in ast.walk(parent_obj.ast_tree):
+            # ast.get_source_segment(source, node.body[0])
             if isinstance(node, ast.Call):
                 if hasattr(node.func, "id"):
-                    func_name = node.func.id
+                    called_func_name = node.func.id
                 else:
-                    func_name = node.func.attr
-                # print("Function call:", func_name)
-                self.function_calls.append(func_name)
-            elif isinstance(node, ast.FunctionDef):
-                # print("Function definition:", node.name)
-                if node.name not in self.caller_to_callee.keys():
-                    self.caller_to_callee[node.name] = []
-                for inner_node in ast.walk(node):
-                    if isinstance(inner_node, ast.Call):
-                        if hasattr(inner_node.func, "id"):
-                            inner_func_name = inner_node.func.id
-                        else:
-                            inner_func_name = inner_node.func.attr
-                        # print("Function call within", node.name, ":", inner_func_name)
-                        self.caller_to_callee[node.name].append(inner_func_name)
-                        if inner_func_name not in self.callee_to_caller.keys():
-                            self.callee_to_caller[inner_func_name] = []
-                        self.callee_to_caller[inner_func_name].append(node.name)
+                    called_func_name = node.func.attr
+                if self.full_path + "_" + "method" + "_" + called_func_name in self.code_representer.objects.keys():
+                    called_func_type = "method"
+                    called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
+                    parent_obj.add_called_method(called_func_id)
+                elif self.full_path + "_" + "class" + "_" + called_func_name in self.code_representer.objects.keys():
+                    called_func_type = "class"
+                    called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
+                    parent_obj.add_called_class(called_func_id)
+                else:
+                    print("Called code not found. (Happens when calling a class or method not defined in the file)")
+                    return
 
-        for function_call in self.function_calls:
-            if function_call not in self.callee_to_caller.keys():
-                self.called_by_file.append(function_call)
-        
-        # TODO remove calls to functions that are not part of the code
+                if parent_obj.type == "method":
+                    self.code_representer.objects[called_func_id].add_caller_method(parent_obj.id)
+                elif parent_obj.type == "class":
+                    self.code_representer.objects[called_func_id].add_caller_class(parent_obj.id)
+                else:
+                    print("Unmatched parent type:", parent_obj.type)
+                    
 
-    def get_callers(self, callee):
-        if callee in self.callee_to_caller.keys():
-            return self.callee_to_caller[callee]
-        else:
-            return []
+
+                print()
+                print("Call:", called_func_name)
+                print("Call type:", called_func_type)
+                print("Called by:", parent_obj.id)
+                print()
+
+    # TODO deduplicate
+    # TODO that's not how modules work
+    def get_file_level_class_and_method_calls(self, tree):
+        module_name = self.full_path + "_module"
+        docstring = ast.get_docstring(node=tree, clean=True)
+        module_obj = Code_obj(name=module_name, filename=self.full_path, code_type="module", body=tree.body, ast_tree=tree, docstring=docstring)
+        code_parser.code_representer.objects[module_name] = module_obj
+        for node in tree.body:
+            if isinstance(node, ast.Call):
+                if hasattr(node.func, "id"):
+                    called_func_name = node.func.id
+                else:
+                    called_func_name = node.func.attr
+                if self.full_path + "_" + "method" + "_" + called_func_name in self.code_representer.objects.keys():
+                    called_func_type = "method"
+                    called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
+                    module_name.add_called_method(called_func_id)
+                elif self.full_path + "_" + "class" + "_" + called_func_name in self.code_representer.objects.keys():
+                    called_func_type = "class"
+                    called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
+                    module_name.add_called_class(called_func_id)
+                else:
+                    print("Called code not found. (Happens when calling a class or method not defined in the file)")
+                    return
+
+                if module_name.type == "method":
+                    self.code_representer.objects[called_func_id].add_caller_method(module_name.id)
+                elif module_name.type == "class":
+                    self.code_representer.objects[called_func_id].add_caller_class(module_name.id)
+                else:
+                    print("Unmatched parent type:", module_name.type)
     
-    def get_callees(self, caller):
-        if caller in self.caller_to_callee.keys():
-            return self.caller_to_callee[caller]
-        else:
-            return []
-
-    def get_function_context(self, function_name):
-        return {"callers": self.get_callers(function_name),
-                "callees": self.get_callees(function_name),
-                # class
-                # module
-                }
+code_parser = CodeParser(CodeRepresenter())
+code_parser.add_file()
+for node in code_parser.code_representer.objects.values():
+    docstring = ast.get_docstring(node=node.ast_tree)
+    print(docstring)
+print("finished")
