@@ -114,6 +114,11 @@ class CodeRepresenter():
     def __init__(self):
         self.objects = {}
     
+    def get(self, id):
+        if id in self.objects.keys():
+            return self.objects[id]
+        raise KeyError
+    
     def add_code_obj(self, code_obj):
         if code_obj.id not in self.objects:
             self.objects[code_obj.id] = code_obj

@@ -21,7 +21,7 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
         changed_modules = [] # TODO
         if not debug:
             raise NotImplementedError
-        for changed_method in changed_methods:
+        for changed_method in changed_methods: # TODO not only methods
             # print(changed_method["content"], "\n")
             method_id = repo.get_method_id(changed_method)
             change_context = repo.get_context(method_id) # get methods called by this method, get methods calling this this method, if this method is part of a class, get the class, get the module. Instead of the full methods/class/module, their docstring may be used
@@ -36,7 +36,16 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
                 # inferr return type
                 if not debug:
                     raise NotImplementedError
+            start_pos = repo.identify_code_location(method_id)
             change_dev_comments = repo.extract_dev_comments(change)
+        # order altered code parts by dependencies
+        ordered_code_objects = [] # TODO
+        if not debug:
+            raise NotImplementedError
+        for code_obj in ordered_code_objects:
+            if not debug:
+                raise NotImplementedError
+            # TODO parallelize
             # see if old docstring is up-to-date
             # if up-to-date:
                 # continue
@@ -47,8 +56,12 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
             # build docstring
             # merge new docstring with developer comments
             # validate docstring syntax
-            # insert new docstring
-            # validate code integrity
+            # insert new docstring in code_obj
+        for code_obj in ordered_code_objects:
+            if not debug:
+                raise NotImplementedError
+            # insert new docstring in the file
+        # validate code integrity
     repo.apply_changes()
     if not debug:
         raise NotImplementedError

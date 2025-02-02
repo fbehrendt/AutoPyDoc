@@ -9,7 +9,7 @@ import re
 import pathlib
 
 from get_context import CodeParser
-from code_representation import CodeRepresenter
+from code_representation import CodeRepresenter, Method_obj, Class_obj
 
 class RepoController():
     def __init__(self, repo_path: str, debug=False) -> None:
@@ -202,6 +202,42 @@ class RepoController():
             raise NotImplementedError
         else:
             return "A developer comment"
+    
+    def identify_code_location(self, code_obj_id: Method_obj|Class_obj) -> tuple:
+        code_obj = self.code_parser.code_representer.get(code_obj_id)
+        print("### getting starting pos for", code_obj.name)
+        print("Searching in file", code_obj.filename)
+        with open(file=code_obj.filename, mode="r") as f:
+            lines = f.readlines()
+            class_nesting = []
+            current_code_obj = code_obj
+            while current_code_obj.class_obj_id is not None:
+                current_code_obj = self.code_parser.code_representer.get(code_obj.class_obj_id)
+                class_nesting.append(current_code_obj)
+            start_pos = 0
+            for outer_class_obj in class_nesting[::-1]: # iterate from outer most class to inner most class
+                # search for class
+                for i in range(start_pos, len(lines)):
+                    if lines[i].lstrip().lower().startswith("class " + outer_class_obj.name.lower()):
+                        print("Parent class", outer_class_obj.name, "at pos", i, "-->", lines[i])
+                        start_pos = i+1
+                        break
+            if code_obj.type == "method":
+                prefix = "def "
+            elif code_obj.type == "class":
+                prefix = "class "
+            else:
+                raise NotImplementedError
+            for i in range(start_pos, len(lines)):
+                    if lines[i].lstrip().lower().startswith(prefix + code_obj.name.lower()):
+                        print("class/method", code_obj.name, "fount at pos", i, "-->", lines[i])
+                        start_pos = i
+                        break
+            print("######")
+            print()
+        return start_pos
+
+
             
     def update_latest_commit(self):
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
