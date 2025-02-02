@@ -27,7 +27,7 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
             change_context = repo.get_context(method_id) # get methods called by this method, get methods calling this this method, if this method is part of a class, get the class, get the module. Instead of the full methods/class/module, their docstring may be used
             change_old_docstring = repo.code_parser.code_representer.get_docstring(method_id)
             change_code = repo.code_parser.code_representer.get_code(method_id)
-            args_types_exceptions = repo.extract_args_types_exceptions(change)
+            args_types_exceptions = repo.extract_args_types_exceptions(method_id)
             if len(args_types_exceptions["missing_types"]) > 0:
                 # inferr missing types
                 if not debug:
