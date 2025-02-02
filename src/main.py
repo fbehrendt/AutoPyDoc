@@ -36,7 +36,7 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
                 # inferr return type
                 if not debug:
                     raise NotImplementedError
-            start_pos = repo.identify_code_location(method_id)
+            start_pos, end_pos = repo.identify_code_location(method_id)
             change_dev_comments = repo.extract_dev_comments(change)
         # order altered code parts by dependencies
         ordered_code_objects = [] # TODO

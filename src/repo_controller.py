@@ -209,6 +209,7 @@ class RepoController():
         print("Searching in file", code_obj.filename)
         with open(file=code_obj.filename, mode="r") as f:
             lines = f.readlines()
+            # get start pos
             class_nesting = []
             current_code_obj = code_obj
             while current_code_obj.class_obj_id is not None:
@@ -229,13 +230,26 @@ class RepoController():
             else:
                 raise NotImplementedError
             for i in range(start_pos, len(lines)):
-                    if lines[i].lstrip().lower().startswith(prefix + code_obj.name.lower()):
-                        print("class/method", code_obj.name, "fount at pos", i, "-->", lines[i])
-                        start_pos = i
-                        break
+                if lines[i].lstrip().lower().startswith(prefix + code_obj.name.lower()):
+                    start_pos = i
+                    start_line = lines[start_pos]
+                    break
+            print("class/method", code_obj.name, "fount at pos", start_pos, "-->", start_line)
+            # get indentation level
+            indentation_level = sum(4 if char == '\t' else 1 for char in start_line[:-len(start_line.lstrip())])
+            print("Indentation level:", indentation_level)
+            end_pos = len(lines)
+            for i in range(start_pos+1, len(lines)):
+                if len(lines[i].strip()) > 0 and sum(4 if char == '\t' else 1 for char in lines[i][:-len(lines[i].lstrip())]) <= indentation_level:
+                    # TODO decrease by preceeding blank lines
+                    end_pos = i-1
+                    break
+            if end_pos == len(lines):
+                print("Class/method ends at file end")
+            else:
+                print("Class/method ends at pos", end_pos, "--> Next line is", lines[end_pos+1])
             print("######")
-            print()
-        return start_pos
+        return (start_pos, end_pos)
 
 
             
