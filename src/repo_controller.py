@@ -73,7 +73,7 @@ class RepoController():
 
     def pull_repo(self):
         """ Pulls a repository into the working_repo folder"""
-        print("###MOCK### pulling remote repository")
+        print("###pulling remote repository###")
         dir = os.listdir(self.working_dir) 
         if len(dir) == 0:
             self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
@@ -91,7 +91,7 @@ class RepoController():
         
         :param repo_path: Path to the repository
         :type repo_path: str"""
-        print("###MOCK### copying repository files to working folder")
+        print("###copying repository files to working folder###")
         self.clear_working_dir()
         if not self.debug:
             raise NotImplementedError
@@ -102,7 +102,7 @@ class RepoController():
         :returns: A list of changed methods/classes/modules as dicts. Keys: type, content, signature, filenames, start, end
         :rtype: list[dict]
         """
-        print("###MOCK### extracting changes")
+        print("###extracting changes###")
         if not self.debug:
             raise NotImplementedError
         else:
@@ -133,13 +133,6 @@ class RepoController():
                     })
                 print(result[-1])
             return result
-           
-            return [{"type": "method",
-                     "content": 'def multiply(a: int,b: int): -> int\n\t"""multiply two numbers\n\n\t:param a: first number\n\t:type a: int\n\t:param b: second number\n\t:type b: int\n\t:returns: a*b\n\t:rtype: int"""\n\treturn a*b',
-                     "signature": "def multiply(a: int,b: int): -> int",
-                     "filename": "main.py",
-                     "start": 0,
-                     "end": 9}]
     
     @staticmethod
     def get_method_id(changed_method):
@@ -155,21 +148,10 @@ class RepoController():
         :returns: Context of a given method/class/module
         :rtype: list[dict]
         """
-        print("###MOCK### Gathering context")
+        print("###Gathering context###")
         if code_obj_id in self.code_parser.code_representer.objects.keys():
             return self.code_parser.code_representer.objects[code_obj_id].get_context()
         return None
-        
-        if not self.debug:
-            raise NotImplementedError
-        else:
-            return context
-            return [{"type": "method",
-              "content": 'def context_method_1():\n\t"""this is context method 1\n\n\t"""\n\tpass',
-              "signature": "def context_method_1():",
-              "filenames": "main.py",
-              "start": 11,
-              "end": 15}]
     
     def extract_docstring(self, code_obj) -> str:
         """ Extract the docstring (if exists)
@@ -179,11 +161,7 @@ class RepoController():
         :returns: docstring of the given code snippet
         :rtype: str
         """
-        print("###MOCK### Extracting docstring")
-        if not self.debug:
-            raise NotImplementedError
-        else:
-            return '"""multiply two numbers\n\n\t:param a: first number\n\t:type a: int\n\t:param b: second number\n\t:type b: int\n\t:returns: a*b\n\t:rtype: int"""'
+        return code_obj.get_docstring()
     
     def extract_code(self, code_obj) -> str:
         """ Extract the code without comments
@@ -193,13 +171,9 @@ class RepoController():
         :returns: code snippet without comments
         :rtype: str
         """
-        print("###MOCK### Extracting code")
-        if not self.debug:
-            raise NotImplementedError
-        else:
-            return "return a*b"
+        return code_obj.get_code()
 
-    def extract_args_types_exceptions(self, method_obj) -> str:
+    def extract_args_types_exceptions(self, method_id) -> str:
         """ Extract args, types and exceptions of a given method
         
         :param method_obj: A dictionary with details regarding a method
@@ -207,11 +181,9 @@ class RepoController():
         :returns: dict with args, types and exceptions of a method as dict. Format: {params: [{name: str, type: str}], return_type: str, exceptions: list, missing_types: list}
         :rtype: dict{list[dict]}
         """
-        print("###MOCK### Extracting arguments, types and exceptions")
-        if not self.debug:
-            raise NotImplementedError
-        else:
-            return {"params": [{"name": "a", type: int}], "return_type": int, "exceptions": [], "missing_types": ["b"]} # multiply(a: int, b) -> int:\n\treturn a*b
+        result = self.code_parser.code_representer.get_extract_args_types_exceptions(method_id)
+        result["missing_types"] = []
+        return result
     
     def extract_dev_comments(self, code_obj) -> list[str]:
         """ Extract developer comments
