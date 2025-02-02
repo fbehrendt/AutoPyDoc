@@ -23,7 +23,6 @@ class Code_obj():
         self.called_by_classes = []
         self.called_by_modules = []
         self.exceptions = []
-        self.missing_arg_types = []
     
     def add_called_method(self, called_method_id):
         self.called_methods.append(called_method_id)
@@ -88,6 +87,8 @@ class Method_obj(Code_obj):
         self.signature = signature
         self.class_obj_id = class_obj_id
         self.module_obj_id = module_obj_id
+        self.missing_arg_types = []
+        self.missing_return_type = False
         super().__init__(name, filename, "method", body, ast_tree, docstring=docstring, code=code, arguments=arguments, return_type=return_type, exceptions=exceptions)
 
     def add_module(self, module_obj_id):
@@ -104,6 +105,10 @@ class Method_obj(Code_obj):
         
     def add_missing_arg_type(self, arg_name):
         self.missing_arg_types.append(arg_name)
+    
+    def get_missing_arg_types(self):
+        return self.missing_arg_types
+
 
 class CodeRepresenter():
     def __init__(self):
@@ -137,8 +142,23 @@ class CodeRepresenter():
         if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "exceptions"):
             return self.objects[code_obj_id].exceptions
         return None
+
+    def get_missing_arg_types(self, code_obj_id):
+        code_obj = self.objects[code_obj_id]
+        if not isinstance(code_obj, Method_obj):
+            return False
+        return code_obj.get_missing_arg_types()
+
+    def return_types_missing(self, code_obj_id):
+        code_obj = self.objects[code_obj_id]
+        if not isinstance(code_obj, Method_obj):
+            return False
+        return code_obj.missing_return_type
     
     def get_extract_args_types_exceptions(self, code_obj_id):
         return {"arguments": self.get_arguments(code_obj_id=code_obj_id),
                 "return_type": self.get_return_type(code_obj_id=code_obj_id),
-                "exceptions": self.get_exceptions(code_obj_id=code_obj_id),}
+                "exceptions": self.get_exceptions(code_obj_id=code_obj_id),
+                "missing_arg_types": self.get_missing_arg_types(code_obj_id=code_obj_id),
+                "return_type_missing": self.return_types_missing(code_obj_id=code_obj_id),
+                }

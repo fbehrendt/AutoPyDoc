@@ -36,6 +36,7 @@ class RepoController():
         self.code_parser = CodeParser(CodeRepresenter())
         for file in self.get_files_in_repo():
             self.code_parser.add_file(file)
+        self.code_parser.create_dependencies()
         # self.repo = {} # {file_name: 'filename', 'methods': {'name': 'method_name', 'content': 'method content'}, 'classes': {'name': 'classname', 'methods' = {'name': 'method_name', 'content': 'method content'}}}
         self.get_latest_commit()
         if not self.debug:
@@ -181,15 +182,12 @@ class RepoController():
         :returns: dict with args, types and exceptions of a method as dict. Format: {params: [{name: str, type: str}], return_type: str, exceptions: list, missing_types: list}
         :rtype: dict{list[dict]}
         """
-        result = self.code_parser.code_representer.get_extract_args_types_exceptions(method_id)
-        if isinstance(result["arguments"], list):
-            for argument in result["arguments"]:
-                if "type" not in argument.keys():
-                    print("missing argument type for", argument["name"])
-                if argument["type"] is None:
-                    print("missing argument type for", argument["name"])
-        result["missing_types"] = []
-        return result
+        return self.code_parser.code_representer.get_extract_args_types_exceptions(method_id)
+
+    @staticmethod
+    def print_code(code):
+        for line in code.split("\n"):
+            print(line)
     
     def extract_dev_comments(self, code_obj) -> list[str]:
         """ Extract developer comments

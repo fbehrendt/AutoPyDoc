@@ -10,17 +10,24 @@ code = CodeRepresenter()
 class CodeParser():
     def __init__(self, code_representer):
         self.code_representer = code_representer
+        self.ducttape = False # TODO create a proper solution. For now only allow dependency creation once
 
     def add_file(self, filename="src\experiments\\ast_tests.py"):
         dir = pathlib.Path().resolve()
         self.full_path = os.path.join(dir, filename)
         self.tree = ast.parse(open(self.full_path).read())
         self.get_file_modules_classes_and_methods(tree=self.tree)
-        # TODO first read all files, then do the call dependencies
+        
+    def create_dependencies(self):
+        if self.ducttape:
+            return
+        self.ducttape = True
         for code_obj in self.code_representer.objects.values():
+            print("id", code_obj.id)
             self.get_class_and_method_calls(parent_obj=code_obj)
             self.get_args_and_return_type(parent_obj=code_obj)
             self.get_exceptions(parent_obj=code_obj)
+            self.check_return_type(method_obj=code_obj)
         self.get_file_level_class_and_method_calls(self.tree)
 
     def get_file_modules_classes_and_methods(self, tree):
@@ -153,6 +160,15 @@ class CodeParser():
                 return_type = return_type.id
             parent_obj.arguments = arguments
             parent_obj.return_type = return_type
+    
+    def check_return_type(self, method_obj):
+        if not isinstance(method_obj.ast_tree, ast.FunctionDef) and not isinstance(method_obj.ast_tree, ast.AsyncFunctionDef):
+            return
+        if method_obj.return_type == None:
+            print("check if method returns something")
+            for line in method_obj.code.split("\n"):
+                if line.lstrip().startswith("return"):
+                   method_obj.missing_return_type = True 
 
     # TODO deduplicate
     # TODO that's not how modules work

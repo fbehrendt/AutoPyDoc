@@ -28,8 +28,12 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
             change_old_docstring = repo.code_parser.code_representer.get_docstring(method_id)
             change_code = repo.code_parser.code_representer.get_code(method_id)
             args_types_exceptions = repo.extract_args_types_exceptions(method_id)
-            if hasattr(args_types_exceptions, "missing_types"):
+            if len(args_types_exceptions["missing_arg_types"]) > 0:
                 # inferr missing types
+                if not debug:
+                    raise NotImplementedError
+            if args_types_exceptions["return_type_missing"]:
+                # inferr return type
                 if not debug:
                     raise NotImplementedError
             change_dev_comments = repo.extract_dev_comments(change)
