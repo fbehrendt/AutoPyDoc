@@ -56,9 +56,15 @@ class Code_obj():
             "called_by_classes": self.called_by_classes,
             "called_by_modules": self.called_by_modules,
         }
-
+    
     def add_exception(self, exception):
         self.exceptions.append(exception)
+
+    def get_docstring(self):
+        return self.docstring
+    
+    def get_code(self):
+        return self.code
 
 class Class_obj(Code_obj):
     def __init__(self, name, filename, signature, body, ast_tree, class_obj_id=None, module_obj_id=None, docstring=None, code=None, arguments=None, return_type=None, exceptions=None):
