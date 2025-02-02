@@ -28,18 +28,32 @@ class CodeParser():
                 print("Function def:", func_def_name)
                 print("Arguments")
                 arguments = []
-                for arg, default in zip(node.args.args, node.args.defaults):
-                    if isinstance(default, ast.Constant):
-                        value = default.value
-                    elif isinstance(default, ast.List):
-                        value = [item.value for item in default.elts]
-                    print(arg.arg, arg.annotation.id, value)
-                    arguments.append({"name": arg.arg, "type": arg.annotation.id, "default": value})
+                for i in range(len(node.args.args)):
+                    arg = node.args.args[i]
+                    has_default = False
+                    if i < len(node.args.defaults):
+                        has_default = True
+                        default = node.args.defaults[i]
+                        if isinstance(default, ast.Constant):
+                            value = default.value
+                        elif isinstance(default, ast.List):
+                            value = [item.value for item in default.elts]
+                        print(arg.arg, arg.annotation.id, value)
+                        arguments.append({"name": arg.arg, "type": arg.annotation.id, "default": value})
+                    else:
+                        print(arg.arg, arg.annotation.id, "no default")
+                        arguments.append({"name": arg.arg, "type": arg.annotation.id})
                 if hasattr(node.returns, "id"):
                     print("Returns", node.returns.id)
                     return_type = node.returns.id
+                elif hasattr(node.returns, "value"):
+                    print("Returns", node.returns.value)
+                    return_type = node.returns.value
                 else:
                     return_type = None
+                    print("No return")
+                if isinstance(return_type, ast.Name):
+                    return_type = return_type.id
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
                 method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code, arguments=arguments, return_type=return_type)
