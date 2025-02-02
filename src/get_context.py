@@ -1,6 +1,7 @@
 import ast
 import os
 import pathlib
+from typing import Self
 
 from code_representation import Code_obj, Class_obj, Method_obj, CodeRepresenter
 
@@ -18,6 +19,7 @@ class CodeParser():
         # TODO first read all files, then do the call dependencies
         for code_obj in self.code_representer.objects.values():
             self.get_class_and_method_calls(parent_obj=code_obj)
+            self.get_args_and_return_type(parent_obj=code_obj)
             self.get_exceptions(parent_obj=code_obj)
         self.get_file_level_class_and_method_calls(self.tree)
 
@@ -26,37 +28,9 @@ class CodeParser():
             if isinstance(node, ast.FunctionDef):
                 func_def_name = node.name
                 print("Function def:", func_def_name)
-                print("Arguments")
-                arguments = []
-                for i in range(len(node.args.args)):
-                    arg = node.args.args[i]
-                    has_default = False
-                    if i < len(node.args.defaults):
-                        has_default = True
-                        default = node.args.defaults[i]
-                        if isinstance(default, ast.Constant):
-                            value = default.value
-                        elif isinstance(default, ast.List):
-                            value = [item.value for item in default.elts]
-                        print(arg.arg, arg.annotation.id, value)
-                        arguments.append({"name": arg.arg, "type": arg.annotation.id, "default": value})
-                    else:
-                        print(arg.arg, arg.annotation.id, "no default")
-                        arguments.append({"name": arg.arg, "type": arg.annotation.id})
-                if hasattr(node.returns, "id"):
-                    print("Returns", node.returns.id)
-                    return_type = node.returns.id
-                elif hasattr(node.returns, "value"):
-                    print("Returns", node.returns.value)
-                    return_type = node.returns.value
-                else:
-                    return_type = None
-                    print("No return")
-                if isinstance(return_type, ast.Name):
-                    return_type = return_type.id
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
-                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code, arguments=arguments, return_type=return_type)
+                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code)
                 self.code_representer.add_code_obj(method_obj)
             if isinstance(node, ast.AsyncFunctionDef):
                 func_def_name = node.name
@@ -139,12 +113,46 @@ class CodeParser():
                 print()
     
     def get_exceptions(self, parent_obj):
-        exceptions = []
         for node in ast.walk(parent_obj.ast_tree):
             # ast.get_source_segment(source, node.body[0])
             if isinstance(node, ast.Raise):
                 parent_obj.add_exception(node.exc.id)
         
+    def get_args_and_return_type(self, parent_obj):
+        node = parent_obj.ast_tree
+        if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
+            print("Arguments")
+            arguments = []
+            for i in range(len(node.args.args)):
+                arg = node.args.args[i]
+                new_arg = {"name": arg.arg}
+                if arg.annotation is not None:
+                    new_arg["type"] = arg.annotation.id
+                else: 
+                    if i == 0 and arg.arg == "self":
+                        new_arg["type"] = Self # see https://peps.python.org/pep-0673/
+                    else:
+                        parent_obj.add_missing_arg_type(arg.arg)
+                if i < len(node.args.defaults):
+                    default = node.args.defaults[i]
+                    if isinstance(default, ast.Constant):
+                        new_arg["default"] = default.value
+                    elif isinstance(default, ast.List):
+                        new_arg["default"] = [item.value for item in default.elts]
+                arguments.append(new_arg)
+            if hasattr(node.returns, "id"):
+                print("Returns", node.returns.id)
+                return_type = node.returns.id
+            elif hasattr(node.returns, "value"):
+                print("Returns", node.returns.value)
+                return_type = node.returns.value
+            else:
+                return_type = None
+                print("No return")
+            if isinstance(return_type, ast.Name):
+                return_type = return_type.id
+            parent_obj.arguments = arguments
+            parent_obj.return_type = return_type
 
     # TODO deduplicate
     # TODO that's not how modules work

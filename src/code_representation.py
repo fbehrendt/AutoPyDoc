@@ -23,6 +23,7 @@ class Code_obj():
         self.called_by_classes = []
         self.called_by_modules = []
         self.exceptions = []
+        self.missing_arg_types = []
     
     def add_called_method(self, called_method_id):
         self.called_methods.append(called_method_id)
@@ -100,6 +101,9 @@ class Method_obj(Code_obj):
         result["class_obj_id"] = self.class_obj_id
         result["module_obj_id"] = self.module_obj_id
         return result
+        
+    def add_missing_arg_type(self, arg_name):
+        self.missing_arg_types.append(arg_name)
 
 class CodeRepresenter():
     def __init__(self):

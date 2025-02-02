@@ -182,6 +182,12 @@ class RepoController():
         :rtype: dict{list[dict]}
         """
         result = self.code_parser.code_representer.get_extract_args_types_exceptions(method_id)
+        if isinstance(result["arguments"], list):
+            for argument in result["arguments"]:
+                if "type" not in argument.keys():
+                    print("missing argument type for", argument["name"])
+                if argument["type"] is None:
+                    print("missing argument type for", argument["name"])
         result["missing_types"] = []
         return result
     
