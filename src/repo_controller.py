@@ -249,7 +249,7 @@ class RepoController():
             else:
                 print("Class/method ends at pos", end_pos, "--> Next line is", lines[end_pos+1])
             print("######")
-        return (start_pos, end_pos)
+        return (start_pos, indentation_level, end_pos)
 
 
             
