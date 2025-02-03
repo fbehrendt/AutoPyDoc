@@ -1,5 +1,6 @@
 from repo_controller import RepoController
 from extract_methods_from_change_info import extract_methods_from_change_info
+from docstring_builder import DocstringBuilder
 
 def main(repo_path: str = None, debug=False) -> None: # repo_path will be required later
     """ Generates new docstrings for modified parts of the code
@@ -36,15 +37,16 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
                 # inferr return type
                 if not debug:
                     raise NotImplementedError
-            start_pos, indentation_level, end_pos = repo.identify_code_location(method_id)
             change_dev_comments = repo.extract_dev_comments(change)
         # order altered code parts by dependencies
-        ordered_code_objects = [] # TODO
+        ordered_code_objects = repo.code_parser.code_representer.objects.values() # TODO
         if not debug:
             raise NotImplementedError
         for code_obj in ordered_code_objects:
             if not debug:
                 raise NotImplementedError
+            if code_obj.type != "method": # TODO remove
+                continue
             # TODO parallelize
             # see if old docstring is up-to-date
             # if up-to-date:
@@ -53,13 +55,40 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
             # if only_comments_changed:
                 # continue
             # generate description
+            # inferr missing arg/return types
+            for missing_param in code_obj.missing_arg_types:
+                for i in range(len(code_obj.arguments)):
+                    if code_obj.arguments[i]["name"] == missing_param:
+                        code_obj.arguments[i]["type"] = "MOCK inferred type" # TODO
+            if code_obj.missing_return_type:
+                code_obj.return_type = "MOCK return type"
+            # generate parameter descriptions
+            # generate exception descriptions (?)
+        for code_obj in ordered_code_objects:
+            start_pos, indentation_level, end_pos = repo.identify_code_location(code_obj.id)
+            docstring_builder = DocstringBuilder(indentation_level=indentation_level)
+            if not debug:
+                raise NotImplementedError
+            docstring_builder.add_description("MOCK description") # TODO
+            if code_obj.type == "method":
+                for param in code_obj.arguments:
+                    if "default" in param.keys():
+                        docstring_builder.add_param(param_name=param["name"], param_type=param["type"], param_default=param["default"], param_description="MOCK parameter description") # TODO
+                    else:
+                        docstring_builder.add_param(param_name=param["name"], param_type=param["type"], param_description="MOCK parameter description") # TODO
+                for exception in code_obj.exceptions:
+                    docstring_builder.add_exception(exception_name=exception["name"], exception_description="MOCK exception description") # TODO
+                docstring_builder.add_return(return_type=code_obj.return_type, return_description="MOCK return description") # TODO
+            else:
+                continue
+                raise NotImplementedError # TODO
+            new_docstring = docstring_builder.build()
             # build docstring
+            if not debug:
+                raise NotImplementedError
             # merge new docstring with developer comments
             # validate docstring syntax
             # insert new docstring in code_obj
-        for code_obj in ordered_code_objects:
-            if not debug:
-                raise NotImplementedError
             # insert new docstring in the file
         # validate code integrity
     repo.apply_changes()
