@@ -1,6 +1,7 @@
 from repo_controller import RepoController
 from extract_methods_from_change_info import extract_methods_from_change_info
 from docstring_builder import DocstringBuilder
+from validate_docstring import validate_docstring
 
 def main(repo_path: str = None, debug=False) -> None: # repo_path will be required later
     """ Generates new docstrings for modified parts of the code
@@ -23,7 +24,6 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
         if not debug:
             raise NotImplementedError
         for changed_method in changed_methods: # TODO not only methods
-            # print(changed_method["content"], "\n")
             method_id = repo.get_method_id(changed_method)
             change_context = repo.get_context(method_id) # get methods called by this method, get methods calling this this method, if this method is part of a class, get the class, get the module. Instead of the full methods/class/module, their docstring may be used
             change_old_docstring = repo.code_parser.code_representer.get_docstring(method_id)
@@ -69,7 +69,7 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
             docstring_builder = DocstringBuilder(indentation_level=indentation_level)
             if not debug:
                 raise NotImplementedError
-            docstring_builder.add_description("MOCK description") # TODO
+            docstring_builder.add_description("MOCK This part of code (probably) does something.") # TODO
             if code_obj.type == "method":
                 for param in code_obj.arguments:
                     if "default" in param.keys():
@@ -77,7 +77,7 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
                     else:
                         docstring_builder.add_param(param_name=param["name"], param_type=param["type"], param_description="MOCK parameter description") # TODO
                 for exception in code_obj.exceptions:
-                    docstring_builder.add_exception(exception_name=exception["name"], exception_description="MOCK exception description") # TODO
+                    docstring_builder.add_exception(exception_name=exception, exception_description="MOCK exception description") # TODO
                 docstring_builder.add_return(return_type=code_obj.return_type, return_description="MOCK return description") # TODO
             else:
                 continue
@@ -87,7 +87,9 @@ def main(repo_path: str = None, debug=False) -> None: # repo_path will be requir
             if not debug:
                 raise NotImplementedError
             # merge new docstring with developer comments
+
             # validate docstring syntax
+            errors = validate_docstring(new_docstring)
             # insert new docstring in code_obj
             # insert new docstring in the file
         # validate code integrity

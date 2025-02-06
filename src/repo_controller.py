@@ -113,12 +113,7 @@ class RepoController():
                 # TODO change
             else:
                 latest_commit = self.repo.commit(self.latest_commit_hash)
-            #diff_index = latest_commit.diff(current_commit)
-            # for diff_item in diff_index.iter_change_type('M'):
-            #     print("A blob:\n{}".format(diff_item.a_blob.data_stream.read().decode('utf-8')))
-            #     print("B blob:\n{}".format(diff_item.b_blob.data_stream.read().decode('utf-8')))
             diff = self.repo.git.diff(latest_commit, current_commit)
-            print(diff)
 
             pattern = re.compile('\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@')
             changes = re.findall(pattern, diff)
@@ -132,7 +127,6 @@ class RepoController():
                     "start": int(change[3]),
                     "lines_changed": int(change[4])
                     })
-                print(result[-1])
             return result
     
     @staticmethod
@@ -205,8 +199,6 @@ class RepoController():
     
     def identify_code_location(self, code_obj_id: Method_obj|Class_obj) -> tuple:
         code_obj = self.code_parser.code_representer.get(code_obj_id)
-        print("### getting starting pos for", code_obj.name)
-        print("Searching in file", code_obj.filename)
         with open(file=code_obj.filename, mode="r") as f:
             lines = f.readlines()
             # get start pos
@@ -220,7 +212,6 @@ class RepoController():
                 # search for class
                 for i in range(start_pos, len(lines)):
                     if lines[i].lstrip().lower().startswith("class " + outer_class_obj.name.lower()):
-                        print("Parent class", outer_class_obj.name, "at pos", i, "-->", lines[i])
                         start_pos = i+1
                         break
             if code_obj.type == "method":
@@ -234,21 +225,14 @@ class RepoController():
                     start_pos = i
                     start_line = lines[start_pos]
                     break
-            print("class/method", code_obj.name, "fount at pos", start_pos, "-->", start_line)
             # get indentation level
             indentation_level = sum(4 if char == '\t' else 1 for char in start_line[:-len(start_line.lstrip())])
-            print("Indentation level:", indentation_level)
             end_pos = len(lines)
             for i in range(start_pos+1, len(lines)):
                 if len(lines[i].strip()) > 0 and sum(4 if char == '\t' else 1 for char in lines[i][:-len(lines[i].lstrip())]) <= indentation_level:
                     # TODO decrease by preceeding blank lines
                     end_pos = i-1
                     break
-            if end_pos == len(lines):
-                print("Class/method ends at file end")
-            else:
-                print("Class/method ends at pos", end_pos, "--> Next line is", lines[end_pos+1])
-            print("######")
         return (start_pos, indentation_level, end_pos)
 
 

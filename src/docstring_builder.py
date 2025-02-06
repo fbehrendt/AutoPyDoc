@@ -28,19 +28,23 @@ class DocstringBuilder():
         self.return_type = return_type
     
     def build(self) -> str:
-        docstring = '"""'
+        docstring = ' '* self.indentation_level + '"""'
         docstring += self.description + '\n'
-        docstring += '\n'
-        for param in self.params:
-
-            docstring += ' '* self.indentation_level + f':param {param["name"]}: {param["description"]}'
-            if "default" in param.keys():
-                docstring += f' Default is {param["default"]}'
+        if len(self.params) > 0:
             docstring += '\n'
+        for param in self.params:
+            docstring += ' '* self.indentation_level + f':param {param["name"]}: {param["description"]}\n'
+            if "default" in param.keys():
+                docstring += ' ' + f' Default is {param["default"]}\n'
             docstring += ' '* self.indentation_level + f':type {param["name"]}: {param["type"]}\n'
-        docstring += ' '* self.indentation_level + f':return: {self.return_description}\n'
-        docstring += ' '* self.indentation_level + f':rtype: {self.return_type}\n'
+        if len(self.params) >  0:
+            docstring += '\n'
+        if self.return_type or self.return_description:
+            docstring += ' '* self.indentation_level + f':return: {self.return_description}\n'
+            docstring += ' '* self.indentation_level + f':rtype: {self.return_type}\n\n'
         for exception in self.exceptions:
             docstring += ' '* self.indentation_level + f':raises {exception["name"]}: {exception["description"]}\n'
-        docstring += ' '* self.indentation_level + '"""\n'
+        if len(self.exceptions) > 0:
+            docstring += '\n'
+        docstring += ' '* self.indentation_level + '"""'
         return docstring
