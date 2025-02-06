@@ -4,6 +4,7 @@ class Code_obj():
         self.filename = filename
         self.type = code_type
         self.id = filename + "_" + self.type + "_" + self.name
+        print(self.id)
         self.body = body
         if docstring:
             self.docstring = docstring

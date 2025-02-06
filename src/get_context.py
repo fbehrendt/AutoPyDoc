@@ -156,11 +156,11 @@ class CodeParser():
     # TODO deduplicate
     # TODO that's not how modules work
     def get_file_level_class_and_method_calls(self, tree):
-        module_name = self.full_path + "_module"
+        module_name = "module_name" # TODO get module name
         docstring = ast.get_docstring(node=tree, clean=True)
         source_code = ast.get_source_segment(open(self.full_path).read(), tree, padded=False)
         module_obj = Code_obj(name=module_name, filename=self.full_path, code_type="module", body=tree.body, ast_tree=tree, docstring=docstring, code=source_code)
-        self.code_representer.objects[module_name] = module_obj
+        self.code_representer.objects[module_obj.id] = module_obj
         for node in tree.body:
             if isinstance(node, ast.Call):
                 if hasattr(node.func, "id"):

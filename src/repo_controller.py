@@ -204,7 +204,7 @@ class RepoController():
             # get start pos
             class_nesting = []
             current_code_obj = code_obj
-            while current_code_obj.class_obj_id is not None:
+            while hasattr(current_code_obj, "class_obj_id") and current_code_obj.class_obj_id is not None:
                 current_code_obj = self.code_parser.code_representer.get(code_obj.class_obj_id)
                 class_nesting.append(current_code_obj)
             start_pos = 0
@@ -218,6 +218,8 @@ class RepoController():
                 prefix = "def "
             elif code_obj.type == "class":
                 prefix = "class "
+            elif code_obj.type == "module":
+                return (0, 0, len(lines)) # full file
             else:
                 raise NotImplementedError
             for i in range(start_pos, len(lines)):
