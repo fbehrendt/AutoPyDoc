@@ -6,6 +6,9 @@ class Class_a():
         """Instantiates a Class_a object"""
         pass
 
+    def func_d(self):
+        pass
+
 def func_a():
     """creates a Class_a object and calls func_b"""
     some_class = Class_a()
@@ -22,4 +25,5 @@ def func_c(x: int = 9, y: str = "nine", z: list = [1, 2, 3, 4, 5, 6, 7, 8, 9]) -
     return {"x": x, "y": y, "z": z}
 
 class_a = Class_a()
+class_a.func_d()
 func_a()

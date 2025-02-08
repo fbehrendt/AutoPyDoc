@@ -19,17 +19,35 @@ class CodeParser():
         self.get_file_modules_classes_and_methods(tree=self.tree)
         
     def create_dependencies(self):
+        # TODO id collisions possible with subclasses/class methods (only within the same file)
+        # example
+        # class A():
+        #   def func_a():
+        #       pass
+        # class B():
+        #   class A(): # class name collision
+        # def func_a(): # method name collision
+        #   pass
+        # or
+        # class
         if self.ducttape:
             return
         self.ducttape = True
         for code_obj in self.code_representer.objects.values():
+            if code_obj.type == "module":
+                pass # TODO remove
             self.get_class_and_method_calls(parent_obj=code_obj)
             self.get_args_and_return_type(parent_obj=code_obj)
             self.get_exceptions(parent_obj=code_obj)
             self.check_return_type(method_obj=code_obj)
-        self.get_file_level_class_and_method_calls(self.tree)
 
     def get_file_modules_classes_and_methods(self, tree):
+        if isinstance(tree, ast.Module):
+            module_name = "" # TODO get module name
+            docstring = ast.get_docstring(node=tree, clean=True)
+            source_code = open(self.full_path).read()
+            module_obj = Code_obj(name=module_name, filename=self.full_path, code_type="module", body=tree.body, ast_tree=tree, docstring=docstring, code=source_code)
+            self.code_representer.objects[module_obj.id] = module_obj
         for node in tree.body:
             if isinstance(node, ast.FunctionDef):
                 func_def_name = node.name
@@ -52,8 +70,6 @@ class CodeParser():
                 class_obj = Class_obj(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code)
                 self.code_representer.add_code_obj(class_obj)
                 self.get_class_methods_and_sub_classes(class_tree=node, class_obj_id=class_obj.id)
-            if isinstance(node, ast.Module):
-                print("Module")
 
     def get_class_methods_and_sub_classes(self, class_tree, class_obj_id):
         for node in class_tree.body:
@@ -83,10 +99,13 @@ class CodeParser():
         for node in ast.walk(parent_obj.ast_tree):
             # ast.get_source_segment(source, node.body[0])
             if isinstance(node, ast.Call):
+                variable_to_resolve = None
                 if hasattr(node.func, "id"):
                     called_func_name = node.func.id
                 else:
                     called_func_name = node.func.attr
+                    if hasattr(node.func, "value"):
+                        variable_to_resolve = called_func_name # TODO resolve variable(?)
                 if self.full_path + "_" + "method" + "_" + called_func_name in self.code_representer.objects.keys():
                     called_func_type = "method"
                     called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
@@ -189,6 +208,7 @@ class CodeParser():
 if __name__ == "__main__":
     code_parser = CodeParser(CodeRepresenter())
     code_parser.add_file()
+    code_parser.create_dependencies()
     for node in code_parser.code_representer.objects.values():
         docstring = ast.get_docstring(node=node.ast_tree)
         print(docstring)
