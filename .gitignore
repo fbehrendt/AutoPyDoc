@@ -3,6 +3,7 @@ working_repo
 *.png
 *.svg
 *.html
+*.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
