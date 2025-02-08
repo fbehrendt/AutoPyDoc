@@ -8,9 +8,10 @@ from code_representation import Code_obj, Class_obj, Method_obj, CodeRepresenter
 code = CodeRepresenter()
 
 class CodeParser():
-    def __init__(self, code_representer):
+    def __init__(self, code_representer, debug=False):
         self.code_representer = code_representer
         self.ducttape = False # TODO create a proper solution. For now only allow dependency creation once
+        self.debug = debug
 
     def add_file(self, filename="src\experiments\\ast_tests.py"):
         dir = pathlib.Path().resolve()
@@ -99,13 +100,28 @@ class CodeParser():
         for node in ast.walk(parent_obj.ast_tree):
             # ast.get_source_segment(source, node.body[0])
             if isinstance(node, ast.Call):
-                variable_to_resolve = None
+                variable_to_resolve = None # TODO resolve variable(?)
                 if hasattr(node.func, "id"):
                     called_func_name = node.func.id
                 else:
                     called_func_name = node.func.attr
                     if hasattr(node.func, "value"):
-                        variable_to_resolve = called_func_name # TODO resolve variable(?)
+                        if hasattr(node.func.value, "id"):
+                            variable_to_resolve = node.func.value.id
+                        else:
+                            variable_to_resolve = node.func.value.attr
+                        value = node.func.value
+                        while hasattr(value, "value"):
+                            if hasattr(value.value, "id"):
+                                variable_to_resolve = value.value.id + '.' + variable_to_resolve 
+                            else:
+                                variable_to_resolve = value.value.attr + '.' + variable_to_resolve 
+                            value = value.value
+                if variable_to_resolve is not None:
+                    # TODO resolve variable
+                    if not self.debug:
+                        raise NotImplementedError
+                        
                 if self.full_path + "_" + "method" + "_" + called_func_name in self.code_representer.objects.keys():
                     called_func_type = "method"
                     called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
