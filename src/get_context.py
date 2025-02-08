@@ -172,39 +172,6 @@ class CodeParser():
                 if line.lstrip().startswith("return"):
                    method_obj.missing_return_type = True 
 
-    # TODO deduplicate
-    # TODO that's not how modules work
-    def get_file_level_class_and_method_calls(self, tree):
-        module_name = "module_name" # TODO get module name
-        docstring = ast.get_docstring(node=tree, clean=True)
-        source_code = ast.get_source_segment(open(self.full_path).read(), tree, padded=False)
-        module_obj = Code_obj(name=module_name, filename=self.full_path, code_type="module", body=tree.body, ast_tree=tree, docstring=docstring, code=source_code)
-        self.code_representer.objects[module_obj.id] = module_obj
-        for node in tree.body:
-            if isinstance(node, ast.Call):
-                if hasattr(node.func, "id"):
-                    called_func_name = node.func.id
-                else:
-                    called_func_name = node.func.attr
-                if self.full_path + "_" + "method" + "_" + called_func_name in self.code_representer.objects.keys():
-                    called_func_type = "method"
-                    called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
-                    module_name.add_called_method(called_func_id)
-                elif self.full_path + "_" + "class" + "_" + called_func_name in self.code_representer.objects.keys():
-                    called_func_type = "class"
-                    called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
-                    module_name.add_called_class(called_func_id)
-                else:
-                    print("Called code not found. (Happens when calling a class or method not defined in the file)")
-                    return
-
-                if module_name.type == "method":
-                    self.code_representer.objects[called_func_id].add_caller_method(module_name.id)
-                elif module_name.type == "class":
-                    self.code_representer.objects[called_func_id].add_caller_class(module_name.id)
-                else:
-                    print("Unmatched parent type:", module_name.type)
-
 if __name__ == "__main__":
     code_parser = CodeParser(CodeRepresenter())
     code_parser.add_file()
