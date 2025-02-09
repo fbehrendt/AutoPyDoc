@@ -7,7 +7,7 @@ class Class_a():
         pass
 
     def func_d(self):
-        pass
+        return func_a()
 
 class Class_b():
     """A simple test class b"""
@@ -15,10 +15,17 @@ class Class_b():
         """Instantiates a Class_b object"""
         self.var_class_a = Class_a()
 
+class Class_c():
+    """A simple test class c"""
+    def __init__(self):
+        """Instantiates a Class_c object"""
+        self.var_end = "End of chain"
+
 def func_a():
     """creates a Class_a object and calls func_b"""
-    some_class = Class_a()
+    some_class = Class_c()
     func_b()
+    return some_class
     
 
 def func_b():
@@ -33,5 +40,5 @@ def func_c(x: int = 9, y: str = "nine", z: list = [1, 2, 3, 4, 5, 6, 7, 8, 9]) -
 class_a = Class_a()
 var_Ad = class_a.func_d()
 var_B = Class_b()
-var_B.var_class_a.func_d()
+var_B.var_class_a.func_d().var_end
 func_a()
