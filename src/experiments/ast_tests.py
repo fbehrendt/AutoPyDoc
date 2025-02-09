@@ -4,6 +4,7 @@ class Class_a():
     """A simple test class a"""
     def __init__(self):
         """Instantiates a Class_a object"""
+        self.var = "xyz"
         pass
 
     def func_d(self):
