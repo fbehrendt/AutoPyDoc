@@ -1,3 +1,5 @@
+import ast
+
 class Code_obj():
     def __init__(self, name, filename, code_type, body, ast_tree, docstring=None, code=None):
         self.name = name
@@ -46,9 +48,10 @@ class Class_obj(Code_obj):
         self.class_obj_id = class_obj_id
         self.module_obj_id = module_obj_id
         self.class_attributes = []
+        self.instance_variables = []
         self.class_methods = []
         if code is not None:
-            self.identify_class_attributes_and_methods(code=code, filename=filename)
+            self.identify_class_and_instance_attributes_and_methods(ast_tree=ast_tree, filename=filename)
         super().__init__(name, filename, "class", body=body, ast_tree=ast_tree, docstring=docstring, code=code)
 
     def add_module(self, module_obj):
@@ -57,25 +60,26 @@ class Class_obj(Code_obj):
     def add_class_attribute(self, class_attribute):
         self.class_attributes.append(class_attribute)
         # TODO use this
+    
+    def add_instance_variable(self, instance_variable_name):
+        self.instance_variables.append(instance_variable_name)
 
-    def add_class_method(self, class_method_id):
-        self.class_methods.append(class_method_id)
+    def add_class_method(self, class_method_name):
+        self.class_methods.append(class_method_name)
         # TODO use this
 
-    def identify_class_attributes_and_methods(self, code, filename):
-        for line in code.split('\n'):
-            # identify class attributes
-            if line.lstrip().startswith("self.") and '=' in line: # TODO could match lines like self.var == "xyz" which is undesired. Please Fix
-                attribute = line.split('=')[0].lstrip().lstrip("self.").rstrip()
-                self.add_class_attribute(attribute)
-            # identify class methods
-            elif line.lstrip().startswith("def ") and line.split('#')[0].rstrip().endswith(':'):
-                method_name = line.lstrip().lstrip("def ").split('(')[0]
-                class_method_id = filename + '_method_' + method_name
-                self.add_class_method(class_method_id=class_method_id)
-
-        raise NotImplementedError
-
+    def identify_class_and_instance_attributes_and_methods(self, ast_tree, filename):
+        for statement in ast.walk(ast_tree):
+            if isinstance(statement, ast.Assign):
+                print(ast.Name)
+                print(type(statement.targets[0]))
+                if len(statement.targets) == 1:
+                    if isinstance(statement.targets[0], ast.Name):
+                        self.add_class_attribute(statement.targets[0].id)
+                    elif isinstance(statement.targets[0], ast.Attribute) and statement.targets[0].value.id == "self":
+                        self.add_instance_variable(statement.targets[0].attr)
+            elif isinstance(statement, ast.FunctionDef) or isinstance(statement, ast.AsyncFunctionDef):
+                self.add_class_method(statement.name)
 
 class Method_obj(Code_obj):
     def __init__(self, name, filename, signature, body, ast_tree, class_obj_id=None, module_obj_id=None, docstring=None, code=None):

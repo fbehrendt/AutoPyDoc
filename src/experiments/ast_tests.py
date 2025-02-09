@@ -2,6 +2,8 @@
 
 class Class_a():
     """A simple test class a"""
+    class_var = 0
+
     def __init__(self):
         """Instantiates a Class_a object"""
         self.var = "xyz"
