@@ -2,6 +2,7 @@ import os
 import pathlib
 import re
 import sys
+import ast
 
 file_path = os.path.dirname(os.path.realpath(__file__))
 project_dir = str(pathlib.Path(file_path).parent.parent.absolute())
@@ -14,8 +15,87 @@ def resolve_variable_chain_by_file(code_representer, filename="src\experiments\\
     dir = pathlib.Path().resolve()
     full_path = os.path.join(dir, filename)
     with open(full_path, 'r') as f:
-        content = f.readlines()
-        return resolve_variable_chain(code_representer=code_representer, content=content, variable_chain=variable_chain, full_path=full_path)
+        content = f.read()
+        return resolve_variable_chain(code_representer=code_representer, content=content.split('\n'), variable_chain=variable_chain, full_path=full_path)
+
+def resolve_variables_with_ast(content):
+    variable_chain = variable_chain.split('.')
+    current_var = variable_chain.pop(0)
+    resolved_assignments = []
+    for node in ast.walk(ast.parse(content)):
+        if isinstance(node, ast.Assign):
+            print()
+            var_chain_value = []
+            if isinstance(node.value, ast.Constant):
+                value = node.value.value
+            elif isinstance(node.value.func, ast.Name):
+                value = node.value.func.id
+            elif isinstance(node.value.func, ast.Attribute):
+                value = node.value.func.attr
+                if hasattr(node.value.func, "value"):
+                    sub_node = node.value.func.value
+                while True:
+                    if isinstance(sub_node, ast.Name):
+                        name = sub_node.id
+                    elif isinstance(sub_node, ast.Attribute):
+                        name = sub_node.attr
+                    else:
+                        raise NotImplementedError
+                    name_type = None
+                    if name in [assignment["target_name"] for assignment in resolved_assignments]:
+                        for assignment in resolved_assignments:
+                            if assignment["target_name"] == name:
+                                name_type = assignment["value"]
+                    var_chain_value.append({name: name_type}) # TODO is this ever used?
+
+                    if hasattr(sub_node, "value"):
+                        sub_node = sub_node.value
+                    else:
+                        break
+            else:
+                raise NotImplementedError
+            targets = []
+            for target in node.targets:
+                var_chain_target = []
+                if hasattr(target, "value"):
+                    sub_node = target.value
+                    while True:
+                        if isinstance(sub_node, ast.Name):
+                            var_chain_target.insert(0, {sub_node.id: None})
+                        elif isinstance(sub_node, ast.Attribute):
+                            var_chain_target.insert(0, {sub_node.attr: None}) # TODO is this ever used?
+
+                        if hasattr(sub_node, "value"):
+                            sub_node = sub_node.value
+                        else:
+                            break
+
+                if isinstance(target, ast.Name):
+                    target_name = target.id
+                elif isinstance(target, ast.Attribute):
+                    target_name = target.attr
+                else:
+                    raise NotImplementedError
+                targets.append({"name": target_name, 
+                                "var_chain_target": var_chain_target})
+            print("Targets", ', '.join([target["name"] for target in targets]), "value", value, "var_chain", var_chain_value)
+            for target in targets:
+                for var in target["var_chain_target"]:
+                    print(list(var.keys()))
+                    if list(var.keys())[0] in [assignment["target_name"] for assignment in resolved_assignments]:
+                        for assignment in resolved_assignments:
+                            if assignment["target_name"] == list(var.keys())[0]:
+                                for i, item in enumerate(target["var_chain_target"]):
+                                    if list(item.keys())[0] == list(var.keys())[0]:
+                                        target["var_chain_target"][i][list(var.keys())[0]] = assignment["value"]
+                resolved_assignments.append({
+                    "target_name": target["name"],
+                    "var_chain_target": target["var_chain_target"],
+                    "value": value,
+                    "var_chain_value": var_chain_value,
+                })
+            print()
+    return resolved_assignments
 
 def resolve_variable_chain(code_representer, content, variable_chain, full_path):
     # currently fails to handle conditional assignments, as it returns when the first match is found
