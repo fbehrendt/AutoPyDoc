@@ -106,17 +106,21 @@ class CodeParser():
                 else:
                     called_func_name = node.func.attr
                     if hasattr(node.func, "value"):
+                        skip = False
                         if hasattr(node.func.value, "id"):
                             variable_to_resolve = node.func.value.id
-                        else:
+                        elif isinstance(node.func.value, ast.Attribute):
                             variable_to_resolve = node.func.value.attr
-                        value = node.func.value
-                        while hasattr(value, "value"):
-                            if hasattr(value.value, "id"):
-                                variable_to_resolve = value.value.id + '.' + variable_to_resolve 
-                            else:
-                                variable_to_resolve = value.value.attr + '.' + variable_to_resolve 
-                            value = value.value
+                        else:
+                            skip = True
+                        if not skip:
+                            value = node.func.value
+                            while hasattr(value, "value"):
+                                if hasattr(value.value, "id"):
+                                    variable_to_resolve = value.value.id + '.' + variable_to_resolve 
+                                else:
+                                    variable_to_resolve = value.value.attr + '.' + variable_to_resolve 
+                                value = value.value
                 if variable_to_resolve is not None:
                     # TODO resolve variable
                     if not self.debug:
