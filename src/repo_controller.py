@@ -33,7 +33,7 @@ class RepoController():
             self.copy_repo(repo_path)
             raise NotImplementedError
         
-        self.code_parser = CodeParser(code_representer=CodeRepresenter(), debug=True)
+        self.code_parser = CodeParser(code_representer=CodeRepresenter(), working_dir=self.working_dir, debug=True)
         for file in self.get_files_in_repo():
             self.code_parser.add_file(file)
         self.code_parser.create_dependencies()

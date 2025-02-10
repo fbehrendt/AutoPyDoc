@@ -4,19 +4,23 @@ import pathlib
 from typing import Self
 
 from code_representation import Code_obj, Class_obj, Method_obj, CodeRepresenter
+from import_finder import ImportFinder
 
 code = CodeRepresenter()
 
 class CodeParser():
-    def __init__(self, code_representer, debug=False):
+    def __init__(self, code_representer, working_dir, debug=False):
         self.code_representer = code_representer
+        self.working_dir = working_dir
         self.ducttape = False # TODO create a proper solution. For now only allow dependency creation once
         self.debug = debug
+        self.import_finder = ImportFinder(working_dir=working_dir)
 
     def add_file(self, filename="src\experiments\\ast_tests.py"):
         dir = pathlib.Path().resolve()
         self.full_path = os.path.join(dir, filename)
         self.tree = ast.parse(open(self.full_path).read())
+        self.import_finder.add_file(self.full_path)
         self.get_file_modules_classes_and_methods(tree=self.tree)
         
     def create_dependencies(self):
@@ -135,8 +139,13 @@ class CodeParser():
                     called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
                     parent_obj.add_called_class(called_func_id)
                 else:
-                    print("Called code not found. (Happens when calling a class or method not defined in the file)")
-                    return
+                    print("Call from external file. Trying to resolve")
+                    matching_imports = self.import_finder.resolve_external_call(call=called_func_name, filename=parent_obj.filename, code_representer=self.code_representer)
+                    if len(matching_imports) == 0:
+                        print("Called code not found. (Happens when calling a class or method not defined in the file)")
+                        return
+                    else:
+                        raise NotImplementedError
 
                 if parent_obj.type == "method":
                     self.code_representer.objects[called_func_id].add_caller_method(parent_obj.id)

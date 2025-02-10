@@ -101,3 +101,10 @@ class CodeRepresenter():
     def add_code_obj(self, code_obj):
         if code_obj.id not in self.objects:
             self.objects[code_obj.id] = code_obj
+
+    def get_by_filename(self, filename):
+        matches = []
+        for object in self.objects:
+            if object.filename == filename:
+                matches.append(object)
+        return matches

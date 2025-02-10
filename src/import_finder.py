@@ -1,11 +1,12 @@
 import ast
+import os
+import pathlib
 
 class ImportFinder():
-    def __init__(self, filename=None):
+    def __init__(self, working_dir):
         self.import_lines = {}
         self.imports = {}
-        if filename is not None:
-            self.add_file(filename=filename)
+        self.working_dir = working_dir
     
     def add_file(self, filename):
         current_file_imports = []
@@ -19,26 +20,45 @@ class ImportFinder():
                     current_file_imports.append(module + '.' + item.name)
         self.imports[filename] = current_file_imports
 
-    def resolve_external_call(self, call, filename):
+    def resolve_external_call(self, call, filename, code_representer):
         # TODO does ast resolve external calls as module.method, or as method with module stored separately?
         # TODO resolve calls like class_obj_variable.class_method_call => get type of class_obj_variable
         # TODO resolve calls like self.class_obj.method, where class_obj was imported
         relevant_imports = self.imports[filename]
         matches = [current_import for current_import in relevant_imports if call.split('.')[0] in current_import]
+        for match in matches:
+            self.resolve_import_to_file(import_statement=match, source_file=filename, code_representer=code_representer)
         return matches
+
+    def resolve_import_to_file(self, import_statement, source_file, code_representer):
+        import_statement = import_statement.split('.')
+        repo_files = [os.path.join(dirpath,f) for (dirpath, dirnames, filenames) in os.walk(self.working_dir) for f in filenames]
+        repo_files = [file.split('.py')[0] for file in repo_files if file.endswith(".py")]
+        repo_files = [file.split(self.working_dir)[1] for file in repo_files]
+        repo_files = [[dir_part for dir_part in file.split('\\') if len(dir_part) > 0] for file in repo_files]
+        source_file = source_file.split(self.working_dir)[1]
+        source_file = [dir_part for dir_part in source_file.split('\\') if len(dir_part) > 0]
         
+        for split_path in repo_files:
+            # go to same depth in repo
+            i = 0
+            while i < min(len(source_file), len(split_path)) and source_file[i] == split_path[i]:
+                i += 1
+            if i == len(source_file):
+                raise Exception("Import from the file that is importing")
+            # match file part of import
+            j = 0
+            while j < min(len(split_path)-i, len(import_statement)) and split_path[i+j] == import_statement[j]:
+                j+=1
+            if j > 0:
+                filename = self.working_dir + '\\' + '\\'.join(split_path)
+                potential_matches = code_representer.get_by_filename(filename) # TODO
+            print()
+            
+
+
+        
+        print() 
 
 if __name__ == "__main__":
-    filename = "src/repo_controller.py"
-    import_finder = ImportFinder(filename=filename)
-    print("Imports:")
-    for import_line in import_finder.imports[filename]:
-        print(import_line)
-    matching_imports = import_finder.resolve_external_call(filename=filename, call="CodeParser")
-    print("Call CodeParser found in", matching_imports)
-    matching_imports = import_finder.resolve_external_call(filename=filename, call="CodeRepresenter")
-    print("Call CodeRepresenter found in", matching_imports)
-    matching_imports = import_finder.resolve_external_call(filename=filename, call="CodeParser.create_dependencies")
-    print("Call CodeParser.create_dependencies found in", matching_imports)
-    
-    
+    pass
