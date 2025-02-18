@@ -17,13 +17,14 @@ class AutoPyDoc():
         :type debug: boolean
         """
 
+        # pull repo, create code representation, create dependencies
         self.repo = RepoController(repo_path=repo_path, debug=debug)
         self.debug = debug
-
-        self.code_parts = {}
-        self.changes = self.repo.get_changes()
         self.queued_code_ids = []
 
+        # get changes between last commit the tool ran for and now
+        self.changes = self.repo.get_changes()
+        
         for change in self.changes:
             changed_methods = extract_methods_from_change_info(filename=change["filename"], change_start=change["start"], change_length=change["lines_changed"])
             changed_classes = [] # TODO
@@ -37,19 +38,7 @@ class AutoPyDoc():
                 self.queued_code_ids.append(method_id)
                 method_obj = self.repo.code_parser.code_representer.get(method_id)
                 method_obj.outdated = True
-                context = self.repo.get_context(method_id) # get methods called by this method, get methods calling this this method, if this method is part of a class, get the class, get the module. Instead of the full methods/class/module, their docstring may be used
-                old_docstring = self.repo.code_parser.code_representer.get_docstring(method_id)
-                code = self.repo.code_parser.code_representer.get_code(method_id)
-                args_types_exceptions = self.repo.extract_args_types_exceptions(method_id)
-                if len(args_types_exceptions["missing_arg_types"]) > 0:
-                    # inferr missing types
-                    if not self.debug:
-                        raise NotImplementedError
-                if args_types_exceptions["return_type_missing"]:
-                    # inferr return type
-                    if not self.debug:
-                        raise NotImplementedError
-                dev_comments = self.repo.extract_dev_comments(change)
+                method_obj.dev_comments = self.repo.extract_dev_comments(change)
 
         first_batch = self.generate_next_batch()
         self.queries_sent_to_gpt = len(first_batch)
