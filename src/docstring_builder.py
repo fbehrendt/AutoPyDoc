@@ -39,7 +39,7 @@ class DocstringBuilder():
             docstring += ' '* self.indentation_level + f':type {param["name"]}: {param["type"]}\n'
         if len(self.params) >  0:
             docstring += '\n'
-        if self.return_type or self.return_description:
+        if hasattr(self, "return_type") and hasattr(self, "return_description"):
             docstring += ' '* self.indentation_level + f':return: {self.return_description}\n'
             docstring += ' '* self.indentation_level + f':rtype: {self.return_type}\n\n'
         for exception in self.exceptions:
@@ -48,3 +48,32 @@ class DocstringBuilder():
             docstring += '\n'
         docstring += ' '* self.indentation_level + '"""'
         return docstring
+
+def create_docstring(code_obj, result, indentation_level, debug=False):
+    docstring_builder = DocstringBuilder(indentation_level=indentation_level)
+    if not debug:
+        raise NotImplementedError
+    docstring_builder.add_description(result["description"]) # TODO
+    if code_obj.type == "method":
+        for param in code_obj.arguments:
+            if param["name"] == "self": # skip self
+                continue
+            if param["name"] in result["parameter_types"].keys():
+                param_type = result["parameter_types"][param["name"]]
+            else:
+                param_type = param["type"]
+            if "default" in param.keys():
+                docstring_builder.add_param(param_name=param["name"], param_type=param_type, param_default=param["default"], param_description=result["parameter_descriptions"][param["name"]]) # TODO
+            else:
+                docstring_builder.add_param(param_name=param["name"], param_type=param_type, param_description=result["parameter_descriptions"][param["name"]]) # TODO
+        for exception, exception_description in result["exception_descriptions"].items():
+            docstring_builder.add_exception(exception_name=exception, exception_description=exception_description) # TODO
+        if not code_obj.missing_return_type and code_obj.return_type is not None:
+            if "return type" in result.keys():
+                return_type = result["return type"]
+            else:
+                return_type = code_obj.return_type
+            docstring_builder.add_return(return_type=return_type, return_description=result["return_description"]) # TODO
+    else:
+        raise NotImplementedError # TODO
+    return docstring_builder.build()
