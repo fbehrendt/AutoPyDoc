@@ -237,7 +237,16 @@ class RepoController():
                     break
         return (start_pos, indentation_level, end_pos)
 
-
+    @staticmethod
+    def insert_docstring(filename, start, end, new_docstring):
+        with open(filename, 'r') as f:
+            content = f.readlines()
+            before = content[:start]
+            after = content[end:]
+            new_content = "".join(before) + "\n" + new_docstring + "\n" + "".join(after)
+            
+            with open(filename, 'w') as file:
+                file.write(new_content)
             
     def update_latest_commit(self):
         # TODO create_commit
