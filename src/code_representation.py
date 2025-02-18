@@ -168,3 +168,12 @@ class CodeRepresenter():
                 "missing_arg_types": self.get_missing_arg_types(code_obj_id=code_obj_id),
                 "return_type_missing": self.return_types_missing(code_obj_id=code_obj_id),
                 }
+
+    def get_by_filename(self, filename: str):
+        if not filename.endswith(".py"):
+            filename += ".py"
+        matches = []
+        for object in self.objects.values():
+            if object.filename == filename:
+                matches.append(object)
+        return matches
