@@ -24,7 +24,9 @@ class Code_obj():
         self.called_by_classes = []
         self.called_by_modules = []
         self.exceptions = []
-    
+        self.outdated = False
+        self.is_updated = False
+
     def add_called_method(self, called_method_id):
         self.called_methods.append(called_method_id)
     
@@ -200,3 +202,26 @@ class CodeRepresenter():
             else:
                 result[key] = code_obj_2.code
         return result
+
+    def depends_on_outdated_code(self, id):
+        code_obj = self.get(id)
+        for code_id in code_obj.called_classes:
+            if self.get(code_id).outdated:
+                return True
+        for code_id in code_obj.called_methods:
+            if self.get(code_id).outdated:
+                return True
+        if hasattr(code_obj, "class_obj_id") and code_obj.class_obj_id is not None:
+            if self.get(code_obj.class_obj_id).outdated:
+                return True
+        if hasattr(code_obj, "module_obj_id") and code_obj.module_obj_id is not None:
+            if self.get(code_obj.module_obj_id).outdated:
+                return True
+        return False
+    
+    def update_docstring(self, id, new_docstring):
+        code_obj = self.get(id)
+        code_obj.old_docstring = code_obj.docstring
+        code_obj.docstring = new_docstring
+        code_obj.is_updated = True
+        code_obj.outdated = False
