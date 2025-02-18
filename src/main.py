@@ -1,6 +1,6 @@
 from repo_controller import RepoController
 from extract_methods_from_change_info import extract_methods_from_change_info
-from docstring_builder import DocstringBuilder
+from docstring_builder import DocstringBuilder, create_docstring
 from validate_docstring import validate_docstring
 import gpt_interface
 
@@ -80,62 +80,47 @@ class AutoPyDoc():
     def process_gpt_result(self, result):
         self.queries_sent_to_gpt -= 1
         code_obj = self.repo.code_parser.code_representer.get(result["id"])
-        if "no_change_necessary" in result.keys() and result["no_change_necessary"] == True:
+        if result["no_change_necessary"]:
             self.repo.code_parser.code_representer.update_docstring(code_obj.id, code_obj.docstring)
         if not self.debug:
             raise NotImplementedError
         if code_obj.type != "method": # TODO remove
             raise NotImplementedError
-        # TODO parallelize
-        # flag developer comments
-        # if only_comments_changed:
-            # continue
-        # generate description
-        # inferr missing arg/return types
-        for missing_param in code_obj.missing_arg_types:
-            for i in range(len(code_obj.arguments)):
-                if code_obj.arguments[i]["name"] == missing_param:
-                    code_obj.arguments[i]["type"] = "MOCK inferred type" # TODO
-        if code_obj.missing_return_type:
-            code_obj.return_type = "MOCK return type"
-        # generate parameter descriptions
-        # generate exception descriptions (?)
         start_pos, indentation_level, end_pos = self.repo.identify_code_location(code_obj.id)
-        docstring_builder = DocstringBuilder(indentation_level=indentation_level)
-        if not self.debug:
-            raise NotImplementedError
-        docstring_builder.add_description("MOCK This part of code (probably) does something.") # TODO
-        if code_obj.type == "method":
-            for param in code_obj.arguments:
-                if "default" in param.keys():
-                    docstring_builder.add_param(param_name=param["name"], param_type=param["type"], param_default=param["default"], param_description="MOCK parameter description") # TODO
-                else:
-                    docstring_builder.add_param(param_name=param["name"], param_type=param["type"], param_description="MOCK parameter description") # TODO
-            for exception in code_obj.exceptions:
-                docstring_builder.add_exception(exception_name=exception, exception_description="MOCK exception description") # TODO
-            docstring_builder.add_return(return_type=code_obj.return_type, return_description="MOCK return description") # TODO
-        else:
-            raise NotImplementedError # TODO
-        new_docstring = docstring_builder.build()
+
         # build docstring
+        new_docstring = create_docstring(code_obj, result, indentation_level)
+        
+        # merge new docstring with developer comments
         if not self.debug:
             raise NotImplementedError
-        # merge new docstring with developer comments
 
         # validate docstring syntax
         errors = validate_docstring(new_docstring)
-        # insert new docstring in code_obj
-        # insert new docstring in the file
+
+        # TODO insert new docstring in code_obj
+        if not self.debug:
+            raise NotImplementedError
+        
+        # TODO insert new docstring in the file
+        if not self.debug:
+            raise NotImplementedError
+        
         # if parts are still outdated
         if len([item for item in self.queued_code_ids if self.repo.code_parser.code_representer.get(item["id"]).outdated]):
             next_batch = self.get_next_batch()
             self.queries_sent_to_gpt += len(next_batch)
             gpt_interface.send_batch(next_batch, callback=self.process_gpt_result)
+        # if every docstring is updated
         elif self.queries_sent_to_gpt < 1:
             missing_items = [item for item in self.queued_code_ids if item.outdated]
             if len(missing_items) > 0:
                 raise NotImplementedError
+            
             # TODO validate code integrity
+            if not self.debug:
+                raise NotImplementedError
+        
             self.repo.apply_changes()
             if not self.debug:
                 raise NotImplementedError
