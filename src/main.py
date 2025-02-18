@@ -22,7 +22,7 @@ class AutoPyDoc():
 
         self.code_parts = {}
         self.changes = self.repo.get_changes()
-        self.queued_code_parts = []
+        self.queued_code_ids = []
 
         for change in self.changes:
             changed_methods = extract_methods_from_change_info(filename=change["filename"], change_start=change["start"], change_length=change["lines_changed"])
@@ -34,6 +34,7 @@ class AutoPyDoc():
                 raise NotImplementedError
             for changed_method in changed_methods: # TODO not only methods
                 method_id = self.repo.get_method_id(changed_method)
+                self.queued_code_ids.append(method_id)
                 method_obj = self.repo.code_parser.code_representer.get(method_id)
                 method_obj.outdated = True
                 context = self.repo.get_context(method_id) # get methods called by this method, get methods calling this this method, if this method is part of a class, get the class, get the module. Instead of the full methods/class/module, their docstring may be used
@@ -49,26 +50,32 @@ class AutoPyDoc():
                     if not self.debug:
                         raise NotImplementedError
                 dev_comments = self.repo.extract_dev_comments(change)
-                self.queued_code_parts.append({
-                    "id": method_obj.id,
-                    "type": method_obj.type,
-                    "name": method_obj.name,
-                    "parent class": method_obj.class_obj_id,
-                    "docstring": method_obj.get_docstring(),
-                    "code": method_obj.code,
-                    "context": method_obj.get_context(),
-                    "context docstrings": self.repo.code_parser.code_representer.get_context_docstrings(method_obj.id),
-                    "parameters": self.repo.code_parser.code_representer.get_arguments(method_obj.id),
-                    "missing parameters": method_obj.get_missing_arg_types(),
-                    "return missing": method_obj.missing_return_type,
-                    "exceptions": self.repo.code_parser.code_representer.get_exceptions(method_obj.id),
-                })
-                # TODO add instance and class variables to above dict if code_obj.type is class
-        # TODO order altered code parts by dependencies
 
-        first_batch = [item for item in self.queued_code_parts if not self.repo.code_parser.code_representer.depends_on_outdated_code(item["id"])]
+        first_batch = self.generate_next_batch()
         self.queries_sent_to_gpt = len(first_batch)
         gpt_interface.send_batch(first_batch, callback=self.process_gpt_result)
+
+    def generate_next_batch(self):
+        ids = [id for id in self.queued_code_ids if not self.repo.code_parser.code_representer.depends_on_outdated_code(id)]
+        batch = []
+        for id in ids:
+            method_obj = self.repo.code_parser.code_representer.get(id)
+            # TODO add instance and class variables to above dict if code_obj.type is class
+            batch.append({
+                "id": method_obj.id,
+                "type": method_obj.type,
+                "name": method_obj.name,
+                "parent class": method_obj.class_obj_id,
+                "docstring": method_obj.get_docstring(),
+                "code": method_obj.code,
+                "context": method_obj.get_context(),
+                "context docstrings": self.repo.code_parser.code_representer.get_context_docstrings(method_obj.id),
+                "parameters": self.repo.code_parser.code_representer.get_arguments(method_obj.id),
+                "missing parameters": method_obj.get_missing_arg_types(),
+                "return missing": method_obj.missing_return_type,
+                "exceptions": self.repo.code_parser.code_representer.get_exceptions(method_obj.id),
+            })
+        return batch
 
     def process_gpt_result(self, result):
         self.queries_sent_to_gpt -= 1
@@ -120,12 +127,12 @@ class AutoPyDoc():
         # insert new docstring in code_obj
         # insert new docstring in the file
         # if parts are still outdated
-        if len([item for item in self.queued_code_parts if self.repo.code_parser.code_representer.get(item["id"]).outdated]):
-            next_batch = [item for item in self.queued_code_parts if not self.repo.code_parser.code_representer.depends_on_outdated_code(item["id"])]
+        if len([item for item in self.queued_code_ids if self.repo.code_parser.code_representer.get(item["id"]).outdated]):
+            next_batch = self.get_next_batch()
             self.queries_sent_to_gpt += len(next_batch)
             gpt_interface.send_batch(next_batch, callback=self.process_gpt_result)
         elif self.queries_sent_to_gpt < 1:
-            missing_items = [item for item in self.queued_code_parts if item.outdated]
+            missing_items = [item for item in self.queued_code_ids if item.outdated]
             if len(missing_items) > 0:
                 raise NotImplementedError
             # TODO validate code integrity
