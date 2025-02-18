@@ -141,11 +141,30 @@ class CodeParser():
                 else:
                     print("Call from external file. Trying to resolve")
                     matching_imports = self.import_finder.resolve_external_call(call=called_func_name, filename=parent_obj.filename, code_representer=self.code_representer)
-                    if len(matching_imports) == 0:
+                    if matching_imports is None or matching_imports == []:
                         print("Called code not found. (Happens when calling a class or method not defined in the file)")
-                        return
+                        continue
                     else:
-                        raise NotImplementedError
+                        if len(matching_imports) == 1:
+                            called_func_id = matching_imports[0].id
+                            if matching_imports[0].type == "class":
+                                parent_obj.add_called_class(matching_imports[0].id)
+                            elif matching_imports[0].type == "method":
+                                parent_obj.add_called_method(matching_imports[0].id)
+                            else:
+                                raise NotImplementedError
+                        for item in matching_imports:
+                            if item.name == called_func_name:
+                                called_func_id = item.id
+                                if item.type == "class":
+                                    parent_obj.add_called_class(item.id)
+                                elif item.type == "method":
+                                    parent_obj.add_called_method(item.id)
+                                else:
+                                    raise NotImplementedError
+                        print()
+                        if not self.debug:
+                            raise NotImplementedError
 
                 if parent_obj.type == "method":
                     self.code_representer.objects[called_func_id].add_caller_method(parent_obj.id)

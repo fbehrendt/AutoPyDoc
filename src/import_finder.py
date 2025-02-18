@@ -26,9 +26,13 @@ class ImportFinder():
         # TODO resolve calls like self.class_obj.method, where class_obj was imported
         relevant_imports = self.imports[filename]
         matches = [current_import for current_import in relevant_imports if call.split('.')[0] in current_import]
+        matching_code_objects = []
         for match in matches:
-            self.resolve_import_to_file(import_statement=match, source_file=filename, code_representer=code_representer)
-        return matches
+            matching_code_objects = self.resolve_import_to_file(import_statement=match, source_file=filename, code_representer=code_representer)
+        if matching_code_objects is None or len(matching_code_objects) == 0:
+            return None
+        else:
+            return matching_code_objects
 
     def resolve_import_to_file(self, import_statement, source_file, code_representer):
         import_statement = import_statement.split('.')
@@ -39,6 +43,8 @@ class ImportFinder():
         source_file = source_file.split(self.working_dir)[1]
         source_file = [dir_part for dir_part in source_file.split('\\') if len(dir_part) > 0]
         
+        potential_matches = []
+
         for split_path in repo_files:
             # go to same depth in repo
             i = 0
@@ -52,13 +58,12 @@ class ImportFinder():
                 j+=1
             if j > 0:
                 filename = self.working_dir + '\\' + '\\'.join(split_path)
-                potential_matches = code_representer.get_by_filename(filename) # TODO
-            print()
-            
+                potential_matches.extend(code_representer.get_by_filename(filename)) # TODO
+        if len(potential_matches) > 0:
+            return potential_matches
+        else:
+            return None
 
-
-        
-        print() 
 
 if __name__ == "__main__":
     pass
