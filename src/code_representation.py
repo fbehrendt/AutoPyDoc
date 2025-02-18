@@ -62,7 +62,9 @@ class Code_obj():
         self.exceptions.append(exception)
 
     def get_docstring(self):
-        return self.docstring
+        if hasattr(self, "docstring"):
+            return self.docstring
+        return None
     
     def get_code(self):
         return self.code
@@ -103,7 +105,7 @@ class Method_obj(Code_obj):
         result["class_obj_id"] = self.class_obj_id
         result["module_obj_id"] = self.module_obj_id
         return result
-        
+            
     def add_missing_arg_type(self, arg_name):
         self.missing_arg_types.append(arg_name)
     
@@ -177,3 +179,24 @@ class CodeRepresenter():
             if object.filename == filename:
                 matches.append(object)
         return matches
+
+    def get_context_docstrings(self, id):
+        code_obj = self.get(id)
+        tmp = code_obj.get_context()
+        tmp.pop("class_obj_id", None)
+        tmp.pop("module_obj_id", None)
+        keys = []
+        for sub_list in tmp.values():
+            keys.extend(sub_list)
+        keys.append(code_obj.class_obj_id)
+        keys.append(code_obj.module_obj_id)
+        result = {}
+        for key in keys:
+            if key is None:
+                continue
+            code_obj_2 = self.get(key)
+            if hasattr(code_obj_2, "docstring"):
+                result[key] = code_obj_2.docstring
+            else:
+                result[key] = code_obj_2.code
+        return result
