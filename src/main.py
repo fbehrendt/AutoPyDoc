@@ -45,10 +45,11 @@ class AutoPyDoc():
         gpt_interface.send_batch(first_batch, callback=self.process_gpt_result)
 
     def generate_next_batch(self):
-        ids = [id for id in self.queued_code_ids if not self.repo.code_parser.code_representer.depends_on_outdated_code(id)]
+        ids = [id for id in self.queued_code_ids if not self.repo.code_parser.code_representer.depends_on_outdated_code(id) and not self.repo.code_parser.code_representer.get(id).send_to_gpt]
         batch = []
         for id in ids:
             method_obj = self.repo.code_parser.code_representer.get(id)
+            method_obj.send_to_gpt = True
             # TODO add instance and class variables to above dict if code_obj.type is class
             batch.append({
                 "id": method_obj.id,
@@ -69,35 +70,38 @@ class AutoPyDoc():
     def process_gpt_result(self, result):
         self.queries_sent_to_gpt -= 1
         code_obj = self.repo.code_parser.code_representer.get(result["id"])
-        if result["no_change_necessary"]:
-            self.repo.code_parser.code_representer.update_docstring(code_obj.id, code_obj.docstring)
-        if not self.debug:
-            raise NotImplementedError
-        if code_obj.type != "method": # TODO remove
-            raise NotImplementedError
-        start_pos, indentation_level, end_pos = self.repo.identify_code_location(code_obj.id)
+        if not result["no_change_necessary"]:
+            if not self.debug:
+                raise NotImplementedError
+            if code_obj.type != "method": # TODO remove
+                raise NotImplementedError
+            start_pos, indentation_level, end_pos = self.repo.identify_code_location(code_obj.id)
 
-        # build docstring
-        new_docstring = create_docstring(code_obj, result, indentation_level)
-        
-        # merge new docstring with developer comments
-        if not self.debug:
-            raise NotImplementedError
+            # build docstring
+            new_docstring = create_docstring(code_obj, result, indentation_level, debug=True)
+            
+            # merge new docstring with developer comments
+            if not self.debug:
+                raise NotImplementedError
 
-        # validate docstring syntax
-        errors = validate_docstring(new_docstring)
+            # validate docstring syntax
+            errors = validate_docstring(new_docstring)
+            if len(errors) > 0:
+                if not self.debug:
+                    raise NotImplementedError
 
-        # TODO insert new docstring in code_obj
-        if not self.debug:
-            raise NotImplementedError
-        
-        # TODO insert new docstring in the file
-        if not self.debug:
-            raise NotImplementedError
-        
+            # TODO insert new docstring in code_obj
+            self.repo.insert_docstring(filename=code_obj.filename, start=start_pos, end=end_pos, new_docstring=new_docstring)
+            if not self.debug:
+                raise NotImplementedError
+            
+            # TODO insert new docstring in the file
+            if not self.debug:
+                raise NotImplementedError
+            
         # if parts are still outdated
-        if len([item for item in self.queued_code_ids if self.repo.code_parser.code_representer.get(item["id"]).outdated]):
-            next_batch = self.get_next_batch()
+        next_batch = self.generate_next_batch()
+        if len(next_batch) > 0:
             self.queries_sent_to_gpt += len(next_batch)
             gpt_interface.send_batch(next_batch, callback=self.process_gpt_result)
         # if every docstring is updated
