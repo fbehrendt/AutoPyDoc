@@ -140,7 +140,7 @@ class CodeRepresenter():
 
     def get_arguments(self, code_obj_id):
         if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "arguments"):
-            return self.objects[code_obj_id].arguments
+            return [argument for argument in self.objects[code_obj_id].arguments if argument["name"] != "self"] # ignore self
         return None
 
     def get_return_type(self, code_obj_id):
