@@ -7,6 +7,7 @@ import shutil
 import sqlite3
 import re
 import pathlib
+from pathlib import Path
 
 from get_context import CodeParser
 from code_representation import CodeRepresenter, Method_obj, Class_obj
@@ -49,16 +50,15 @@ class RepoController():
         return self.repo_files
     
     def get_latest_commit(self):
-        connection = sqlite3.connect("repos.db")
-        cursor = connection.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS repo_states (url PRIMARY KEY, last_commit)")
-        row = cursor.execute(f"SELECT url, last_commit FROM repo_states WHERE 'url'='{self.repo_url}'")
-        if row.fetchone() is None:
+        self.latest_commit_file_name = os.path.join(self.working_dir, "latest_commit.autopydoc")
+        file_obj = Path(self.latest_commit_file_name)
+        if file_obj.is_file():
+            with open(self.latest_commit_file_name, mode='r') as f:
+                self.latest_commit_hash = f.read().split("\n")[0]
+                self.initial_run = False
+        else:
             self.latest_commit_hash = None
             self.initial_run = True
-        else:
-            self.latest_commit_hash = row[1]
-            self.initial_run = False
 
     def clear_working_dir(self):
         """ Cleans the working directory"""
@@ -240,7 +240,10 @@ class RepoController():
 
             
     def update_latest_commit(self):
+        # TODO create_commit
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
+        with open(self.latest_commit_file_name, mode="w") as f:
+            f.write(current_commit)
         print(current_commit)
         # connection = sqlite3.connect("repos.db")
         # cursor = connection.cursor()
