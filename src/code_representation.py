@@ -26,6 +26,7 @@ class Code_obj():
         self.exceptions = []
         self.outdated = False
         self.is_updated = False
+        self.send_to_gpt = False
 
     def add_called_method(self, called_method_id):
         self.called_methods.append(called_method_id)
