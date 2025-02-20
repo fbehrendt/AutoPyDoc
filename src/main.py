@@ -38,7 +38,14 @@ class AutoPyDoc():
                 self.queued_code_ids.append(method_id)
                 method_obj = self.repo.code_parser.code_representer.get(method_id)
                 method_obj.outdated = True
-                method_obj.dev_comments = self.repo.extract_dev_comments(change)
+                method_obj.dev_comments = self.repo.extract_dev_comments(method_obj)
+
+            for changed_class in changed_classes: # TODO not only methods
+                class_id = self.repo.get_class_id(changed_class)
+                self.queued_code_ids.append(class_id)
+                class_obj = self.repo.code_parser.code_representer.get(class_id)
+                class_obj.outdated = True
+                class_obj.dev_comments = self.repo.extract_dev_comments(class_obj)
 
         first_batch = self.generate_next_batch()
         self.queries_sent_to_gpt = len(first_batch)

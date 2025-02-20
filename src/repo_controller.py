@@ -79,9 +79,9 @@ class RepoController():
         if len(dir) == 0:
             self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
             assert not self.repo.bare
-        #elif self.debug:
-        #    self.repo = Repo(self.working_dir)
-        #    return
+        elif self.debug:
+            self.repo = Repo(self.working_dir)
+            return
         else:
             self.clear_working_dir()
             self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
@@ -134,6 +134,12 @@ class RepoController():
         pattern = re.compile('def ([^\(]+)')
         method_name = re.findall(pattern, changed_method["content"])[0]
         return changed_method["filename"] + "_" + changed_method["type"] + "_" + method_name
+    
+    @staticmethod
+    def get_class_id(changed_class):
+        pattern = re.compile('class ([^\(]+)')
+        class_name = re.findall(pattern, changed_class["content"])[0]
+        return changed_class["filename"] + "_" + changed_class["type"] + "_" + class_name
 
     def get_context(self, code_obj_id) -> list[dict]:
         """ Returns context of a given method/class/module
