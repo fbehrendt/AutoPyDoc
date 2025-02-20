@@ -3,6 +3,7 @@ from extract_affected_code_from_change_info import extract_methods_from_change_i
 from docstring_builder import DocstringBuilder, create_docstring
 from validate_docstring import validate_docstring
 import gpt_interface
+from code_representation import CodeObject, MethodObject, ClassObject
 
 class AutoPyDoc():
     def __init__(self):
@@ -55,23 +56,37 @@ class AutoPyDoc():
         ids = [id for id in self.queued_code_ids if not self.repo.code_parser.code_representer.depends_on_outdated_code(id) and not self.repo.code_parser.code_representer.get(id).send_to_gpt]
         batch = []
         for id in ids:
-            method_obj = self.repo.code_parser.code_representer.get(id)
-            method_obj.send_to_gpt = True
+            code_obj = self.repo.code_parser.code_representer.get(id)
+            code_obj.send_to_gpt = True
             # TODO add instance and class variables to above dict if code_obj.type is class
-            batch.append({
-                "id": method_obj.id,
-                "type": method_obj.type,
-                "name": method_obj.name,
-                "parent_class": method_obj.class_obj_id,
-                "docstring": method_obj.get_docstring(),
-                "code": method_obj.code,
-                "context": method_obj.get_context(),
-                "context_docstrings": self.repo.code_parser.code_representer.get_context_docstrings(method_obj.id),
-                "parameters": self.repo.code_parser.code_representer.get_arguments(method_obj.id),
-                "missing_parameters": method_obj.get_missing_arg_types(),
-                "return_missing": method_obj.missing_return_type,
-                "exceptions": self.repo.code_parser.code_representer.get_exceptions(method_obj.id),
-            })
+            if isinstance(code_obj, MethodObject):
+                batch.append({
+                    "id": code_obj.id,
+                    "type": code_obj.type,
+                    "name": code_obj.name,
+                    "parent_class": code_obj.class_obj_id,
+                    "docstring": code_obj.get_docstring(),
+                    "code": code_obj.code,
+                    "context": code_obj.get_context(),
+                    "context_docstrings": self.repo.code_parser.code_representer.get_context_docstrings(code_obj.id),
+                    "parameters": self.repo.code_parser.code_representer.get_arguments(code_obj.id),
+                    "missing_parameters": code_obj.get_missing_arg_types(),
+                    "return_missing": code_obj.missing_return_type,
+                    "exceptions": self.repo.code_parser.code_representer.get_exceptions(code_obj.id),
+                })
+            elif isinstance(code_obj, ClassObject):
+                batch.append({
+                    "id": code_obj.id,
+                    "type": code_obj.type,
+                    "name": code_obj.name,
+                    "parent_class": code_obj.class_obj_id,
+                    "docstring": code_obj.get_docstring(),
+                    "code": code_obj.code,
+                    "context": code_obj.get_context(),
+                    "context_docstrings": self.repo.code_parser.code_representer.get_context_docstrings(code_obj.id),
+                })
+            else:
+                raise NotImplementedError
         return batch
 
     def process_gpt_result(self, result):
