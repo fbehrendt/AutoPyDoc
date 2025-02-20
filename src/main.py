@@ -75,7 +75,7 @@ class AutoPyDoc():
                 raise NotImplementedError
             if code_obj.type != "method": # TODO remove
                 raise NotImplementedError
-            start_pos, indentation_level, end_pos = self.repo.identify_code_location(code_obj.id)
+            start_pos, indentation_level, end_pos = self.repo.identify_docstring_location(code_obj.id)
 
             # build docstring
             new_docstring = create_docstring(code_obj, result, indentation_level, debug=True)
@@ -90,15 +90,10 @@ class AutoPyDoc():
                 if not self.debug:
                     raise NotImplementedError
 
-            # TODO insert new docstring in code_obj
+            # insert new docstring in the file
             self.repo.insert_docstring(filename=code_obj.filename, start=start_pos, end=end_pos, new_docstring=new_docstring)
-            if not self.debug:
-                raise NotImplementedError
-            
-            # TODO insert new docstring in the file
-            if not self.debug:
-                raise NotImplementedError
-            
+            code_obj.is_updated = True
+        code_obj.outdated = False
         # if parts are still outdated
         next_batch = self.generate_next_batch()
         if len(next_batch) > 0:
@@ -106,7 +101,7 @@ class AutoPyDoc():
             gpt_interface.send_batch(next_batch, callback=self.process_gpt_result)
         # if every docstring is updated
         elif self.queries_sent_to_gpt < 1:
-            missing_items = [item for item in self.queued_code_ids if item.outdated]
+            missing_items = [id for id in self.queued_code_ids if self.repo.code_parser.code_representer.get(id).outdated]
             if len(missing_items) > 0:
                 raise NotImplementedError
             

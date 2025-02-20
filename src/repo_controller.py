@@ -197,7 +197,7 @@ class RepoController():
         else:
             return "A developer comment"
     
-    def identify_code_location(self, code_obj_id: Method_obj|Class_obj) -> tuple:
+    def identify_docstring_location(self, code_obj_id: Method_obj|Class_obj) -> tuple:
         code_obj = self.code_parser.code_representer.get(code_obj_id)
         with open(file=code_obj.filename, mode="r") as f:
             lines = f.readlines()
@@ -224,17 +224,29 @@ class RepoController():
                 raise NotImplementedError
             for i in range(start_pos, len(lines)):
                 if lines[i].lstrip().lower().startswith(prefix + code_obj.name.lower()):
-                    start_pos = i
+                    start_pos = i+1
                     start_line = lines[start_pos]
                     break
             # get indentation level
             indentation_level = sum(4 if char == '\t' else 1 for char in start_line[:-len(start_line.lstrip())])
             end_pos = len(lines)
-            for i in range(start_pos+1, len(lines)):
-                if len(lines[i].strip()) > 0 and sum(4 if char == '\t' else 1 for char in lines[i][:-len(lines[i].lstrip())]) <= indentation_level:
-                    # TODO decrease by preceeding blank lines
-                    end_pos = i-1
+            i = start_pos
+            for j in range(start_pos, len(lines)):
+                if len(lines[j].strip()) > 0:
+                    i = j
                     break
+            if lines[i].strip().startswith('"""'):
+                if lines[i].strip().rstrip("\n").endswith('"""') and len(lines[i].strip()) >= 6: # inline docstring
+                    end_pos = i+1
+                else:
+                    for j in range(i+1, len(lines)):
+                        if lines[j].strip().rstrip("\n").endswith('"""'):
+                            end_pos = j+1
+                            break
+                        if j == len(lines)-1:
+                            raise Exception("End of docstring not found")
+            else:
+                end_pos = start_pos
         return (start_pos, indentation_level, end_pos)
 
     @staticmethod
@@ -243,7 +255,7 @@ class RepoController():
             content = f.readlines()
             before = content[:start]
             after = content[end:]
-            new_content = "".join(before) + "\n" + new_docstring + "\n" + "".join(after)
+            new_content = "".join(before) + new_docstring + "\n" + "".join(after)
             
             with open(filename, 'w') as file:
                 file.write(new_content)
