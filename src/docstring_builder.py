@@ -74,6 +74,10 @@ def create_docstring(code_obj, result, indentation_level, debug=False):
             else:
                 return_type = code_obj.return_type
             docstring_builder.add_return(return_type=return_type, return_description=result["return_description"]) # TODO
+    elif code_obj.type == "class":
+        if not debug:
+            raise NotImplementedError
+        pass
     else:
         raise NotImplementedError # TODO
     return docstring_builder.build()

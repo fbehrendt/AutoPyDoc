@@ -95,7 +95,7 @@ class AutoPyDoc():
         if not result["no_change_necessary"]:
             if not self.debug:
                 raise NotImplementedError
-            if code_obj.type != "method": # TODO remove
+            if code_obj.type != "method" and code_obj.type != "class": # TODO remove
                 raise NotImplementedError
             start_pos, indentation_level, end_pos = self.repo.identify_docstring_location(code_obj.id)
 
