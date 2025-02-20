@@ -1,4 +1,4 @@
-class Code_obj():
+class CodeObject():
     def __init__(self, name, filename, code_type, body, ast_tree, docstring=None, code=None, arguments=None, return_type=None, exceptions=None):
         self.name = name
         self.filename = filename
@@ -72,7 +72,7 @@ class Code_obj():
     def get_code(self):
         return self.code
 
-class Class_obj(Code_obj):
+class ClassObject(CodeObject):
     def __init__(self, name, filename, signature, body, ast_tree, class_obj_id=None, module_obj_id=None, docstring=None, code=None, arguments=None, return_type=None, exceptions=None):
         self.signature = signature
         self.class_obj_id = class_obj_id
@@ -88,7 +88,7 @@ class Class_obj(Code_obj):
         result["module_obj_id"] = self.module_obj_id
         return result
 
-class Method_obj(Code_obj):
+class MethodObject(CodeObject):
     def __init__(self, name, filename, signature, body, ast_tree, class_obj_id=None, module_obj_id=None, docstring=None, code=None, arguments=None, return_type=None, exceptions=None):
         self.signature = signature
         self.class_obj_id = class_obj_id
@@ -156,13 +156,13 @@ class CodeRepresenter():
 
     def get_missing_arg_types(self, code_obj_id):
         code_obj = self.objects[code_obj_id]
-        if not isinstance(code_obj, Method_obj):
+        if not isinstance(code_obj, MethodObject):
             return False
         return code_obj.get_missing_arg_types()
 
     def return_types_missing(self, code_obj_id):
         code_obj = self.objects[code_obj_id]
-        if not isinstance(code_obj, Method_obj):
+        if not isinstance(code_obj, MethodObject):
             return False
         return code_obj.missing_return_type
     
