@@ -1,6 +1,6 @@
 import configparser
 import validators
-from git import Repo
+from git import Repo, Actor
 import os
 import tempfile
 import shutil
@@ -269,9 +269,15 @@ class RepoController():
     def update_latest_commit(self):
         # TODO create_commit
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
+        print("Commit of docstring update:", current_commit)
         with open(self.latest_commit_file_name, mode="w") as f:
             f.write(current_commit)
-        print(current_commit)
+        self.repo.index.add([self.latest_commit_file_name])
+        author = Actor("AutoPyDoc", "alltheunnecessaryjunk@gmail.com")
+        committer = Actor("AutoPyDoc", "alltheunnecessaryjunk@gmail.com")
+        self.repo.index.commit("Updated commit hash in commit tracking file", author=author, committer=committer)
+        current_commit = self.repo.head.commit.hexsha  # get most recent commit
+        print("Commit of latest commit files", current_commit)
         # connection = sqlite3.connect("repos.db")
         # cursor = connection.cursor()
         # cursor.execute("CREATE TABLE IF NOT EXISTS repo_states (url PRIMARY KEY, last_commit)")
@@ -281,7 +287,7 @@ class RepoController():
         if not self.debug:
             raise NotImplementedError
 
-    def apply_changes(self, changes: list|str = "all") -> None:
+    def apply_changes(self, changed_files: list = None) -> None:
         """ Applies new docstrings to the repo in the way configured in src/config.ini
         
         :param changes: List of changes to apply, defaults to all
@@ -290,7 +296,19 @@ class RepoController():
         print("###MOCK### Applying changes")
         config = configparser.ConfigParser()
         config.read('src/config.ini')
+
+        current_commit = self.repo.head.commit.hexsha  # get most recent commit
+        print("Commit before docstring update:", current_commit)
+
+        for file in changed_files:
+            self.repo.index.add([file])
+        # create commit
+        author = Actor("AutoPyDoc", "alltheunnecessaryjunk@gmail.com")
+        committer = Actor("AutoPyDoc", "alltheunnecessaryjunk@gmail.com")
+        self.repo.index.commit("Automatically updated docstrings using AutoPyDoc", author=author, committer=committer)
         self.update_latest_commit()
+        # TODO create pull request
+
         # if repo_path is local filepath:
             # if config['Default']['local_repo_behaviour'] == "commit":
                 # commit changes

@@ -50,6 +50,9 @@ class AutoPyDoc():
 
         first_batch = self.generate_next_batch()
         self.queries_sent_to_gpt = len(first_batch)
+        if self.queries_sent_to_gpt == 0:
+            print("No need to do anything")
+            quit()
         gpt_interface.send_batch(first_batch, callback=self.process_gpt_result)
 
     def generate_next_batch(self):
@@ -130,8 +133,12 @@ class AutoPyDoc():
             # TODO validate code integrity
             if not self.debug:
                 raise NotImplementedError
-        
-            self.repo.apply_changes()
+
+            changed_files = []
+            for filename in [code_obj.filename for code_obj in self.repo.code_parser.code_representer.objects.values() if code_obj.is_updated]:
+                if filename not in changed_files:
+                    changed_files.append(filename)
+            self.repo.apply_changes(changed_files=changed_files)
             if not self.debug:
                 raise NotImplementedError
                 
