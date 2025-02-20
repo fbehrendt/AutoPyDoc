@@ -55,14 +55,14 @@ class AutoPyDoc():
                 "id": method_obj.id,
                 "type": method_obj.type,
                 "name": method_obj.name,
-                "parent class": method_obj.class_obj_id,
+                "parent_class": method_obj.class_obj_id,
                 "docstring": method_obj.get_docstring(),
                 "code": method_obj.code,
                 "context": method_obj.get_context(),
-                "context docstrings": self.repo.code_parser.code_representer.get_context_docstrings(method_obj.id),
+                "context_docstrings": self.repo.code_parser.code_representer.get_context_docstrings(method_obj.id),
                 "parameters": self.repo.code_parser.code_representer.get_arguments(method_obj.id),
-                "missing parameters": method_obj.get_missing_arg_types(),
-                "return missing": method_obj.missing_return_type,
+                "missing_parameters": method_obj.get_missing_arg_types(),
+                "return_missing": method_obj.missing_return_type,
                 "exceptions": self.repo.code_parser.code_representer.get_exceptions(method_obj.id),
             })
         return batch
