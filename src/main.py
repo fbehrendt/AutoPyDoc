@@ -1,5 +1,5 @@
 from repo_controller import RepoController
-from extract_methods_from_change_info import extract_methods_from_change_info
+from extract_affected_code_from_change_info import extract_methods_from_change_info, extract_classes_from_change_info
 from docstring_builder import DocstringBuilder, create_docstring
 from validate_docstring import validate_docstring
 import gpt_interface
@@ -27,7 +27,7 @@ class AutoPyDoc():
         
         for change in self.changes:
             changed_methods = extract_methods_from_change_info(filename=change["filename"], change_start=change["start"], change_length=change["lines_changed"])
-            changed_classes = [] # TODO
+            changed_classes = extract_classes_from_change_info(filename=change["filename"], change_start=change["start"], change_length=change["lines_changed"])
             if not self.debug:
                 raise NotImplementedError
             changed_modules = [] # TODO
