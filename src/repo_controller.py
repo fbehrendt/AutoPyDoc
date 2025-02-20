@@ -10,7 +10,7 @@ import pathlib
 from pathlib import Path
 
 from get_context import CodeParser
-from code_representation import CodeRepresenter, Method_obj, Class_obj
+from code_representation import CodeRepresenter, MethodObject, ClassObject
 
 class RepoController():
     def __init__(self, repo_path: str, debug=False) -> None:
@@ -79,9 +79,9 @@ class RepoController():
         if len(dir) == 0:
             self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
             assert not self.repo.bare
-        elif self.debug:
-            self.repo = Repo(self.working_dir)
-            return
+        #elif self.debug:
+        #    self.repo = Repo(self.working_dir)
+        #    return
         else:
             self.clear_working_dir()
             self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
@@ -197,7 +197,7 @@ class RepoController():
         else:
             return "A developer comment"
     
-    def identify_docstring_location(self, code_obj_id: Method_obj|Class_obj) -> tuple:
+    def identify_docstring_location(self, code_obj_id: MethodObject|ClassObject) -> tuple:
         code_obj = self.code_parser.code_representer.get(code_obj_id)
         with open(file=code_obj.filename, mode="r") as f:
             lines = f.readlines()

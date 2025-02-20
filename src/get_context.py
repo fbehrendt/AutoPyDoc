@@ -3,7 +3,7 @@ import os
 import pathlib
 from typing import Self
 
-from code_representation import Code_obj, Class_obj, Method_obj, CodeRepresenter
+from code_representation import CodeObject, ClassObject, MethodObject, CodeRepresenter
 from import_finder import ImportFinder
 
 code = CodeRepresenter()
@@ -51,20 +51,20 @@ class CodeParser():
             module_name = "" # TODO get module name
             docstring = ast.get_docstring(node=tree, clean=True)
             source_code = open(self.full_path).read()
-            module_obj = Code_obj(name=module_name, filename=self.full_path, code_type="module", body=tree.body, ast_tree=tree, docstring=docstring, code=source_code)
+            module_obj = CodeObject(name=module_name, filename=self.full_path, code_type="module", body=tree.body, ast_tree=tree, docstring=docstring, code=source_code)
             self.code_representer.objects[module_obj.id] = module_obj
         for node in tree.body:
             if isinstance(node, ast.FunctionDef):
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
-                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code)
+                method_obj = MethodObject(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code)
                 self.code_representer.add_code_obj(method_obj)
             if isinstance(node, ast.AsyncFunctionDef):
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
-                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code)
+                method_obj = MethodObject(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code)
                 self.code_representer.add_code_obj(method_obj)
             if isinstance(node, ast.Lambda):
                 print("Lambda")
@@ -72,7 +72,7 @@ class CodeParser():
                 class_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
-                class_obj = Class_obj(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code)
+                class_obj = ClassObject(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code)
                 self.code_representer.add_code_obj(class_obj)
                 self.get_class_methods_and_sub_classes(class_tree=node, class_obj_id=class_obj.id)
 
@@ -82,13 +82,13 @@ class CodeParser():
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
-                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id, docstring=docstring, code=source_code)
+                method_obj = MethodObject(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id, docstring=docstring, code=source_code)
                 self.code_representer.add_code_obj(method_obj)
             if isinstance(node, ast.AsyncFunctionDef):
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
-                method_obj = Method_obj(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id, docstring=docstring, code=source_code)
+                method_obj = MethodObject(name=func_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id, docstring=docstring, code=source_code)
                 self.code_representer.add_code_obj(method_obj)
             if isinstance(node, ast.Lambda):
                 print("Lambda")
@@ -96,7 +96,7 @@ class CodeParser():
                 class_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
-                inner_class_obj = Class_obj(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id, docstring=docstring, code=source_code)
+                inner_class_obj = ClassObject(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id, docstring=docstring, code=source_code)
                 self.code_representer.add_code_obj(inner_class_obj)
                 self.get_class_methods_and_sub_classes(class_tree=node, class_obj_id=inner_class_obj.id)
     
