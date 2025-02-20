@@ -16,13 +16,13 @@ def send_batch(batch, callback):
                 "id": item["id"],
                 "no_change_necessary": False,
                 "description": "MOCK This is a docstring description.",
-                "parameter_types": {name: "MOCK type" for name in item["missing parameters"]},
+                "parameter_types": {name: "MOCK type" for name in item["missing_parameters"]},
                 "parameter_descriptions": {param["name"]: "MOCK description for this parameter" for param in item["parameters"]},
                 "exception_descriptions": {exception: "MOCK exception description" for exception in item["exceptions"]},
                 "return_description": "MOCK return type description"
             }
-            if item["return missing"]:
-                mocked_result["return type"] = "MOCK return type"
+            if item["return_missing"]:
+                mocked_result["return_type"] = "MOCK return type"
         else:
             # option two
             mocked_result = {
