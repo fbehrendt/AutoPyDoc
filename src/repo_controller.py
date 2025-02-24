@@ -296,6 +296,21 @@ class RepoController():
             self.update_latest_commit()
             for file in changed_files:
                 self.repo.index.add([file])
+
+            # verify staging area
+            modified_files = self.repo.index.diff(None)
+            count_modified_files = len(modified_files)
+            print("Modified files:", count_modified_files, "\n", "\n".join([modified_file.b_path for modified_file in modified_files]))
+
+            staged_files = self.repo.index.diff("HEAD")
+            count_staged_files = len(staged_files)
+            print("Staged files:", count_staged_files, "\n", "\n".join([staged_file.b_path for staged_file in staged_files]))
+
+            print("Modified files:", count_modified_files)
+            print("Staged files:", count_staged_files)
+            if count_staged_files < 2:
+                print("No files modified. Quitting")
+                quit()
                 
             # create commit
             author = Actor("AutoPyDoc", "alltheunnecessaryjunk@gmail.com")
