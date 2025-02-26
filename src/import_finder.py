@@ -17,7 +17,7 @@ class ImportFinder():
                     current_file_imports.append(item.name)
             elif isinstance(node, ast.ImportFrom):          
                 module = node.module
-                if not self.debug: # TODO
+                if self.debug: # TODO
                     if module is None:
                         continue
                 for item in node.names:
