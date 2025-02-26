@@ -139,10 +139,10 @@ class CodeParser():
                     called_func_id = self.full_path + "_" + called_func_type + "_" + called_func_name
                     parent_obj.add_called_class(called_func_id)
                 else:
-                    print("Call from external file. Trying to resolve")
+                    # print("Call from external file. Trying to resolve")
                     matching_imports = self.import_finder.resolve_external_call(call=called_func_name, filename=parent_obj.filename, code_representer=self.code_representer)
                     if matching_imports is None or matching_imports == []:
-                        print("Called code not found. (Happens when calling a class or method not defined in the file)")
+                        # print("Called code not found. (Happens when calling a class or method not defined in the file)")
                         continue
                     else:
                         if len(matching_imports) == 1:
@@ -162,7 +162,6 @@ class CodeParser():
                                     parent_obj.add_called_method(item.id)
                                 else:
                                     raise NotImplementedError
-                        print()
                         if not self.debug:
                             raise NotImplementedError
 
@@ -215,7 +214,7 @@ class CodeParser():
         if not isinstance(method_obj.ast_tree, ast.FunctionDef) and not isinstance(method_obj.ast_tree, ast.AsyncFunctionDef):
             return
         if method_obj.return_type == None:
-            print("check if method returns something")
+            # print("check if method returns something")
             for line in method_obj.code.split("\n"):
                 if line.lstrip().startswith("return"):
                    method_obj.missing_return_type = True 
