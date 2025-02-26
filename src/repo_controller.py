@@ -30,7 +30,8 @@ class RepoController():
             self.repo_url = repo_path
             self.pull_repo()
         else:
-            self.copy_repo(repo_path)
+            self.working_dir = repo_path
+            # self.copy_repo(repo_path)
             raise NotImplementedError
         self.branch = "main" # TODO change
         
