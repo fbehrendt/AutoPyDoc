@@ -32,7 +32,8 @@ class RepoController():
         else:
             self.working_dir = repo_path
             # self.copy_repo(repo_path)
-            raise NotImplementedError
+            if not self.debug:
+                raise NotImplementedError
         self.branch = "main" # TODO change
         
         self.code_parser = CodeParser(code_representer=CodeRepresenter(), working_dir=self.working_dir, debug=True)
