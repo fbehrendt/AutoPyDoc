@@ -31,6 +31,7 @@ class RepoController():
             self.pull_repo()
         else:
             self.working_dir = repo_path
+            self.repo = Repo(self.working_dir)
             # self.copy_repo(repo_path)
             if not self.debug:
                 raise NotImplementedError
