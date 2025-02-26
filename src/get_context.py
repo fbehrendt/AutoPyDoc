@@ -176,7 +176,13 @@ class CodeParser():
         for node in ast.walk(parent_obj.ast_tree):
             # ast.get_source_segment(source, node.body[0])
             if isinstance(node, ast.Raise):
-                parent_obj.add_exception(node.exc.id)
+                if hasattr(node.exc, "id"):
+                    parent_obj.add_exception(node.exc.id)
+                elif hasattr(node.exc, "func"):
+                    parent_obj.add_exception(node.exc.func.id)
+                else:
+                    if not self.debug:
+                        raise NotImplementedError
         
     def get_args_and_return_type(self, parent_obj):
         node = parent_obj.ast_tree
@@ -186,7 +192,8 @@ class CodeParser():
                 arg = node.args.args[i]
                 new_arg = {"name": arg.arg}
                 if arg.annotation is not None:
-                    new_arg["type"] = arg.annotation.id
+                    if hasattr(arg.annotation, "id"):
+                        new_arg["type"] = arg.annotation.id
                 else: 
                     if i == 0 and arg.arg == "self":
                         new_arg["type"] = Self # see https://peps.python.org/pep-0673/

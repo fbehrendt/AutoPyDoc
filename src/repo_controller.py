@@ -123,7 +123,7 @@ class RepoController():
                 for file in self.get_files_in_repo():
                     with open(file=file, mode="r") as f:
                         result.append({
-                            "filename": file,
+                            "filename": os.path.normpath(file),
                             "start": 0,
                             "lines_changed": len(f.readlines())
                             })
@@ -139,7 +139,7 @@ class RepoController():
                     if not change[0].endswith(".py"):
                         continue
                     result.append({
-                        "filename": os.path.join(self.working_dir, change[0]),
+                        "filename": os.path.normpath(os.path.join(self.working_dir, change[0])),
                         "start": int(change[3]),
                         "lines_changed": int(change[4])
                         })

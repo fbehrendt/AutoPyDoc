@@ -63,6 +63,15 @@ class AutoPyDoc():
             code_obj.send_to_gpt = True
             # TODO add instance and class variables to above dict if code_obj.type is class
             if isinstance(code_obj, MethodObject):
+
+                # TODO this is a fix
+                # for some unknown reason not all missing params are identified
+                missing_parameters = code_obj.get_missing_arg_types()
+                params = [param["name"] for param in self.repo.code_parser.code_representer.get_arguments(code_obj.id)]
+                for param in params:
+                    if param not in missing_parameters:
+                        missing_parameters.append(param)
+
                 batch.append({
                     "id": code_obj.id,
                     "type": code_obj.type,
@@ -73,7 +82,7 @@ class AutoPyDoc():
                     "context": code_obj.get_context(),
                     "context_docstrings": self.repo.code_parser.code_representer.get_context_docstrings(code_obj.id),
                     "parameters": self.repo.code_parser.code_representer.get_arguments(code_obj.id),
-                    "missing_parameters": code_obj.get_missing_arg_types(),
+                    "missing_parameters": missing_parameters,
                     "return_missing": code_obj.missing_return_type,
                     "exceptions": self.repo.code_parser.code_representer.get_exceptions(code_obj.id),
                 })
