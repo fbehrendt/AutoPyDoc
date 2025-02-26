@@ -112,7 +112,7 @@ class RepoController():
         else:
             current_commit = self.repo.head.commit  # get most recent commit
             if self.initial_run:
-                latest_commit = self.repo.commit("d8347bdf0b4c62f0241c9a3e388c99474d88fc40")
+                latest_commit = self.repo.commit("4b825dc642cb6eb9a060e54bf8d69288fbee4904") # https://jiby.tech/post/git-diff-empty-repo/
                 # TODO change
             else:
                 latest_commit = self.repo.commit(self.latest_commit_hash)
