@@ -49,6 +49,7 @@ class RepoController():
     def get_files_in_repo(self):
         if not hasattr(self, 'repo_files'):
             repo_files = [os.path.join(dirpath,f) for (dirpath, dirnames, filenames) in os.walk(self.working_dir) for f in filenames]
+            repo_files = [file for file in repo_files if not file.startswith(os.path.join(self.working_dir,"venv"))]
             self.repo_files = [file for file in repo_files if file.endswith(".py")]
         return self.repo_files
     
@@ -112,25 +113,33 @@ class RepoController():
         else:
             current_commit = self.repo.head.commit  # get most recent commit
             if self.initial_run:
-                diff = self.repo.index.diff(None, current_commit)
+                # diff = self.repo.index.diff(None, current_commit)
                 # latest_commit = self.repo.commit("4b825dc642cb6eb9a060e54bf8d69288fbee4904") # https://jiby.tech/post/git-diff-empty-repo/ fails
                 # TODO change
+                result = []
+                for file in self.get_files_in_repo():
+                    with open(file=file, mode="r") as f:
+                        result.append({
+                            "filename": file,
+                            "start": 0,
+                            "lines_changed": len(f.readlines())
+                            })
             else:
                 latest_commit = self.repo.commit(self.latest_commit_hash)
                 diff = self.repo.git.diff(latest_commit, current_commit)
 
-            pattern = re.compile('\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@')
-            changes = re.findall(pattern, diff)
-            result = []
-            for change in changes:
-                # check if change affects a python file
-                if not change[0].endswith(".py"):
-                    continue
-                result.append({
-                    "filename": self.working_dir.replace("/", "\\") + "\\" + change[0].replace("/", "\\"),
-                    "start": int(change[3]),
-                    "lines_changed": int(change[4])
-                    })
+                pattern = re.compile('\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@')
+                changes = re.findall(pattern, diff)
+                result = []
+                for change in changes:
+                    # check if change affects a python file
+                    if not change[0].endswith(".py"):
+                        continue
+                    result.append({
+                        "filename": self.working_dir.replace("/", "\\") + "\\" + change[0].replace("/", "\\"),
+                        "start": int(change[3]),
+                        "lines_changed": int(change[4])
+                        })
             return result
     
     @staticmethod
@@ -141,7 +150,7 @@ class RepoController():
     
     @staticmethod
     def get_class_id(changed_class):
-        pattern = re.compile('class ([^\(]+)')
+        pattern = re.compile('class ([^\(:]+)')
         class_name = re.findall(pattern, changed_class["content"])[0]
         return changed_class["filename"] + "_" + changed_class["type"] + "_" + class_name
 
