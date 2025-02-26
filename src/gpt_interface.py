@@ -8,9 +8,9 @@ def send_batch(batch, callback):
     # inferr missing arg/return types
     # generate parameter descriptions
     # generate exception descriptions (?)
-    change_necessary = False
+    change_necessary = True
     for item in batch:
-        change_necessary = not change_necessary
+        # change_necessary = not change_necessary
         if change_necessary:
             # option 1
             if item["type"] == "method":
