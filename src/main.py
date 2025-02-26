@@ -145,4 +145,5 @@ class AutoPyDoc():
 
 if __name__ == "__main__":
     auto_py_doc = AutoPyDoc()
-    auto_py_doc.main(repo_path="https://github.com/fbehrendt/bachelor_testing_repo", debug=True)
+    # auto_py_doc.main(repo_path="https://github.com/fbehrendt/bachelor_testing_repo", debug=True)
+    auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)
