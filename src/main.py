@@ -94,6 +94,8 @@ class AutoPyDoc():
 
     def process_gpt_result(self, result):
         self.queries_sent_to_gpt -= 1
+        print("Received", result["id"])
+        print("Waiting for", self.queries_sent_to_gpt, "more results")
         code_obj = self.repo.code_parser.code_representer.get(result["id"])
         if not result["no_change_necessary"]:
             if not self.debug:
