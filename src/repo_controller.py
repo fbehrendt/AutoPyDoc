@@ -112,11 +112,12 @@ class RepoController():
         else:
             current_commit = self.repo.head.commit  # get most recent commit
             if self.initial_run:
-                latest_commit = self.repo.commit("4b825dc642cb6eb9a060e54bf8d69288fbee4904") # https://jiby.tech/post/git-diff-empty-repo/
+                diff = self.repo.index.diff(None, current_commit)
+                # latest_commit = self.repo.commit("4b825dc642cb6eb9a060e54bf8d69288fbee4904") # https://jiby.tech/post/git-diff-empty-repo/ fails
                 # TODO change
             else:
                 latest_commit = self.repo.commit(self.latest_commit_hash)
-            diff = self.repo.git.diff(latest_commit, current_commit)
+                diff = self.repo.git.diff(latest_commit, current_commit)
 
             pattern = re.compile('\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@')
             changes = re.findall(pattern, diff)
