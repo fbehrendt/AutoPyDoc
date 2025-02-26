@@ -1,4 +1,5 @@
 def send_batch(batch, callback):
+    print("Now working on:\n", "\n".join([item["id"] for item in batch]))
     # TODO parallelize
     # flag developer comments
     # if only_comments_changed:
