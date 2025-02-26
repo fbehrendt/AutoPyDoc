@@ -112,7 +112,7 @@ class RepoController():
         else:
             current_commit = self.repo.head.commit  # get most recent commit
             if self.initial_run:
-                latest_commit = self.repo.commit("e2676eba2dcaa478268d1b24397df0c9d0236d16")
+                latest_commit = self.repo.commit("d8347bdf0b4c62f0241c9a3e388c99474d88fc40")
                 # TODO change
             else:
                 latest_commit = self.repo.commit(self.latest_commit_hash)
