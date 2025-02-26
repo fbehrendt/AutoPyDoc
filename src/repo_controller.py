@@ -244,11 +244,24 @@ class RepoController():
                 return (0, 0, len(lines)) # full file
             else:
                 raise NotImplementedError
+            
+            # get start of signature
             for i in range(start_pos, len(lines)):
                 if lines[i].lstrip().lower().startswith(prefix + code_obj.name.lower()):
-                    start_pos = i+1
+                    start_pos = i
                     start_line = lines[start_pos]
                     break
+
+            # find end of signature
+            open_brackets = 0
+            for j in range(start_pos, len(lines)):
+                # TODO this can still fail for cases like def func(a="sfr("):
+                open_brackets += lines[j].count("(")
+                open_brackets -= lines[j].count(")")
+                if open_brackets < 1:
+                    start_pos = j+1
+                    break
+
             # get indentation level
             indentation_level = sum(4 if char == '\t' else 1 for char in start_line[:-len(start_line.lstrip())])
             end_pos = len(lines)
