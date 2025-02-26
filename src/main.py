@@ -55,8 +55,8 @@ class AutoPyDoc():
             quit()
         gpt_interface.send_batch(first_batch, callback=self.process_gpt_result)
 
-    def generate_next_batch(self):
-        ids = [id for id in self.queued_code_ids if not self.repo.code_parser.code_representer.depends_on_outdated_code(id) and not self.repo.code_parser.code_representer.get(id).send_to_gpt]
+    def generate_next_batch(self, ignore_dependencies=False):
+        ids = [id for id in self.queued_code_ids if ignore_dependencies or not self.repo.code_parser.code_representer.depends_on_outdated_code(id) and not self.repo.code_parser.code_representer.get(id).send_to_gpt]
         batch = []
         for id in ids:
             code_obj = self.repo.code_parser.code_representer.get(id)
@@ -132,7 +132,12 @@ class AutoPyDoc():
             if len(missing_items) > 0:
                 print("Some parts are still missing updates")
                 print("\n".join(missing_items))
-                raise NotImplementedError
+                next_batch = self.generate_next_batch(ignore_dependencies=True)
+                if len(next_batch) > 0:
+                    self.queries_sent_to_gpt += len(next_batch)
+                    gpt_interface.send_batch(next_batch, callback=self.process_gpt_result)
+                if not self.debug:
+                    raise NotImplementedError
             
             # TODO validate code integrity
             if not self.debug:
