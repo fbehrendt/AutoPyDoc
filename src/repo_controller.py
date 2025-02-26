@@ -12,7 +12,7 @@ from get_context import CodeParser
 from code_representation import CodeRepresenter, MethodObject, ClassObject
 
 class RepoController():
-    def __init__(self, repo_path: str, debug=False) -> None:
+    def __init__(self, repo_path: str, pull_request_token = None, debug=False) -> None:
         """ Initializes a RepoController Object
 
         :param repo: Path to the repository. Can be local or a GitHub link
@@ -25,6 +25,9 @@ class RepoController():
         self.working_dir = os.path.join(parent_dir, dir)
 
         self.debug = debug
+
+        self.pull_request_token = pull_request_token
+
         self.is_local_repo = validators.url(repo_path)
         if self.is_local_repo:
             self.repo_url = repo_path
@@ -337,9 +340,12 @@ class RepoController():
 
     def create_pull_request(self, repo_name, title, description, head_branch, base_branch):
         # Public Web Github
-        load_dotenv()
-        auth_token = os.getenv('GitHubAuthToken')
-        github_object = Github("AutoPyDoc", auth_token)
+        if self.pull_request_token is not None:
+            auth_token = self.pull_request_token
+        else:
+            load_dotenv()
+            auth_token = os.getenv('GitHubAuthToken')
+        github_object = Github("fbehrendt", auth_token)
         repo = github_object.get_repo(repo_name)
 
         pull_request = repo.create_pull(

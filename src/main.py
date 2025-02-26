@@ -9,7 +9,7 @@ class AutoPyDoc():
     def __init__(self):
         pass
 
-    def main(self, repo_path: str = None, debug=False) -> None: # repo_path will be required later
+    def main(self, repo_path: str = None, pull_request_token = None, debug=False) -> None: # repo_path will be required later
         """ Generates new docstrings for modified parts of the code
 
         :param repo_path: Path to the repository. Can be local or a GitHub link
@@ -19,7 +19,7 @@ class AutoPyDoc():
         """
 
         # pull repo, create code representation, create dependencies
-        self.repo = RepoController(repo_path=repo_path, debug=debug)
+        self.repo = RepoController(repo_path=repo_path, pull_request_token = pull_request_token, debug=debug)
         self.debug = debug
         self.queued_code_ids = []
 
