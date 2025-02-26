@@ -14,7 +14,7 @@ class CodeParser():
         self.working_dir = working_dir
         self.ducttape = False # TODO create a proper solution. For now only allow dependency creation once
         self.debug = debug
-        self.import_finder = ImportFinder(working_dir=working_dir)
+        self.import_finder = ImportFinder(working_dir=working_dir, debug=self.debug)
 
     def add_file(self, filename):
         dir = pathlib.Path().resolve()

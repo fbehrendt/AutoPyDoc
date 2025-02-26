@@ -3,7 +3,8 @@ import os
 from pathlib import Path
 
 class ImportFinder():
-    def __init__(self, working_dir):
+    def __init__(self, working_dir, debug=False):
+        self.debug = debug
         self.import_lines = {}
         self.imports = {}
         self.working_dir = working_dir
