@@ -263,7 +263,7 @@ class RepoController():
                     break
 
             # get indentation level
-            indentation_level = sum(4 if char == '\t' else 1 for char in start_line[:-len(start_line.lstrip())])
+            indentation_level = sum(4 if char == '\t' else 1 for char in start_line[:-len(start_line.lstrip())]) + 4
             end_pos = len(lines)
             i = start_pos
             for j in range(start_pos, len(lines)):
