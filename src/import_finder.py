@@ -1,6 +1,6 @@
 import ast
 import os
-import pathlib
+from pathlib import Path
 
 class ImportFinder():
     def __init__(self, working_dir):
@@ -39,9 +39,9 @@ class ImportFinder():
         repo_files = [os.path.join(dirpath,f) for (dirpath, dirnames, filenames) in os.walk(self.working_dir) for f in filenames]
         repo_files = [file.split('.py')[0] for file in repo_files if file.endswith(".py")]
         repo_files = [file.split(self.working_dir)[1] for file in repo_files]
-        repo_files = [[dir_part for dir_part in file.split('\\') if len(dir_part) > 0] for file in repo_files]
+        repo_files = [[dir_part for dir_part in Path(file).parts if len(dir_part) > 0] for file in repo_files]
         source_file = source_file.split(self.working_dir)[1]
-        source_file = [dir_part for dir_part in source_file.split('\\') if len(dir_part) > 0]
+        source_file = [dir_part for dir_part in Path(source_file).parts if len(dir_part) > 0]
         
         potential_matches = []
 
@@ -57,7 +57,7 @@ class ImportFinder():
             while j < min(len(split_path)-i, len(import_statement)) and split_path[i+j] == import_statement[j]:
                 j+=1
             if j > 0:
-                filename = self.working_dir + '\\' + '\\'.join(split_path)
+                filename = os.path.join(self.working_dir, *split_path)
                 potential_matches.extend(code_representer.get_by_filename(filename)) # TODO
         if len(potential_matches) > 0:
             return potential_matches

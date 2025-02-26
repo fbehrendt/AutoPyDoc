@@ -128,6 +128,8 @@ class AutoPyDoc():
         elif self.queries_sent_to_gpt < 1:
             missing_items = [id for id in self.queued_code_ids if self.repo.code_parser.code_representer.get(id).outdated]
             if len(missing_items) > 0:
+                print("Some parts are still missing updates")
+                print("\n".join(missing_items))
                 raise NotImplementedError
             
             # TODO validate code integrity
@@ -145,5 +147,5 @@ class AutoPyDoc():
 
 if __name__ == "__main__":
     auto_py_doc = AutoPyDoc()
-    # auto_py_doc.main(repo_path="https://github.com/fbehrendt/bachelor_testing_repo", debug=True)
-    auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)
+    auto_py_doc.main(repo_path="https://github.com/fbehrendt/bachelor_testing_repo", debug=True)
+    # auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)

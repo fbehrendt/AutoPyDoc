@@ -139,7 +139,7 @@ class RepoController():
                     if not change[0].endswith(".py"):
                         continue
                     result.append({
-                        "filename": self.working_dir.replace("/", "\\") + "\\" + change[0].replace("/", "\\"),
+                        "filename": os.path.join(self.working_dir, change[0]),
                         "start": int(change[3]),
                         "lines_changed": int(change[4])
                         })

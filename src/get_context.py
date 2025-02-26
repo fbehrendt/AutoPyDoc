@@ -16,7 +16,7 @@ class CodeParser():
         self.debug = debug
         self.import_finder = ImportFinder(working_dir=working_dir)
 
-    def add_file(self, filename="src\experiments\\ast_tests.py"):
+    def add_file(self, filename):
         dir = pathlib.Path().resolve()
         self.full_path = os.path.join(dir, filename)
         self.tree = ast.parse(open(self.full_path).read())
