@@ -1,5 +1,32 @@
+import ast
+
 class CodeObject():
-    def __init__(self, name, filename, code_type, body, ast_tree, docstring=None, code=None, arguments=None, return_type=None, exceptions=None):
+    """
+    Represent a piece of code like a module, class or method
+    """
+    def __init__(self, name: str, filename: str, code_type: str, body: str, ast_tree: ast.Node, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list[str]=None):
+        """
+        Represent a piece of code like a module, class or method
+
+        :param name: Name of the code piece. Usually the method or class name
+        :type name: str
+        :param filename: File where the code is located
+        :type filename: str
+        :param code_type: The kind of code. E.g. method or class
+        :type code_type: str
+        :param ast_tree: Ast representation of the code
+        :type ast_tree: ast.Node
+        :param docstring: Docstring of the code piece. Optional
+        :type docstring: str
+        :param code: Code of the code piece
+        :type code: str
+        :param arguments: Arguments of the code obj. Optional
+        :type arguments: list
+        :param return_type: Return type of the code piece. Optional
+        :type return_type: str
+        :param exceptions: Exceptions raised by the code piece. Optional
+        :type exceptions: list(str)
+        """
         self.name = name
         self.filename = filename
         self.type = code_type
