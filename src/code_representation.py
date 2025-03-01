@@ -138,12 +138,12 @@ class CodeObject():
         """
         self.exceptions.append(exception)
 
-    def get_context(self)->dict[list[str]]:
+    def get_context(self)->dict[str, list[str]]:
         """
         Get the context of a code piece
         
         :return: A dictionary of types of context, containing lists of code ids
-        :return type: dict[list[str]]
+        :return type: dict[str, list[str]]
         """
         return {
             "called_methods": self.called_methods,
@@ -218,12 +218,12 @@ class ClassObject(CodeObject):
         """
         self.module_obj_id = module_obj_id
     
-    def get_context(self)->dict[list[str]|str]:
+    def get_context(self)->dict[str, list[str]|str]:
         """
         Get the ids of context code pieces
         
         :return: A dictionary of types of context, containing lists of code ids or a code id
-        :return type: dict[list[str]|str]
+        :return type: dict[str, list[str]|str]
         """
         result = super().get_context()
         result["class_obj_id"] = self.class_obj_id
@@ -231,7 +231,7 @@ class ClassObject(CodeObject):
         return result
 
 class MethodObject(CodeObject):
-    """Represent a method"""
+    """Represent a method. Extends CodeObject"""
     def __init__(self, name: str, filename: str, signature: str, body: list, ast_tree: ast.Node, class_obj_id: str=None, module_obj_id: str=None, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list=None):
         """
         Represent a method. Extends CodeObject
@@ -286,12 +286,12 @@ class MethodObject(CodeObject):
         """
         self.class_obj = class_obj
     
-    def get_context(self)->dict[list[str]|str]:
+    def get_context(self)->dict[str, list[str]|str]:
         """
         Get the ids of context code pieces
         
         :return: A dictionary of types of context, containing lists of code ids or a code id
-        :return type: dict[list[str]|str]
+        :return type: dict[str, list[str]|str]
         """
         result = super().get_context()
         result["class_obj_id"] = self.class_obj_id
@@ -307,7 +307,7 @@ class MethodObject(CodeObject):
         """
         self.missing_arg_types.append(arg_name)
     
-    def get_missing_arg_types(self):
+    def get_missing_arg_types(self)->list[str]:
         """
         Get a list of arguments, for which the return type is missing
         
@@ -318,64 +318,162 @@ class MethodObject(CodeObject):
 
 
 class CodeRepresenter():
+    """Represent all code pieces like modules, classes and methods"""
     def __init__(self):
+        """Represent all code pieces like modules, classes and methods"""
         self.objects = {}
     
-    def get(self, id):
+    def get(self, id: str)->CodeObject:
+        """
+        Get a CodeObject by id
+        
+        :param id: id of the targeted CodeObject
+        :type id: str
+        
+        :returns: CodeObject with the passed id
+        :return type: CodeObject
+        """
         if id in self.objects.keys():
             return self.objects[id]
         raise KeyError
     
-    def add_code_obj(self, code_obj):
+    def add_code_obj(self, code_obj: CodeObject):
+        """
+        Add a CodeObject
+        
+        :param code_obj: CodeObject to be added
+        :type code_object: CodeObject
+        """
         if code_obj.id not in self.objects:
             self.objects[code_obj.id] = code_obj
     
-    def get_docstring(self, code_obj_id):
+    def get_docstring(self, code_obj_id: str)->str|None:
+        """
+        Get the docstring of a CodeObject, if exists
+        
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: str
+
+        :return: docstring of the CodeObject or None
+        :return type: str|None
+        """
         if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "docstring"):
             return self.objects[code_obj_id].docstring
         return None
 
-    def get_code(self, code_obj_id):
+    def get_code(self, code_obj_id: str)->str|None:
+        """
+        Get the code of a CodeObject, if exists
+        
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: str
+
+        :return: code of the CodeObject or None
+        :return type: str|None
+        """
         if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "code"):
             return self.objects[code_obj_id].code
         return None
 
-    def get_arguments(self, code_obj_id):
+    def get_arguments(self, code_obj_id: str)->list[str]|None:
+        """
+        Get the arguments of a CodeObject, if exists. DO not return self as an argument
+        
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: str
+
+        :return: arguments of the CodeObject or None
+        :return type: list[str]|None
+        """
         if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "arguments"):
             return [argument for argument in self.objects[code_obj_id].arguments if argument["name"] != "self"] # ignore self
         return None
 
-    def get_return_type(self, code_obj_id):
+    def get_return_type(self, code_obj_id: str)->str|None:
+        """
+        Get the return type of a CodeObject, if exists
+        
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: str
+
+        :return: return type of the CodeObject or None
+        :return type: str|None
+        """
         if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "return_type"):
             return self.objects[code_obj_id].return_type
         return None
 
-    def get_exceptions(self, code_obj_id):
+    def get_exceptions(self, code_obj_id: str)->list[str]|None:
+        """
+        Get the exceptions of a CodeObject, if exists
+        
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: str
+
+        :return: exceptions raised by the CodeObject or None
+        :return type: list[str]|None
+        """
         if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "exceptions"):
             return self.objects[code_obj_id].exceptions
         return None
 
-    def get_missing_arg_types(self, code_obj_id):
+    def get_missing_arg_types(self, code_obj_id: str)->list[str]|bool:
+        """
+        Get the names of arguments where type information is missing of a CodeObject, if exists
+        
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: str
+
+        :return: names of arguments where type information is missing or False
+        :return type: list[str]|bool
+        """
         code_obj = self.objects[code_obj_id]
         if not isinstance(code_obj, MethodObject):
             return False
         return code_obj.get_missing_arg_types()
 
-    def return_types_missing(self, code_obj_id):
+    def return_type_missing(self, code_obj_id: str)->bool:
+        """
+        Return if the return type of the CodeObject is missing
+        
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: str
+        
+        :return: True if return type is missing, else False
+        :return type: bool
+        """
         code_obj = self.objects[code_obj_id]
         if not isinstance(code_obj, MethodObject):
             return False
         return code_obj.missing_return_type
     
-    def get_extract_args_types_exceptions(self, code_obj_id):
+    def get_args_types_exceptions(self, code_obj_id: str)->dict[str, list[str]|str|bool]:
+        """
+        Get information about arguments, return and exceptions of a CodeObject
+        
+        :param code_obj_id: id of the CodeObject
+        :type code_obj_id: str
+        
+        :return: information about arguments, return and exceptions
+        :return type: dict[str, list[str]|str|bool]
+        """
         return {"arguments": self.get_arguments(code_obj_id=code_obj_id),
                 "return_type": self.get_return_type(code_obj_id=code_obj_id),
                 "exceptions": self.get_exceptions(code_obj_id=code_obj_id),
                 "missing_arg_types": self.get_missing_arg_types(code_obj_id=code_obj_id),
-                "return_type_missing": self.return_types_missing(code_obj_id=code_obj_id),
+                "return_type_missing": self.return_type_missing(code_obj_id=code_obj_id),
                 }
 
-    def get_by_filename(self, filename: str):
+    def get_by_filename(self, filename: str)->list[CodeObject]:
+        """
+        Get CodeObjects by filename
+        
+        :param filename: filename for which CodeObjects should be returned
+        :type filename: str
+        
+        :return: list of matching CodeObjecs
+        :return type: list[CodeObject]
+        """
         if not filename.endswith(".py"):
             filename += ".py"
         matches = []
@@ -384,8 +482,17 @@ class CodeRepresenter():
                 matches.append(object)
         return matches
 
-    def get_context_docstrings(self, id):
-        code_obj = self.get(id)
+    def get_context_docstrings(self, code_obj_id: str)->dict[str, str]:
+        """
+        Get the docstrings of context CodeObjects as a dict of CodeObject id to docstring
+        
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: str
+        
+        :return: dictionary of CodeObject to docstrings
+        :return type: dict[str, str]
+        """
+        code_obj = self.get(code_obj_id)
         tmp = code_obj.get_context()
         tmp.pop("class_obj_id", None)
         tmp.pop("module_obj_id", None)
@@ -405,8 +512,16 @@ class CodeRepresenter():
                 result[key] = code_obj_2.code
         return result
 
-    def depends_on_outdated_code(self, id):
-        code_obj = self.get(id)
+    def depends_on_outdated_code(self, code_obj_id: str)->bool:
+        """
+        Return if the CodeObject depends on other CodeObjects. Relevant for the order of docstring generation
+        
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: str
+        
+        :return: True if the CodeObject depends on other CodeObjects
+        :return type: bool"""
+        code_obj = self.get(code_obj_id)
         for code_id in code_obj.called_classes:
             if self.get(code_id).outdated:
                 return True
@@ -421,8 +536,16 @@ class CodeRepresenter():
                 return True
         return False
     
-    def update_docstring(self, id, new_docstring):
-        code_obj = self.get(id)
+    def update_docstring(self, code_obj_id: str, new_docstring: str):
+        """
+        Update the docstring of a CodeObject
+        
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: str
+        :param new_docstring: the new docstring
+        :type new_docstring: str
+        """
+        code_obj = self.get(code_obj_id)
         code_obj.old_docstring = code_obj.docstring
         code_obj.docstring = new_docstring
         code_obj.is_updated = True

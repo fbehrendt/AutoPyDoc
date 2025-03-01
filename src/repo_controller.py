@@ -198,7 +198,7 @@ class RepoController():
         :returns: dict with args, types and exceptions of a method as dict. Format: {params: [{name: str, type: str}], return_type: str, exceptions: list, missing_types: list}
         :rtype: dict{list[dict]}
         """
-        return self.code_parser.code_representer.get_extract_args_types_exceptions(method_id)
+        return self.code_parser.code_representer.get_args_types_exceptions(method_id)
 
     @staticmethod
     def print_code(code):
