@@ -174,7 +174,8 @@ class CodeObject():
         return self.code
 
 class ClassObject(CodeObject):
-    def __init__(self, name: str, filename: str, signature: str, body: list, ast_tree: ast.node, class_obj_id=None, module_obj_id=None, docstring=None, code=None, arguments=None, return_type=None, exceptions=None):
+    """Representation of a class"""
+    def __init__(self, name: str, filename: str, signature: str, body: list, ast_tree: ast.Node, class_obj_id: str=None, module_obj_id: str=None, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list[str]=None):
         """
         Represent a class. Extends CodeObject
 
@@ -201,7 +202,7 @@ class ClassObject(CodeObject):
         :param return_type: Return type of the code piece. Optional
         :type return_type: str
         :param exceptions: Exceptions raised by the code piece. Optional
-        :type exceptions: list(str)
+        :type exceptions: list[str]
         """
         self.signature = signature
         self.class_obj_id = class_obj_id
@@ -230,7 +231,36 @@ class ClassObject(CodeObject):
         return result
 
 class MethodObject(CodeObject):
-    def __init__(self, name, filename, signature, body, ast_tree, class_obj_id=None, module_obj_id=None, docstring=None, code=None, arguments=None, return_type=None, exceptions=None):
+    """Represent a method"""
+    def __init__(self, name: str, filename: str, signature: str, body: list, ast_tree: ast.Node, class_obj_id: str=None, module_obj_id: str=None, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list=None):
+        """
+        Represent a method. Extends CodeObject
+
+        :param name: Name of the code piece. Usually the method or class name
+        :type name: str
+        :param filename: File where the code is located
+        :type filename: str
+        :param signature: signature of the class
+        :type signature: str
+        :param body: list of elements of the ast representation of the class
+        :type body: list
+        :param ast_tree: Ast representation of the code
+        :type ast_tree: ast.Node
+        :param class_obj_id: id of the parent class, if exists. Optional
+        :type class_obj_id: str|None
+        :param module_obj_id: id of the module which this class is part of, if exists. Optional
+        :type module_obj_id: str|None
+        :param docstring: Docstring of the code piece. Optional
+        :type docstring: str
+        :param code: Code of the code piece
+        :type code: str
+        :param arguments: Arguments of the code obj. Optional
+        :type arguments: list
+        :param return_type: Return type of the code piece. Optional
+        :type return_type: str
+        :param exceptions: Exceptions raised by the code piece. Optional
+        :type exceptions: list[str]
+        """
         self.signature = signature
         self.class_obj_id = class_obj_id
         self.module_obj_id = module_obj_id
@@ -238,22 +268,52 @@ class MethodObject(CodeObject):
         self.missing_return_type = False
         super().__init__(name, filename, "method", body, ast_tree, docstring=docstring, code=code, arguments=arguments, return_type=return_type, exceptions=exceptions)
 
-    def add_module(self, module_obj_id):
+    def add_module(self, module_obj_id: str):
+        """
+        Add the id of the module, of which this class is a part of
+        
+        :param module_obj_id: id of the parent module
+        :type module_obj_id: str
+        """
         self.module_obj_id = module_obj_id
     
-    def add_class(self, class_obj):
+    def add_class(self, class_obj: str):
+        """
+        Add the id of the class, of which this class is a part of
+        
+        :param class_obj_id: id of the parent class
+        :type class_obj_id: str
+        """
         self.class_obj = class_obj
     
-    def get_context(self):
+    def get_context(self)->dict[list[str]|str]:
+        """
+        Get the ids of context code pieces
+        
+        :return: A dictionary of types of context, containing lists of code ids or a code id
+        :return type: dict[list[str]|str]
+        """
         result = super().get_context()
         result["class_obj_id"] = self.class_obj_id
         result["module_obj_id"] = self.module_obj_id
         return result
             
-    def add_missing_arg_type(self, arg_name):
+    def add_missing_arg_type(self, arg_name: str):
+        """
+        Add an argument for which the return type is missing
+        
+        :param arg_name: Name of the argument for which type information is missing
+        :type arg_name: str
+        """
         self.missing_arg_types.append(arg_name)
     
     def get_missing_arg_types(self):
+        """
+        Get a list of arguments, for which the return type is missing
+        
+        :return: list of arguments, for which the return type is missing
+        :return type: list[str]
+        """
         return self.missing_arg_types
 
 
