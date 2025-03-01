@@ -55,31 +55,94 @@ class CodeObject():
         self.is_updated = False
         self.send_to_gpt = False
 
-    def add_called_method(self, called_method_id):
+    def add_called_method(self, called_method_id: str):
+        """
+        Add a called method by its id
+
+        :param called_method_id: id of the called method
+        :type called_method_id: str
+        """
         self.called_methods.append(called_method_id)
     
-    def add_called_class(self, called_class_id):
+    def add_called_class(self, called_class_id: str):
+        """
+        Add a called class by its id
+
+        :param called_class_id: id of the called class
+        :type called_class_id: str
+        """
         self.called_classes.append(called_class_id)
 
-    def add_caller_method(self, caller_method_id):
+    def add_caller_method(self, caller_method_id: str):
+        """
+        Add a method calling this code object by its id
+
+        :param caller_method_id: id of the calling method
+        :type caller_method_id: str
+        """
         self.called_by_methods.append(caller_method_id)
     
-    def add_caller_class(self, caller_class_id):
+    def add_caller_class(self, caller_class_id: str):
+        """
+        Add a class calling this code object by its id
+
+        :param caller_class_id: id of the calling class
+        :type caller_class_id: str
+        """
         self.called_by_classes.append(caller_class_id)
     
-    def add_caller_module(self, caller_module_id):
+    def add_caller_module(self, caller_module_id: str):
+        """
+        Add a module calling this code object by its id
+
+        :param caller_module_id: id of the calling module
+        :type caller_module_id: str
+        """
         self.called_by_modules.append(caller_module_id)
 
-    def add_docstring(self, docstring):
+    def add_docstring(self, docstring: str):
+        """
+        Add the docstring of a code piece
+
+        :param docstring: docstring
+        :type docstring: str
+        """
         self.docstring = docstring
     
-    def add_ast(self, ast):
+    def add_ast(self, ast: ast.Node):
+        """"
+        Add the ast representation of a code piece
+        
+        :param ast: abstract syntax tree of the code piece
+        :type ast: ast.Node
+        """
         self.ast = ast
     
-    def add_code(self, code):
+    def add_code(self, code: str):
+        """
+        Add the code of a code piece
+        
+        :param code: code of the code piece
+        :type code: str
+        """
         self.code = code
 
-    def get_context(self):
+    def add_exception(self, exception: str):
+        """
+        Add an exception that is raise by this code piece
+        
+        :param exception: The exception that is raised
+        :type exception: str
+        """
+        self.exceptions.append(exception)
+
+    def get_context(self)->dict[list[str]]:
+        """
+        Get the context of a code piece
+        
+        :return: A dictionary of types of context, containing lists of code ids
+        :return type: dict[list[str]]
+        """
         return {
             "called_methods": self.called_methods,
             "called_classes": self.called_classes,
@@ -88,15 +151,24 @@ class CodeObject():
             "called_by_modules": self.called_by_modules,
         }
     
-    def add_exception(self, exception):
-        self.exceptions.append(exception)
-
-    def get_docstring(self):
+    def get_docstring(self)->str|None:
+        """
+        Return the docstring or None, if no docstring exists
+        
+        :return: docstring or None
+        :return type: str|None
+        """
         if hasattr(self, "docstring"):
             return self.docstring
         return None
     
-    def get_code(self):
+    def get_code(self)->str:
+        """
+        Return the code itself
+        
+        :return: the code
+        :return type: str
+        """
         return self.code
 
 class ClassObject(CodeObject):
