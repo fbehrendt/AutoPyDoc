@@ -4,7 +4,7 @@ class CodeObject():
     """
     Represent a piece of code like a module, class or method
     """
-    def __init__(self, name: str, filename: str, code_type: str, body: str, ast_tree: ast.Node, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list[str]=None):
+    def __init__(self, name: str, filename: str, code_type: str, body: list, ast_tree: ast.Node, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list[str]=None):
         """
         Represent a piece of code like a module, class or method
 
@@ -14,6 +14,8 @@ class CodeObject():
         :type filename: str
         :param code_type: The kind of code. E.g. method or class
         :type code_type: str
+        :param body: list of ast elements of the ast representation of this code piece
+        :type body: list
         :param ast_tree: Ast representation of the code
         :type ast_tree: ast.Node
         :param docstring: Docstring of the code piece. Optional
@@ -172,16 +174,56 @@ class CodeObject():
         return self.code
 
 class ClassObject(CodeObject):
-    def __init__(self, name, filename, signature, body, ast_tree, class_obj_id=None, module_obj_id=None, docstring=None, code=None, arguments=None, return_type=None, exceptions=None):
+    def __init__(self, name: str, filename: str, signature: str, body: list, ast_tree: ast.node, class_obj_id=None, module_obj_id=None, docstring=None, code=None, arguments=None, return_type=None, exceptions=None):
+        """
+        Represent a class. Extends CodeObject
+
+        :param name: Name of the code piece. Usually the method or class name
+        :type name: str
+        :param filename: File where the code is located
+        :type filename: str
+        :param signature: signature of the class
+        :type signature: str
+        :param body: list of elements of the ast representation of the class
+        :type body: list
+        :param ast_tree: Ast representation of the code
+        :type ast_tree: ast.Node
+        :param class_obj_id: id of the parent class, if exists. Optional
+        :type class_obj_id: str|None
+        :param module_obj_id: id of the module which this class is part of, if exists. Optional
+        :type module_obj_id: str|None
+        :param docstring: Docstring of the code piece. Optional
+        :type docstring: str
+        :param code: Code of the code piece
+        :type code: str
+        :param arguments: Arguments of the code obj. Optional
+        :type arguments: list
+        :param return_type: Return type of the code piece. Optional
+        :type return_type: str
+        :param exceptions: Exceptions raised by the code piece. Optional
+        :type exceptions: list(str)
+        """
         self.signature = signature
         self.class_obj_id = class_obj_id
         self.module_obj_id = module_obj_id
         super().__init__(name, filename, "class", body=body, ast_tree=ast_tree, docstring=docstring, code=code, arguments=arguments, return_type=return_type, exceptions=exceptions)
 
-    def add_module(self, module_obj):
-        self.module_obj = module_obj
+    def add_module(self, module_obj_id: str):
+        """
+        Add the id of the module, of which this class is a part of
+        
+        :param module_obj_id: id of the parent module
+        :type module_obj_id: str
+        """
+        self.module_obj_id = module_obj_id
     
-    def get_context(self):
+    def get_context(self)->dict[list[str]|str]:
+        """
+        Get the ids of context code pieces
+        
+        :return: A dictionary of types of context, containing lists of code ids or a code id
+        :return type: dict[list[str]|str]
+        """
         result = super().get_context()
         result["class_obj_id"] = self.class_obj_id
         result["module_obj_id"] = self.module_obj_id
