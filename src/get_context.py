@@ -9,21 +9,38 @@ from import_finder import ImportFinder
 code = CodeRepresenter()
 
 class CodeParser():
-    def __init__(self, code_representer, working_dir, debug=False):
+    """A code parser used to create dependencies between modules, classes and methods"""
+    def __init__(self, code_representer: CodeRepresenter, working_dir:str, debug: bool=False):
+        """
+        A code parser used to create dependencies between modules, classes and methods
+        
+        :param code_representer: CodeRepresenter Object
+        :type code_representer: CodeRepresenter
+        :param working_dir: path to target code
+        :type working_dir: str
+        :param debug: toggle debug mode
+        :type debug: bool"""
         self.code_representer = code_representer
         self.working_dir = working_dir
         self.ducttape = False # TODO create a proper solution. For now only allow dependency creation once
         self.debug = debug
         self.import_finder = ImportFinder(working_dir=working_dir, debug=self.debug)
 
-    def add_file(self, filename):
+    def add_file(self, filename: str):
+        """
+        Add a file to the CodeParser
+        
+        :param filename: file to add
+        :type filename: str
+        """
         dir = pathlib.Path().resolve()
         self.full_path = os.path.join(dir, filename)
         self.tree = ast.parse(open(self.full_path).read())
         self.import_finder.add_file(self.full_path)
-        self.get_file_modules_classes_and_methods(tree=self.tree)
+        self.extract_file_modules_classes_and_methods(tree=self.tree)
         
     def create_dependencies(self):
+        """Create dependencies between modules, classes and methods"""
         # TODO id collisions possible with subclasses/class methods (only within the same file)
         # example
         # class A():
@@ -41,12 +58,18 @@ class CodeParser():
         for code_obj in self.code_representer.objects.values():
             if code_obj.type == "module":
                 pass # TODO remove
-            self.get_class_and_method_calls(parent_obj=code_obj)
-            self.get_args_and_return_type(parent_obj=code_obj)
-            self.get_exceptions(parent_obj=code_obj)
+            self.extract_class_and_method_calls(parent_obj=code_obj)
+            self.extract_args_and_return_type(method_obj=code_obj)
+            self.extract_exceptions(code_obj=code_obj)
             self.check_return_type(method_obj=code_obj)
 
-    def get_file_modules_classes_and_methods(self, tree):
+    def extract_file_modules_classes_and_methods(self, tree: ast.Node):
+        """
+        Extract file level modules, classes and methods
+        
+        :param tree: abstract syntax tree of the file
+        :type tree: ast.Node
+        """
         if isinstance(tree, ast.Module):
             module_name = "" # TODO get module name
             docstring = ast.get_docstring(node=tree, clean=True)
@@ -74,9 +97,17 @@ class CodeParser():
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
                 class_obj = ClassObject(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, docstring=docstring, code=source_code)
                 self.code_representer.add_code_obj(class_obj)
-                self.get_class_methods_and_sub_classes(class_tree=node, class_obj_id=class_obj.id)
+                self.extract_class_methods_and_sub_classes(class_tree=node, class_obj_id=class_obj.id)
 
-    def get_class_methods_and_sub_classes(self, class_tree, class_obj_id):
+    def extract_class_methods_and_sub_classes(self, class_tree: ast.Node, class_obj_id: str):
+        """
+        Extract methods and sub classes of the given class
+        
+        :param class_tree: abstract syntax tree of the class
+        :type class_tree: ast.Node
+        :param class_obj_id: ClassObject id
+        :type class_obj_id: str
+        """
         for node in class_tree.body:
             if isinstance(node, ast.FunctionDef):
                 func_def_name = node.name
@@ -98,9 +129,15 @@ class CodeParser():
                 source_code = ast.get_source_segment(open(self.full_path).read(), node, padded=False)
                 inner_class_obj = ClassObject(name=class_def_name, filename=self.full_path, signature="signature mock", body=node.body, ast_tree=node, class_obj_id=class_obj_id, docstring=docstring, code=source_code)
                 self.code_representer.add_code_obj(inner_class_obj)
-                self.get_class_methods_and_sub_classes(class_tree=node, class_obj_id=inner_class_obj.id)
+                self.extract_class_methods_and_sub_classes(class_tree=node, class_obj_id=inner_class_obj.id)
     
-    def get_class_and_method_calls(self, parent_obj):
+    def extract_class_and_method_calls(self, parent_obj: CodeObject):
+        """
+        Extract classes and methods called by the CodeObject
+        
+        :param parent_obj: CodeObject
+        :type parent_obj: CodeObject
+        """
         for node in ast.walk(parent_obj.ast_tree):
             # ast.get_source_segment(source, node.body[0])
             if isinstance(node, ast.Call):
@@ -172,20 +209,32 @@ class CodeParser():
                 else:
                     print("Unmatched parent type:", parent_obj.type)
     
-    def get_exceptions(self, parent_obj):
-        for node in ast.walk(parent_obj.ast_tree):
+    def extract_exceptions(self, code_obj: CodeObject):
+        """
+        Extract exceptions raised by the CodeObject
+        
+        :param code_obj: CodeObject
+        :type code_obj: CodeObject
+        """
+        for node in ast.walk(code_obj.ast_tree):
             # ast.get_source_segment(source, node.body[0])
             if isinstance(node, ast.Raise):
                 if hasattr(node.exc, "id"):
-                    parent_obj.add_exception(node.exc.id)
+                    code_obj.add_exception(node.exc.id)
                 elif hasattr(node.exc, "func"):
-                    parent_obj.add_exception(node.exc.func.id)
+                    code_obj.add_exception(node.exc.func.id)
                 else:
                     if not self.debug:
                         raise NotImplementedError
         
-    def get_args_and_return_type(self, parent_obj):
-        node = parent_obj.ast_tree
+    def extract_args_and_return_type(self, method_obj: MethodObject):
+        """
+        Extract arguments and return type of methods
+        
+        :param method_obj: MethodObject
+        :type method_obj: MethodObject
+        """
+        node = method_obj.ast_tree
         if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
             arguments = []
             for i in range(len(node.args.args)):
@@ -198,7 +247,7 @@ class CodeParser():
                     if i == 0 and arg.arg == "self":
                         new_arg["type"] = Self # see https://peps.python.org/pep-0673/
                     else:
-                        parent_obj.add_missing_arg_type(arg.arg)
+                        method_obj.add_missing_arg_type(arg.arg)
                 if i < len(node.args.defaults):
                     default = node.args.defaults[i]
                     if isinstance(default, ast.Constant):
@@ -214,10 +263,16 @@ class CodeParser():
                 return_type = None
             if isinstance(return_type, ast.Name):
                 return_type = return_type.id
-            parent_obj.arguments = arguments
-            parent_obj.return_type = return_type
+            method_obj.arguments = arguments
+            method_obj.return_type = return_type
     
-    def check_return_type(self, method_obj):
+    def check_return_type(self, method_obj: MethodObject):
+        """
+        Check if the return type of a method is missing
+        
+        :param method_obj: MethodObject
+        :type method_obj: MethodObject
+        """
         if not isinstance(method_obj.ast_tree, ast.FunctionDef) and not isinstance(method_obj.ast_tree, ast.AsyncFunctionDef):
             return
         if method_obj.return_type == None:
