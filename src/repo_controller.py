@@ -9,16 +9,20 @@ from github import Github
 from dotenv import load_dotenv
 
 from get_context import CodeParser
-from code_representation import CodeRepresenter, MethodObject, ClassObject
+from code_representation import CodeRepresenter, MethodObject, ClassObject, CodeObject
 
 class RepoController():
-    def __init__(self, repo_path: str, pull_request_token = None, debug=False) -> None:
-        """ Initializes a RepoController Object
+    """A class to control interactions with the target repository"""
+    def __init__(self, repo_path: str, pull_request_token:str=None, debug:bool=False):
+        """
+        A class to control interactions with the target repository
 
         :param repo: Path to the repository. Can be local or a GitHub link
         :type repo: str
+        :param pull_request_token: token used to create pull requests
+        :type pull_request_token: str
         :param debug: toggle debug mode
-        :type debug: boolean
+        :type debug: bool
         """
         parent_dir = pathlib.Path().resolve()
         dir = "working_repo"
@@ -35,7 +39,6 @@ class RepoController():
         else:
             self.working_dir = repo_path
             self.repo = Repo(self.working_dir)
-            # self.copy_repo(repo_path)
             if not self.debug:
                 raise NotImplementedError
         self.branch = "main" # TODO change
@@ -49,7 +52,13 @@ class RepoController():
         if not self.debug:
             raise NotImplementedError
     
-    def get_files_in_repo(self):
+    def get_files_in_repo(self)->list[str]:
+        """
+        Get all python files in the target repository
+        
+        :return: list of python files in the repository
+        :return type: list[str]
+        """
         if not hasattr(self, 'repo_files'):
             repo_files = [os.path.join(dirpath,f) for (dirpath, dirnames, filenames) in os.walk(self.working_dir) for f in filenames]
             repo_files = [file for file in repo_files if not file.startswith(os.path.join(self.working_dir,"venv"))]
@@ -57,6 +66,7 @@ class RepoController():
         return self.repo_files
     
     def get_latest_commit(self):
+        """Get the latest commit the tool sucessfully ran for. Sets the result internally"""
         self.latest_commit_file_name = os.path.join(self.working_dir, "latest_commit.autopydoc")
         file_obj = Path(self.latest_commit_file_name)
         if file_obj.is_file():
@@ -68,7 +78,9 @@ class RepoController():
             self.initial_run = True
 
     def clear_working_dir(self):
-        """ Cleans the working directory"""
+        """
+        Idea: clear the working directory so it can be used by another repository. Reality: permission denied->remove files manually
+        """
         # TODO not working. Permission denied
         if (os.path.exists(self.working_dir)):
             #tmp = tempfile.mktemp(dir=os.path.dirname(self.working_dir))
@@ -80,7 +92,7 @@ class RepoController():
         os.makedirs(self.working_dir)
 
     def pull_repo(self):
-        """ Pulls a repository into the working_repo folder"""
+        """ Pulls a repository into the self.working_dir folder"""
         print("###pulling remote repository###")
         dir = os.listdir(self.working_dir) 
         if len(dir) == 0:
@@ -94,132 +106,105 @@ class RepoController():
             self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
             assert not self.repo.bare
     
-    def copy_repo(self, repo_path):
-        """ Copies local files into the working_repo folder
-        
-        :param repo_path: Path to the repository
-        :type repo_path: str"""
-        print("###copying repository files to working folder###")
-        self.clear_working_dir()
-        if not self.debug:
-            raise NotImplementedError
-    
     def get_changes(self) -> list[dict]:
-        """ Returns changed methods, classes and modules
+        """
+        Returns changed methods, classes and modules
 
-        :returns: A list of changed methods/classes/modules as dicts. Keys: type, content, signature, filenames, start, end
-        :rtype: list[dict]
+        :return: A list of changed methods/classes/modules as dicts. Keys: type, content, signature, filenames, start, end
+        :return type: list[dict]
         """
         print("###extracting changes###")
-        if not self.debug:
-            raise NotImplementedError
-        else:
-            current_commit = self.repo.head.commit  # get most recent commit
-            if self.initial_run:
-                # diff = self.repo.index.diff(None, current_commit)
-                # latest_commit = self.repo.commit("4b825dc642cb6eb9a060e54bf8d69288fbee4904") # https://jiby.tech/post/git-diff-empty-repo/ fails
-                # TODO change
-                result = []
-                for file in self.get_files_in_repo():
-                    with open(file=file, mode="r") as f:
-                        result.append({
-                            "filename": os.path.normpath(file),
-                            "start": 0,
-                            "lines_changed": len(f.readlines())
-                            })
-            else:
-                latest_commit = self.repo.commit(self.latest_commit_hash)
-                diff = self.repo.git.diff(latest_commit, current_commit)
-
-                pattern = re.compile('\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@')
-                changes = re.findall(pattern, diff)
-                result = []
-                for change in changes:
-                    # check if change affects a python file
-                    if not change[0].endswith(".py"):
-                        continue
+        current_commit = self.repo.head.commit  # get most recent commit
+        if self.initial_run:
+            # diff = self.repo.index.diff(None, current_commit)
+            # latest_commit = self.repo.commit("4b825dc642cb6eb9a060e54bf8d69288fbee4904") # https://jiby.tech/post/git-diff-empty-repo/ fails
+            # TODO change
+            result = []
+            for file in self.get_files_in_repo():
+                with open(file=file, mode="r") as f:
                     result.append({
-                        "filename": os.path.normpath(os.path.join(self.working_dir, change[0])),
-                        "start": int(change[3]),
-                        "lines_changed": int(change[4])
+                        "filename": os.path.normpath(file),
+                        "start": 0,
+                        "lines_changed": len(f.readlines())
                         })
-            return result
+        else:
+            latest_commit = self.repo.commit(self.latest_commit_hash)
+            diff = self.repo.git.diff(latest_commit, current_commit)
+
+            pattern = re.compile('\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@')
+            changes = re.findall(pattern, diff)
+            result = []
+            for change in changes:
+                # check if change affects a python file
+                if not change[0].endswith(".py"):
+                    continue
+                result.append({
+                    "filename": os.path.normpath(os.path.join(self.working_dir, change[0])),
+                    "start": int(change[3]),
+                    "lines_changed": int(change[4])
+                    })
+        return result
     
     @staticmethod
-    def get_method_id(changed_method):
+    def get_method_id(changed_method: dict[str, str])->str:
+        """
+        Get a methods id based on change information. Static method
+        
+        :param changed_method: change information of the method. Must contain keys filename, type, content
+        :type change_method: dict[str, str]
+        
+        :return: method id
+        :return type: str
+        """
         pattern = re.compile('def ([^\(]+)')
         method_name = re.findall(pattern, changed_method["content"])[0]
         return changed_method["filename"] + "_" + changed_method["type"] + "_" + method_name
     
     @staticmethod
-    def get_class_id(changed_class):
+    def get_class_id(changed_class: dict[str, str])->str:
+        """
+        Get a classes id based on change information. Static method
+        
+        :param changed_class: change information of the class. Must contain keys filename, type, content
+        :type changed_class: dict[str, str]
+        
+        :return: class id
+        :return type: str
+        """
         pattern = re.compile('class ([^\(:]+)')
         class_name = re.findall(pattern, changed_class["content"])[0]
         return changed_class["filename"] + "_" + changed_class["type"] + "_" + class_name
-
-    def get_context(self, code_obj_id) -> list[dict]:
-        """ Returns context of a given method/class/module
-        
-        :param code_obj: A dictionary with details regarding a method/class/module
-        :code_obj type: dict
-        :returns: Context of a given method/class/module
-        :rtype: list[dict]
-        """
-        print("###Gathering context###")
-        if code_obj_id in self.code_parser.code_representer.objects.keys():
-            return self.code_parser.code_representer.objects[code_obj_id].get_context()
-        return None
     
-    def extract_docstring(self, code_obj) -> str:
-        """ Extract the docstring (if exists)
+    def extract_dev_comments(self, code_obj: CodeObject) -> list[str]:
+        """
+        Extract developer comments. NOT IMPLEMENTED
         
         :param code_obj: A dictionary with details regarding a method/class/module
-        :code_obj type: dict
-        :returns: docstring of the given code snippet
-        :rtype: str
-        """
-        return code_obj.get_docstring()
-    
-    def extract_code(self, code_obj) -> str:
-        """ Extract the code without comments
-        
-        :param code_obj: A dictionary with details regarding a method/class/module
-        :code_obj type: dict
-        :returns: code snippet without comments
-        :rtype: str
-        """
-        return code_obj.get_code()
+        :code_obj type: CodeObject
 
-    def extract_args_types_exceptions(self, method_id) -> str:
-        """ Extract args, types and exceptions of a given method
-        
-        :param method_obj: A dictionary with details regarding a method
-        :method_obj type: dict
-        :returns: dict with args, types and exceptions of a method as dict. Format: {params: [{name: str, type: str}], return_type: str, exceptions: list, missing_types: list}
-        :rtype: dict{list[dict]}
-        """
-        return self.code_parser.code_representer.get_args_types_exceptions(method_id)
+        :return: dev comments
+        :return type: list[str]
 
-    @staticmethod
-    def print_code(code):
-        for line in code.split("\n"):
-            print(line)
-    
-    def extract_dev_comments(self, code_obj) -> list[str]:
-        """ Extract developer comments
-        
-        :param code_obj: A dictionary with details regarding a method/class/module
-        :code_obj type: dict
-        :returns: dev comments
-        :rtype: list[str]
+        :raises NotImplementedError: raised when not in debug mode, because this is not yet implemented
         """
         print("###MOCK### Extracting developer comments")
         if not self.debug:
             raise NotImplementedError
         else:
-            return "A developer comment"
+            return ["A developer comment"]
     
-    def identify_docstring_location(self, code_obj_id: MethodObject|ClassObject) -> tuple:
+    def identify_docstring_location(self, code_obj_id: str) -> tuple[int]:
+        """
+        Identify the docstring location and indentation given a CodeObject
+
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: str
+
+        :return: tuple(start, indentation level, end)
+        :rtype: tuple[int]
+        
+        :raises Exception("End of docstring not found"): raised when the end of the docstring cannot be located
+        """
         code_obj = self.code_parser.code_representer.get(code_obj_id)
         with open(file=code_obj.filename, mode="r") as f:
             lines = f.readlines()
@@ -285,7 +270,19 @@ class RepoController():
         return (start_pos, indentation_level, end_pos)
 
     @staticmethod
-    def insert_docstring(filename, start, end, new_docstring):
+    def insert_docstring(filename: str, start: int, end: int, new_docstring: str):
+        """
+        Insert the new docstring. Lines between start and end will be overridden. Static method
+
+        :param filename: filename
+        :type filename: str
+        :param start: line where the new docstring should start
+        :type start: int
+        :param end: line where the new docstring should end
+        :type end: int
+        :param new_docstring: new docstring
+        :type new_docstring: str
+        """
         with open(filename, 'r') as f:
             content = f.readlines()
             before = content[:start]
@@ -296,22 +293,24 @@ class RepoController():
                 file.write(new_content)
             
     def update_latest_commit(self):
-        # TODO create_commit
+        """
+        Update latest_commit file in target repo. Create if none exists
+        """
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
         print("Commit of docstring update:", current_commit)
         with open(self.latest_commit_file_name, mode="w") as f:
             f.write(current_commit)
         self.repo.index.add([self.latest_commit_file_name])
-        # connection = sqlite3.connect("repos.db")
-        # cursor = connection.cursor()
-        # cursor.execute("CREATE TABLE IF NOT EXISTS repo_states (url PRIMARY KEY, last_commit)")
-        # row = cursor.execute(f"INSERT OR REPLACE INTO repo_states VALUES({self.repo_url},{current_commit})")
-        # connection.commit()
+       
+    def commit_to_new_branch(self, changed_files: list[str]=[]):
+        """
+        Commit changes to a new branch. The new branch name is <old_branch>_AutoPyDoc
         
-        if not self.debug:
-            raise NotImplementedError
+        :param changed_files: list of changed files
+        :type change_files: list[str]
 
-    def commit_to_new_branch(self, changed_files: list = None):
+        :raises Exception: bare repository
+        """
         if self.repo != None:
 
             # create new branch
@@ -351,8 +350,21 @@ class RepoController():
             return new_branch
         raise Exception # TODO
 
-    def create_pull_request(self, repo_name, title, description, head_branch, base_branch):
-        # Public Web Github
+    def create_pull_request(self, repo_name: str, title: str, description: str, head_branch: str, base_branch: str):
+        """
+        Create pull request
+        
+        :param repo_name: name of the repository
+        :type repo_name: str
+        :param title: title of the pull request
+        :type title: str
+        :param description: description for the pull request
+        :type description: str
+        :param head_branch: head branch. This is the branch you are on
+        :type head_branch: str
+        :param base_branch: base branch. The branch where changes should be merged into
+        :type base_branch: str
+        """
         if self.pull_request_token is not None:
             auth_token = self.pull_request_token
         else:
@@ -367,15 +379,17 @@ class RepoController():
             head=head_branch,
             base=base_branch
         )
-        # To close connections after use
         github_object.close()
         return pull_request
 
-    def apply_changes(self, changed_files: list = None) -> None:
-        """ Applies new docstrings to the repo in the way configured in src/config.ini
+    def apply_changes(self, changed_files: list[str]=[]):
+        """
+        Apply to the repo in the way configured in src/config.ini. Currently creates a pull request from a new branch
         
-        :param changes: List of changes to apply, defaults to all
-        :type changes: list|str
+        :param changed_files: list of changed_files
+        :type changed_files: list[str]
+
+        :raises NotImplementedError: raised when not in debug mode, because the config file is not yet implemented
         """
         print("###MOCK### Applying changes")
         config = configparser.ConfigParser()
