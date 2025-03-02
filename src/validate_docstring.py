@@ -1,6 +1,21 @@
 import restructuredtext_lint
 
-def validate_docstring(docstring, syntax="reStructuredText"):
+def validate_docstring(docstring: str, syntax: str="reStructuredText")->list[str]:
+    """
+    Validate docstring
+    
+    :param docstring: docstring
+    :type docstring: str
+    :param syntax: the docstring syntax to check against. Currently only reStructuredText is implemented
+    :type syntax: str
+
+    :return: list of errors
+    :return type: list[str]
+
+    :raises NotImplementedError: raised when the syntax is not reStructuredText, because no other syntax is implemented yet
+    """
+    if syntax != "reStructuredText":
+        raise NotImplementedError
     errors = restructuredtext_lint.lint(docstring)
     for error in errors:
         if error.message == "Unexpected possible title overline or transition.\nTreating it as ordinary text because it's so short.":
