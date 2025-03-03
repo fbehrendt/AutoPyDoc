@@ -31,18 +31,13 @@ jobs:
           run: |
               git config user.name "github-actions[bot]"
               git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        - name: Install uv
+          uses: astral-sh/setup-uv@v5
         - name: install dependencies
-          run: |
-              pip install configparser
-              pip install validators
-              pip install GitPython
-              pip install regex
-              pip install PyGithub
-              pip install python-dotenv
-              pip install restructuredtext_lint
+          run: uv sync
         - name: run AutoPyDoc
           run: |
-               python /home/runner/work/AutoPyDoc/src/main_cli.py /home/runner/work/<target repo name>/<target repo name> "${{ secrets.PULL_REQUEST_TOKEN }}"
+               uv run /home/runner/work/AutoPyDoc/src/main_cli.py /home/runner/work/<target repo name>/<target repo name> "${{ secrets.PULL_REQUEST_TOKEN }}"
 
   
           
