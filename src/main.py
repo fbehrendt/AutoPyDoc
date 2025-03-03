@@ -1,12 +1,12 @@
-from repo_controller import RepoController
-from extract_affected_code_from_change_info import (
-    extract_methods_from_change_info,
-    extract_classes_from_change_info,
-)
+from code_representation import ClassObject, MethodObject
 from docstring_builder import create_docstring
+from extract_affected_code_from_change_info import (
+    extract_classes_from_change_info,
+    extract_methods_from_change_info,
+)
+from gpt_interface import GptInterface
+from repo_controller import RepoController
 from validate_docstring import validate_docstring
-import gpt_interface
-from code_representation import MethodObject, ClassObject
 
 
 class AutoPyDoc:
@@ -23,6 +23,10 @@ class AutoPyDoc:
         :param debug: toggle debug mode
         :type debug: boolean
         """
+
+        # initialize gpt interface early to fail early if model is unavailable or unable to load
+        # TODO: make name configurable (see factory for available model names)
+        self.gpt_interface = GptInterface("local_deepseek")
 
         # pull repo, create code representation, create dependencies
         self.repo = RepoController(
@@ -69,7 +73,7 @@ class AutoPyDoc:
         if self.queries_sent_to_gpt == 0:
             print("No need to do anything")
             quit()
-        gpt_interface.send_batch(first_batch, callback=self.process_gpt_result)
+        self.gpt_interface.send_batch(first_batch, callback=self.process_gpt_result)
 
     def generate_next_batch(self, ignore_dependencies=False):
         ids = [
@@ -181,7 +185,7 @@ class AutoPyDoc:
         next_batch = self.generate_next_batch()
         if len(next_batch) > 0:
             self.queries_sent_to_gpt += len(next_batch)
-            gpt_interface.send_batch(next_batch, callback=self.process_gpt_result)
+            self.gpt_interface.send_batch(next_batch, callback=self.process_gpt_result)
         # if every docstring is updated
         elif self.queries_sent_to_gpt < 1:
             missing_items = [
@@ -195,7 +199,7 @@ class AutoPyDoc:
                 next_batch = self.generate_next_batch(ignore_dependencies=True)
                 if len(next_batch) > 0:
                     self.queries_sent_to_gpt += len(next_batch)
-                    gpt_interface.send_batch(
+                    self.gpt_interface.send_batch(
                         next_batch, callback=self.process_gpt_result
                     )
                 if not self.debug:
