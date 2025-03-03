@@ -4,7 +4,7 @@ class CodeObject():
     """
     Represent a piece of code like a module, class or method
     """
-    def __init__(self, name: str, filename: str, code_type: str, body: list, ast_tree: ast.Node, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list[str]=None):
+    def __init__(self, name: str, filename: str, code_type: str, body: list, ast_tree: ast.AST, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list[str]=None):
         """
         Represent a piece of code like a module, class or method
 
@@ -17,7 +17,7 @@ class CodeObject():
         :param body: list of ast elements of the ast representation of this code piece
         :type body: list
         :param ast_tree: Ast representation of the code
-        :type ast_tree: ast.Node
+        :type ast_tree: ast.AST
         :param docstring: Docstring of the code piece. Optional
         :type docstring: str
         :param code: Code of the code piece
@@ -111,12 +111,12 @@ class CodeObject():
         """
         self.docstring = docstring
     
-    def add_ast(self, ast: ast.Node):
+    def add_ast(self, ast: ast.AST):
         """"
         Add the ast representation of a code piece
         
         :param ast: abstract syntax tree of the code piece
-        :type ast: ast.Node
+        :type ast: ast.AST
         """
         self.ast = ast
     
@@ -175,7 +175,7 @@ class CodeObject():
 
 class ClassObject(CodeObject):
     """Representation of a class"""
-    def __init__(self, name: str, filename: str, signature: str, body: list, ast_tree: ast.Node, class_obj_id: str=None, module_obj_id: str=None, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list[str]=None):
+    def __init__(self, name: str, filename: str, signature: str, body: list, ast_tree: ast.AST, class_obj_id: str=None, module_obj_id: str=None, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list[str]=None):
         """
         Represent a class. Extends CodeObject
 
@@ -188,7 +188,7 @@ class ClassObject(CodeObject):
         :param body: list of elements of the ast representation of the class
         :type body: list
         :param ast_tree: Ast representation of the code
-        :type ast_tree: ast.Node
+        :type ast_tree: ast.AST
         :param class_obj_id: id of the parent class, if exists. Optional
         :type class_obj_id: str|None
         :param module_obj_id: id of the module which this class is part of, if exists. Optional
@@ -232,7 +232,7 @@ class ClassObject(CodeObject):
 
 class MethodObject(CodeObject):
     """Represent a method. Extends CodeObject"""
-    def __init__(self, name: str, filename: str, signature: str, body: list, ast_tree: ast.Node, class_obj_id: str=None, module_obj_id: str=None, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list=None):
+    def __init__(self, name: str, filename: str, signature: str, body: list, ast_tree: ast.AST, class_obj_id: str=None, module_obj_id: str=None, docstring: str=None, code: str=None, arguments: list=None, return_type: str=None, exceptions: list=None):
         """
         Represent a method. Extends CodeObject
 
@@ -245,7 +245,7 @@ class MethodObject(CodeObject):
         :param body: list of elements of the ast representation of the class
         :type body: list
         :param ast_tree: Ast representation of the code
-        :type ast_tree: ast.Node
+        :type ast_tree: ast.AST
         :param class_obj_id: id of the parent class, if exists. Optional
         :type class_obj_id: str|None
         :param module_obj_id: id of the module which this class is part of, if exists. Optional

@@ -1,10 +1,12 @@
-def send_batch(batch: list[dict[str, list|dict|str|bool]], callback: function):
+from collections.abc import Callable
+
+def send_batch(batch: list[dict[str, list|dict|str|bool]], callback: Callable):
     """Mock method to send batches of code to the gpt for which docstrings are to be generated/updated
     
     :param batch: list of dictionaries containing all information necessary for docstring generation
     :type batch: list[dict[str, list|dict|str|bool]]
     :param callback: the method that should be called with the result of one item of the batch. Has to be called once for every item in the batch
-    :type callback: function
+    :type callback: Callable
     """
     print("Now working on:\n", "\n".join([item["id"] for item in batch]))
     # TODO parallelize

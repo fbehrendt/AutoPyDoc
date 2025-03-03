@@ -63,12 +63,12 @@ class CodeParser():
             self.extract_exceptions(code_obj=code_obj)
             self.check_return_type(method_obj=code_obj)
 
-    def extract_file_modules_classes_and_methods(self, tree: ast.Node):
+    def extract_file_modules_classes_and_methods(self, tree: ast.AST):
         """
         Extract file level modules, classes and methods
         
         :param tree: abstract syntax tree of the file
-        :type tree: ast.Node
+        :type tree: ast.AST
         """
         if isinstance(tree, ast.Module):
             module_name = "" # TODO get module name
@@ -99,12 +99,12 @@ class CodeParser():
                 self.code_representer.add_code_obj(class_obj)
                 self.extract_class_methods_and_sub_classes(class_tree=node, class_obj_id=class_obj.id)
 
-    def extract_class_methods_and_sub_classes(self, class_tree: ast.Node, class_obj_id: str):
+    def extract_class_methods_and_sub_classes(self, class_tree: ast.AST, class_obj_id: str):
         """
         Extract methods and sub classes of the given class
         
         :param class_tree: abstract syntax tree of the class
-        :type class_tree: ast.Node
+        :type class_tree: ast.AST
         :param class_obj_id: ClassObject id
         :type class_obj_id: str
         """
