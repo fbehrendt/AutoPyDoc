@@ -1,0 +1,48 @@
+name: autopydoc
+
+on:
+    push:
+        branches: [ "main" ]
+
+    # Allows you to run this workflow manually from the Actions tab
+    workflow_dispatch:
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+        - name: Install python
+          run: sudo apt install -y python3
+        # pull autopydoc
+        - name: login to github
+          run: |
+               echo "${{ secrets.FULL_ACCESS_TOKEN }}" | gh auth login --with-token
+               gh auth setup-git
+               git config --global user.name "<your username>"
+        - name: clone AutoPyDoc
+          run: |
+              cd /home/runner/work
+              git clone https://github.com/fbehrendt/AutoPyDoc.git
+        - name: clone this repo
+          run: |
+              cd /home/runner/work/<target repo name>
+              git clone https://github.com/<username>/<target repo name>.git
+        - name: config git
+          run: |
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        - name: install dependencies
+          run: |
+              pip install configparser
+              pip install validators
+              pip install GitPython
+              pip install regex
+              pip install PyGithub
+              pip install python-dotenv
+              pip install restructuredtext_lint
+        - name: run AutoPyDoc
+          run: |
+               python /home/runner/work/AutoPyDoc/src/main_cli.py /home/runner/work/<target repo name>/<target repo name> "${{ secrets.PULL_REQUEST_TOKEN }}"
+
+  
+          
