@@ -94,6 +94,8 @@ class RepoController():
     def pull_repo(self):
         """ Pulls a repository into the self.working_dir folder"""
         print("###pulling remote repository###")
+        if not os.path.exists(self.working_dir): 
+            os.makedirs(self.working_dir) 
         dir = os.listdir(self.working_dir) 
         if len(dir) == 0:
             self.repo = Repo.clone_from(self.repo_url, self.working_dir) 
