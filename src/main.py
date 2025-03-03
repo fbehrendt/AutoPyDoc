@@ -3,10 +3,10 @@ from extract_affected_code_from_change_info import (
     extract_methods_from_change_info,
     extract_classes_from_change_info,
 )
-from docstring_builder import DocstringBuilder, create_docstring
+from docstring_builder import create_docstring
 from validate_docstring import validate_docstring
 import gpt_interface
-from code_representation import CodeObject, MethodObject, ClassObject
+from code_representation import MethodObject, ClassObject
 
 
 class AutoPyDoc:

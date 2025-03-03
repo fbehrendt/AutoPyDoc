@@ -9,7 +9,7 @@ from github import Github
 from dotenv import load_dotenv
 
 from get_context import CodeParser
-from code_representation import CodeRepresenter, MethodObject, ClassObject, CodeObject
+from code_representation import CodeRepresenter, CodeObject
 
 
 class RepoController:
@@ -366,7 +366,7 @@ class RepoController:
 
         :raises Exception: bare repository
         """
-        if self.repo != None:
+        if self.repo is not None:
             # create new branch
             new_branch = self.branch + "_AutoPyDoc"
             current = self.repo.create_head(new_branch)
