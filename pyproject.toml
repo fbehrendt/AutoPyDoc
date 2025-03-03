@@ -1,0 +1,20 @@
+[project]
+dependencies = [
+  "configparser>=7.1.0",
+  "gitpython>=3.1.44",
+  "pygithub>=2.6.1",
+  "python-dotenv>=1.0.1",
+  "regex>=2024.11.6",
+  "restructuredtext-lint>=1.4.0",
+  "validators>=0.34.0",
+]
+description = "Tool to automatically generate and update docstrings for Python code for use in GitHub Actions."
+name = "autopydoc"
+readme = "README.md"
+requires-python = ">=3.12"
+version = "0.1.0"
+
+[dependency-groups]
+dev = [
+  "ruff>=0.9.9",
+]
