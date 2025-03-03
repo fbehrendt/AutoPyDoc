@@ -5,7 +5,7 @@ from code_representation import CodeObject
 class DocstringBuilder:
     """Docstring Builder"""
 
-    def __init__(self, indentation_level: int) -> typing.Self:
+    def __init__(self, indentation_level: int):
         """
         Helper class to create docstrings using the builder pattern
 
@@ -18,7 +18,6 @@ class DocstringBuilder:
         self.indentation_level = indentation_level
         self.params = []
         self.exceptions = []
-        return self
 
     def add_description(self, description: str) -> typing.Self:
         """
