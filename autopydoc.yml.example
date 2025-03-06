@@ -36,4 +36,5 @@ jobs:
       run: uv sync
     - name: run AutoPyDoc
       run: |
+        cd /home/runner/work/AutoPyDoc
         uv run /home/runner/work/AutoPyDoc/src/main_cli.py /home/runner/work/<target repo name>/<target repo name> "${{ secrets.PULL_REQUEST_TOKEN }}"
