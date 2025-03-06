@@ -73,7 +73,7 @@ class AutoPyDoc:
         if self.queries_sent_to_gpt == 0:
             print("No need to do anything")
             quit()
-        self.gpt_interface.send_batch(first_batch, callback=self.process_gpt_result)
+        self.gpt_interface.process_batch(first_batch, callback=self.process_gpt_result)
 
     def generate_next_batch(self, ignore_dependencies=False):
         ids = [
@@ -185,7 +185,9 @@ class AutoPyDoc:
         next_batch = self.generate_next_batch()
         if len(next_batch) > 0:
             self.queries_sent_to_gpt += len(next_batch)
-            self.gpt_interface.send_batch(next_batch, callback=self.process_gpt_result)
+            self.gpt_interface.process_batch(
+                next_batch, callback=self.process_gpt_result
+            )
         # if every docstring is updated
         elif self.queries_sent_to_gpt < 1:
             missing_items = [

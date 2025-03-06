@@ -5,7 +5,7 @@ from models import ModelStrategyFactory
 
 class GptInterface:
     def __init__(self, model_name: str):
-        self.model = ModelStrategyFactory.create_strategy(model_name)
+        self.model = ModelStrategyFactory.create_strategy(model_name, device="cpu")
 
     def process_batch(
         self, batch: list[dict[str, list | dict | str | bool]], callback: Callable
