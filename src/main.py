@@ -1,3 +1,6 @@
+import logging
+
+from code_representation import ClassObject, MethodObject
 from docstring_builder import create_docstring
 from extract_affected_code_from_change_info import (
     extract_classes_from_change_info,
@@ -6,6 +9,13 @@ from extract_affected_code_from_change_info import (
 from gpt_interface import GptInterface
 from repo_controller import RepoController
 from validate_docstring import validate_docstring
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="[%(asctime)s] %(levelname)8s: [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 
 class AutoPyDoc:
