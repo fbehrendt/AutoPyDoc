@@ -201,7 +201,7 @@ class AutoPyDoc:
                 next_batch = self.generate_next_batch(ignore_dependencies=True)
                 if len(next_batch) > 0:
                     self.queries_sent_to_gpt += len(next_batch)
-                    self.gpt_interface.process_batch(
+                    self.gpt_interface.send_batch(
                         next_batch, callback=self.process_gpt_result
                     )
                 if not self.debug:

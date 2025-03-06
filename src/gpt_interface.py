@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from functools import reduce
 
 from models import ModelStrategyFactory
 
@@ -28,75 +27,44 @@ class GptInterface:
         # generate parameter descriptions
         # generate exception descriptions (?)
 
+        change_necessary = True
         for item in batch:
-            try:
-                if "docstring" in item:
-                    change_necessary = self.model.check_outdated(
-                        item["code"], item["docstring"]
-                    )
-                else:
-                    change_necessary = True
-
-                if change_necessary:
-                    # option 1
-                    if item["type"] == "method":
-                        generated_result = self.model.generate_docstring(item["code"])
-
-                        parameter_types = reduce(
-                            lambda r, dic: r.update(dic) or r,
-                            map(
-                                lambda r: {r["name"]: r["type"]},
-                                generated_result["parameters"],
-                            ),
-                            {},
-                        )
-                        parameter_descriptions = reduce(
-                            lambda r, dic: r.update(dic) or r,
-                            map(
-                                lambda r: {r["name"]: r["descriptions"]},
-                                generated_result["parameters"],
-                            ),
-                            {},
-                        )
-
-                        return_description = generated_result["returns"]
-
-                        mocked_result = {
-                            "id": item["id"],
-                            "no_change_necessary": False,
-                            "description": generated_result["description"],
-                            "parameter_types": {
-                                name: parameter_types[name]
-                                for name in item["missing_parameters"]
-                            },
-                            "parameter_descriptions": {
-                                param["name"]: parameter_descriptions[param["name"]]
-                                for param in item["parameters"]
-                            },
-                            "exception_descriptions": {
-                                exception: "MOCK exception description"
-                                for exception in item["exceptions"]
-                            },
-                            "return_description": return_description,
-                        }
-                        if item["return_missing"]:
-                            mocked_result["return_type"] = "MOCK return type"
-                    elif item["type"] == "class":
-                        # TODO: change prompt to accomodate classes
-                        mocked_result = {
-                            "id": item["id"],
-                            "no_change_necessary": False,
-                            "description": "MOCK This is a docstring description.",
-                        }
-                    else:
-                        raise NotImplementedError
-                else:
-                    # option two
+            # change_necessary = not change_necessary
+            if change_necessary:
+                # option 1
+                if item["type"] == "method":
                     mocked_result = {
                         "id": item["id"],
-                        "no_change_necessary": True,
+                        "no_change_necessary": False,
+                        "description": "MOCK This is a docstring description.",
+                        "parameter_types": {
+                            name: "MOCK type" for name in item["missing_parameters"]
+                        },
+                        "parameter_descriptions": {
+                            param["name"]: "MOCK description for this parameter"
+                            for param in item["parameters"]
+                        },
+                        "exception_descriptions": {
+                            exception: "MOCK exception description"
+                            for exception in item["exceptions"]
+                        },
+                        "return_description": "MOCK return type description",
                     }
+                    if item["return_missing"]:
+                        mocked_result["return_type"] = "MOCK return type"
+                elif item["type"] == "class":
+                    mocked_result = {
+                        "id": item["id"],
+                        "no_change_necessary": False,
+                        "description": "MOCK This is a docstring description.",
+                    }
+                else:
+                    raise NotImplementedError
+            else:
+                # option two
+                mocked_result = {
+                    "id": item["id"],
+                    "no_change_necessary": True,
+                }
 
-                callback(mocked_result)
-            except Exception as e:
-                print("Error in batch processing", e)
+            callback(mocked_result)
