@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
 from models import ModelStrategyFactory
+from gpt_input import GptOutput, GptOutputMethod
 
 
 class GptInterface:
@@ -33,38 +34,40 @@ class GptInterface:
             if change_necessary:
                 # option 1
                 if item.code_type == "method":
-                    mocked_result = {
-                        "id": item.id,
-                        "no_change_necessary": False,
-                        "description": "MOCK This is a docstring description.",
-                        "parameter_types": {
+                    return_type = None
+                    if item.return_missing:
+                        return_type = "MOCK return type"
+                    mocked_result = GptOutputMethod(
+                        id=item.id,
+                        no_change_necessary=False,
+                        description="MOCK This is a docstring description.",
+                        parameter_types={
                             name: "MOCK type" for name in item.missing_parameters
                         },
-                        "parameter_descriptions": {
+                        parameter_descriptions={
                             param["name"]: "MOCK description for this parameter"
                             for param in item.parameters
                         },
-                        "exception_descriptions": {
+                        exception_descriptions={
                             exception: "MOCK exception description"
                             for exception in item.exceptions
                         },
-                        "return_description": "MOCK return type description",
-                    }
-                    if item.return_missing:
-                        mocked_result["return_type"] = "MOCK return type"
+                        return_description="MOCK return type description",
+                        return_missing=item.return_missing,
+                        return_type=return_type,
+                    )
                 elif item.code_type == "class":
-                    mocked_result = {
-                        "id": item.id,
-                        "no_change_necessary": False,
-                        "description": "MOCK This is a docstring description.",
-                    }
+                    mocked_result = GptOutput(
+                        id=item.id,
+                        no_change_necessary=False,
+                        description="MOCK This is a docstring description.",
+                    )
                 else:
                     raise NotImplementedError
             else:
                 # option two
-                mocked_result = {
-                    "id": item.id,
-                    "no_change_necessary": True,
-                }
+                mocked_result = GptOutput(
+                    item.id, no_change_necessary=True, description=""
+                )
 
             callback(mocked_result)

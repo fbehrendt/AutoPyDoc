@@ -30,3 +30,20 @@ class GptInputClassObject(GptInputCodeObject):
     parent_class_id: str | None = field(default=None, compare=True, hash=True)
     parent_module_id: str | None = field(default=None, compare=True, hash=True)
     inherited_from: str | None = field(default=None, compare=True, hash=True)
+
+
+@dataclass
+class GptOutput:
+    id: str = field(compare=True, hash=True)
+    no_change_necessary: bool = field(compare=True, hash=True)
+    description: str
+
+
+@dataclass
+class GptOutputMethod(GptOutput):
+    parameter_types: dict[str, str]
+    parameter_descriptions: dict[str, str]
+    exception_descriptions: dict[str, str]
+    return_description: str
+    return_missing: bool
+    return_type: str = field(default=None)
