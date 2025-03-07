@@ -1,4 +1,5 @@
 import ast
+from gpt_input import GptInputCodeObject, GptInputMethodObject, GptInputClassObject
 
 
 class CodeObject:
@@ -49,18 +50,13 @@ class CodeObject:
         self.id = filename + "_" + self.type + "_" + self.name
         # print(self.id)
         self.body = body
-        if docstring:
-            self.docstring = docstring
+        self.docstring = docstring
         self.ast_tree = ast_tree
-        if code:
-            self.code = code
-        if arguments:
-            self.arguments = arguments
+        self.code = code
+        self.arguments = arguments
         self.ast_tree = ast_tree
-        if return_type:
-            self.return_type = return_type
-        if exceptions:
-            self.exceptions = exceptions
+        self.return_type = return_type
+        self.exceptions = exceptions
         self.called_methods = []
         self.called_classes = []
         self.called_by_methods = []
@@ -187,6 +183,18 @@ class CodeObject:
         """
         return self.code
 
+    def get_gpt_input(self, code_representer):
+        return GptInputCodeObject(
+            id=self.id,
+            code_type=self.type,
+            name=self.name,
+            docstring=self.docstring,
+            code=self.code,
+            context=self.get_context(),
+            context_docstrings=code_representer.get_context_docstrings(self.id),
+            exceptions=self.exceptions,
+        )
+
 
 class ClassObject(CodeObject):
     """Representation of a class"""
@@ -205,6 +213,7 @@ class ClassObject(CodeObject):
         arguments: list = None,
         return_type: str = None,
         exceptions: list[str] = None,
+        inherited_from: str = None,
     ):
         """
         Represent a class. Extends CodeObject
@@ -237,6 +246,7 @@ class ClassObject(CodeObject):
         self.signature = signature
         self.class_obj_id = class_obj_id
         self.module_obj_id = module_obj_id
+        self.inherited_from = inherited_from
         super().__init__(
             name,
             filename,
@@ -270,6 +280,21 @@ class ClassObject(CodeObject):
         result["class_obj_id"] = self.class_obj_id
         result["module_obj_id"] = self.module_obj_id
         return result
+
+    def get_gpt_input(self, code_representer):
+        return GptInputClassObject(
+            id=self.id,
+            code_type=self.type,
+            name=self.name,
+            docstring=self.docstring,
+            code=self.code,
+            context=self.get_context(),
+            context_docstrings=code_representer.get_context_docstrings(self.id),
+            exceptions=self.exceptions,
+            parent_class_id=self.class_obj_id,
+            parent_module_id=self.module_obj_id,
+            inherited_from=self.inherited_from,
+        )
 
 
 class MethodObject(CodeObject):
@@ -384,6 +409,40 @@ class MethodObject(CodeObject):
         """
         return self.missing_arg_types
 
+    def get_arguments(self):
+        if hasattr(self, "arguments"):
+            return [
+                argument for argument in self.arguments if argument["name"] != "self"
+            ]  # ignore self
+        return None
+
+    def get_missing_params(self):
+        # TODO this is a fix
+        # for some unknown reason not all missing params are identified
+        missing_parameters = self.get_missing_arg_types()
+        params = [param["name"] for param in self.get_arguments()]
+        for param in params:
+            if param not in missing_parameters:
+                missing_parameters.append(param)
+        return missing_parameters
+
+    def get_gpt_input(self, code_representer):
+        return GptInputMethodObject(
+            id=self.id,
+            code_type=self.type,
+            name=self.name,
+            docstring=self.docstring,
+            code=self.code,
+            context=self.get_context(),
+            context_docstrings=code_representer.get_context_docstrings(self.id),
+            exceptions=self.exceptions,
+            parent_class_id=self.class_obj_id,
+            parent_module_id=self.module_obj_id,
+            parameters=code_representer.get_arguments(self.id),
+            missing_parameters=self.get_missing_params(),
+            return_missing=self.missing_return_type,
+        )
+
 
 class CodeRepresenter:
     """Represent all code pieces like modules, classes and methods"""
@@ -450,7 +509,7 @@ class CodeRepresenter:
 
     def get_arguments(self, code_obj_id: str) -> list[str] | None:
         """
-        Get the arguments of a CodeObject, if exists. DO not return self as an argument
+        Get the arguments of a CodeObject, if exists. Do not return self as an argument
 
         :param code_obj_id: CodeObject id
         :type code_obj_id: str

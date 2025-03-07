@@ -88,59 +88,11 @@ class AutoPyDoc:
             code_obj = self.repo.code_parser.code_representer.get(id)
             code_obj.send_to_gpt = True
             # TODO add instance and class variables to above dict if code_obj.type is class
-            if isinstance(code_obj, MethodObject):
-                # TODO this is a fix
-                # for some unknown reason not all missing params are identified
-                missing_parameters = code_obj.get_missing_arg_types()
-                params = [
-                    param["name"]
-                    for param in self.repo.code_parser.code_representer.get_arguments(
-                        code_obj.id
-                    )
-                ]
-                for param in params:
-                    if param not in missing_parameters:
-                        missing_parameters.append(param)
-
-                batch.append(
-                    {
-                        "id": code_obj.id,
-                        "type": code_obj.type,
-                        "name": code_obj.name,
-                        "parent_class": code_obj.class_obj_id,
-                        "docstring": code_obj.get_docstring(),
-                        "code": code_obj.code,
-                        "context": code_obj.get_context(),
-                        "context_docstrings": self.repo.code_parser.code_representer.get_context_docstrings(
-                            code_obj.id
-                        ),
-                        "parameters": self.repo.code_parser.code_representer.get_arguments(
-                            code_obj.id
-                        ),
-                        "missing_parameters": missing_parameters,
-                        "return_missing": code_obj.missing_return_type,
-                        "exceptions": self.repo.code_parser.code_representer.get_exceptions(
-                            code_obj.id
-                        ),
-                    }
+            batch.append(
+                code_obj.get_gpt_input(
+                    code_representer=self.repo.code_parser.code_representer
                 )
-            elif isinstance(code_obj, ClassObject):
-                batch.append(
-                    {
-                        "id": code_obj.id,
-                        "type": code_obj.type,
-                        "name": code_obj.name,
-                        "parent_class": code_obj.class_obj_id,
-                        "docstring": code_obj.get_docstring(),
-                        "code": code_obj.code,
-                        "context": code_obj.get_context(),
-                        "context_docstrings": self.repo.code_parser.code_representer.get_context_docstrings(
-                            code_obj.id
-                        ),
-                    }
-                )
-            else:
-                raise NotImplementedError
+            )
         return batch
 
     def process_gpt_result(self, result):
