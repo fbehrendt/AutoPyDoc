@@ -3,7 +3,12 @@ import os
 import pathlib
 from typing import Self
 
-from code_representation import CodeObject, ClassObject, MethodObject, CodeRepresenter
+from code_representation import (
+    CodeObject,
+    ClassObject,
+    MethodObject,
+    CodeRepresenter,
+)
 from import_finder import ImportFinder
 
 code = CodeRepresenter()

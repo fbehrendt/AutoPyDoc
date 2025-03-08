@@ -1,71 +1,70 @@
-import ast
+from ast import AST
+from dataclasses import dataclass, field, fields
+
 from gpt_input import GptInputCodeObject, GptInputMethodObject, GptInputClassObject
 
 
+@dataclass.dataclass(unsafe_hash=True)
 class CodeObject:
     """
     Represent a piece of code like a module, class or method
+
+    :param name: Name of the code piece. Usually the method or class name
+    :type name: str
+    :param filename: File where the code is located
+    :type filename: str
+    :param code_type: The kind of code. E.g. method or class
+    :type code_type: str
+    :param ast: Ast representation of the code
+    :type ast: ast.AST
+    :param docstring: Docstring of the code piece. Optional
+    :type docstring: str
+    :param code: Code of the code piece
+    :type code: str
+    :param exceptions: Exceptions raised by the code piece. Optional
+    :type exceptions: list(str)
     """
 
-    def __init__(
-        self,
-        name: str,
-        filename: str,
-        code_type: str,
-        body: list,
-        ast_tree: ast.AST,
-        docstring: str = None,
-        code: str = None,
-        arguments: list = None,
-        return_type: str = None,
-        exceptions: list[str] = None,
-    ):
-        """
-        Represent a piece of code like a module, class or method
+    name: str = field(compare=True, hash=True, metadata={"frozen": True})
+    filename: str = field(compare=True, hash=True, metadata={"frozen": True})
+    code_type: str = field(compare=True, hash=True, metadata={"frozen": True})
+    ast: AST = field(compare=False, hash=False, metadata={"frozen": True})
+    docstring: str | None = field(compare=False, hash=False)
+    code: str | None = field(compare=True, hash=True, metadata={"frozen": True})
 
-        :param name: Name of the code piece. Usually the method or class name
-        :type name: str
-        :param filename: File where the code is located
-        :type filename: str
-        :param code_type: The kind of code. E.g. method or class
-        :type code_type: str
-        :param body: list of ast elements of the ast representation of this code piece
-        :type body: list
-        :param ast_tree: Ast representation of the code
-        :type ast_tree: ast.AST
-        :param docstring: Docstring of the code piece. Optional
-        :type docstring: str
-        :param code: Code of the code piece
-        :type code: str
-        :param arguments: Arguments of the code obj. Optional
-        :type arguments: list
-        :param return_type: Return type of the code piece. Optional
-        :type return_type: str
-        :param exceptions: Exceptions raised by the code piece. Optional
-        :type exceptions: list(str)
-        """
-        self.name = name
-        self.filename = filename
-        self.type = code_type
-        self.id = filename + "_" + self.type + "_" + self.name
-        # print(self.id)
-        self.body = body
-        self.docstring = docstring
-        self.ast_tree = ast_tree
-        self.code = code
-        self.arguments = arguments
-        self.ast_tree = ast_tree
-        self.return_type = return_type
-        self.exceptions = exceptions
-        self.called_methods = []
-        self.called_classes = []
-        self.called_by_methods = []
-        self.called_by_classes = []
-        self.called_by_modules = []
-        self.exceptions = []
+    exceptions: list[str] | None = field(compare=True, hash=True)
+
+    def __post_init__(self):
+        self.__set_fields_frozen(self)
+        self.id = hash(self)
+        self.called_methods = set()
+        self.called_classes = set()
+        self.called_by_methods = set()
+        self.called_by_classes = set()
+        self.called_by_modules = set()
         self.outdated = False
         self.is_updated = False
         self.send_to_gpt = False
+
+    @classmethod
+    def __set_fields_frozen(cls, self):
+        flds = fields(cls)
+        for fld in flds:
+            if fld.metadata.get("frozen"):
+                field_name = fld.name
+                field_value = getattr(self, fld.name)
+                setattr(self, f"_{fld.name}", field_value)
+
+                def local_getter(self):
+                    return getattr(self, f"_{field_name}")
+
+                def frozen(name):
+                    def local_setter(self, value):
+                        raise RuntimeError(f"Field '{name}' is frozen!")
+
+                    return local_setter
+
+                setattr(cls, field_name, property(local_getter, frozen(field_name)))
 
     def add_called_method(self, called_method_id: str):
         """
@@ -74,7 +73,7 @@ class CodeObject:
         :param called_method_id: id of the called method
         :type called_method_id: str
         """
-        self.called_methods.append(called_method_id)
+        self.called_methods.add(called_method_id)
 
     def add_called_class(self, called_class_id: str):
         """
@@ -83,7 +82,7 @@ class CodeObject:
         :param called_class_id: id of the called class
         :type called_class_id: str
         """
-        self.called_classes.append(called_class_id)
+        self.called_classes.add(called_class_id)
 
     def add_caller_method(self, caller_method_id: str):
         """
@@ -92,7 +91,7 @@ class CodeObject:
         :param caller_method_id: id of the calling method
         :type caller_method_id: str
         """
-        self.called_by_methods.append(caller_method_id)
+        self.called_by_methods.add(caller_method_id)
 
     def add_caller_class(self, caller_class_id: str):
         """
@@ -101,7 +100,7 @@ class CodeObject:
         :param caller_class_id: id of the calling class
         :type caller_class_id: str
         """
-        self.called_by_classes.append(caller_class_id)
+        self.called_by_classes.add(caller_class_id)
 
     def add_caller_module(self, caller_module_id: str):
         """
@@ -110,7 +109,7 @@ class CodeObject:
         :param caller_module_id: id of the calling module
         :type caller_module_id: str
         """
-        self.called_by_modules.append(caller_module_id)
+        self.called_by_modules.add(caller_module_id)
 
     def add_docstring(self, docstring: str):
         """
@@ -121,24 +120,6 @@ class CodeObject:
         """
         self.docstring = docstring
 
-    def add_ast(self, ast: ast.AST):
-        """
-        Add the ast representation of a code piece
-
-        :param ast: abstract syntax tree of the code piece
-        :type ast: ast.AST
-        """
-        self.ast = ast
-
-    def add_code(self, code: str):
-        """
-        Add the code of a code piece
-
-        :param code: code of the code piece
-        :type code: str
-        """
-        self.code = code
-
     def add_exception(self, exception: str):
         """
         Add an exception that is raise by this code piece
@@ -146,7 +127,7 @@ class CodeObject:
         :param exception: The exception that is raised
         :type exception: str
         """
-        self.exceptions.append(exception)
+        self.exceptions.add(exception)
 
     def get_context(self) -> dict[str, list[str]]:
         """
@@ -163,27 +144,13 @@ class CodeObject:
             "called_by_modules": self.called_by_modules,
         }
 
-    def get_docstring(self) -> str | None:
-        """
-        Return the docstring or None, if no docstring exists
-
-        :return: docstring or None
-        :return type: str|None
-        """
-        if hasattr(self, "docstring"):
-            return self.docstring
-        return None
-
-    def get_code(self) -> str:
-        """
-        Return the code itself
-
-        :return: the code
-        :return type: str
-        """
-        return self.code
-
     def get_gpt_input(self, code_representer):
+        """
+        Create a gpt input object
+
+        :return: GptInput object
+        :return type: GptInputCodeObject
+        """
         return GptInputCodeObject(
             id=self.id,
             code_type=self.type,
@@ -196,188 +163,45 @@ class CodeObject:
         )
 
 
-class ClassObject(CodeObject):
-    """Representation of a class"""
-
-    def __init__(
-        self,
-        name: str,
-        filename: str,
-        signature: str,
-        body: list,
-        ast_tree: ast.AST,
-        class_obj_id: str = None,
-        module_obj_id: str = None,
-        docstring: str = None,
-        code: str = None,
-        arguments: list = None,
-        return_type: str = None,
-        exceptions: list[str] = None,
-        inherited_from: str = None,
-    ):
-        """
-        Represent a class. Extends CodeObject
-
-        :param name: Name of the code piece. Usually the method or class name
-        :type name: str
-        :param filename: File where the code is located
-        :type filename: str
-        :param signature: signature of the class
-        :type signature: str
-        :param body: list of elements of the ast representation of the class
-        :type body: list
-        :param ast_tree: Ast representation of the code
-        :type ast_tree: ast.AST
-        :param class_obj_id: id of the parent class, if exists. Optional
-        :type class_obj_id: str|None
-        :param module_obj_id: id of the module which this class is part of, if exists. Optional
-        :type module_obj_id: str|None
-        :param docstring: Docstring of the code piece. Optional
-        :type docstring: str
-        :param code: Code of the code piece
-        :type code: str
-        :param arguments: Arguments of the code obj. Optional
-        :type arguments: list
-        :param return_type: Return type of the code piece. Optional
-        :type return_type: str
-        :param exceptions: Exceptions raised by the code piece. Optional
-        :type exceptions: list[str]
-        """
-        self.signature = signature
-        self.class_obj_id = class_obj_id
-        self.module_obj_id = module_obj_id
-        self.inherited_from = inherited_from
-        super().__init__(
-            name,
-            filename,
-            "class",
-            body=body,
-            ast_tree=ast_tree,
-            docstring=docstring,
-            code=code,
-            arguments=arguments,
-            return_type=return_type,
-            exceptions=exceptions,
-        )
-
-    def add_module(self, module_obj_id: str):
-        """
-        Add the id of the module, of which this class is a part of
-
-        :param module_obj_id: id of the parent module
-        :type module_obj_id: str
-        """
-        self.module_obj_id = module_obj_id
-
-    def get_context(self) -> dict[str, list[str] | str]:
-        """
-        Get the ids of context code pieces
-
-        :return: A dictionary of types of context, containing lists of code ids or a code id
-        :return type: dict[str, list[str]|str]
-        """
-        result = super().get_context()
-        result["class_obj_id"] = self.class_obj_id
-        result["module_obj_id"] = self.module_obj_id
-        return result
-
-    def get_gpt_input(self, code_representer):
-        return GptInputClassObject(
-            id=self.id,
-            code_type=self.type,
-            name=self.name,
-            docstring=self.docstring,
-            code=self.code,
-            context=self.get_context(),
-            context_docstrings=code_representer.get_context_docstrings(self.id),
-            exceptions=self.exceptions,
-            parent_class_id=self.class_obj_id,
-            parent_module_id=self.module_obj_id,
-            inherited_from=self.inherited_from,
-        )
-
-
+@dataclass.dataclass(unsafe_hash=True)
 class MethodObject(CodeObject):
-    """Represent a method. Extends CodeObject"""
+    """
+    Represent a method. Extends CodeObject
 
-    def __init__(
-        self,
-        name: str,
-        filename: str,
-        signature: str,
-        body: list,
-        ast_tree: ast.AST,
-        class_obj_id: str = None,
-        module_obj_id: str = None,
-        docstring: str = None,
-        code: str = None,
-        arguments: list = None,
-        return_type: str = None,
-        exceptions: list = None,
-    ):
-        """
-        Represent a method. Extends CodeObject
+    :param name: Name of the code piece. Usually the method or class name
+    :type name: str
+    :param filename: File where the code is located
+    :type filename: str
+    :param signature: signature of the class
+    :type signature: str
+    :param body: list of elements of the ast representation of the class
+    :type body: list
+    :param ast: Ast representation of the code
+    :type ast: ast.AST
+    :param outer_class_id: id of the outer class, if exists. Optional
+    :type outer_class_id: str|None
+    :param module_id: id of the module which this class is part of, if exists. Optional
+    :type module_id: str|None
+    :param docstring: Docstring of the code piece. Optional
+    :type docstring: str
+    :param code: Code of the code piece
+    :type code: str
+    :param arguments: Arguments of the code obj. Optional
+    :type arguments: list
+    :param return_type: Return type of the code piece. Optional
+    :type return_type: str
+    :param exceptions: Exceptions raised by the code piece. Optional
+    :type exceptions: list[str]
+    """
 
-        :param name: Name of the code piece. Usually the method or class name
-        :type name: str
-        :param filename: File where the code is located
-        :type filename: str
-        :param signature: signature of the class
-        :type signature: str
-        :param body: list of elements of the ast representation of the class
-        :type body: list
-        :param ast_tree: Ast representation of the code
-        :type ast_tree: ast.AST
-        :param class_obj_id: id of the parent class, if exists. Optional
-        :type class_obj_id: str|None
-        :param module_obj_id: id of the module which this class is part of, if exists. Optional
-        :type module_obj_id: str|None
-        :param docstring: Docstring of the code piece. Optional
-        :type docstring: str
-        :param code: Code of the code piece
-        :type code: str
-        :param arguments: Arguments of the code obj. Optional
-        :type arguments: list
-        :param return_type: Return type of the code piece. Optional
-        :type return_type: str
-        :param exceptions: Exceptions raised by the code piece. Optional
-        :type exceptions: list[str]
-        """
-        self.signature = signature
-        self.class_obj_id = class_obj_id
-        self.module_obj_id = module_obj_id
-        self.missing_arg_types = []
-        self.missing_return_type = False
-        super().__init__(
-            name,
-            filename,
-            "method",
-            body,
-            ast_tree,
-            docstring=docstring,
-            code=code,
-            arguments=arguments,
-            return_type=return_type,
-            exceptions=exceptions,
-        )
+    arguments: set | None = field(compare=False, hash=False)
+    return_type: str | None = field(compare=False, hash=False)
+    outer_class_id: str | None = field(default=None, compare=True, hash=True)
+    module_id: str | None = field(default=None, compare=True, hash=True)
 
-    def add_module(self, module_obj_id: str):
-        """
-        Add the id of the module, of which this class is a part of
-
-        :param module_obj_id: id of the parent module
-        :type module_obj_id: str
-        """
-        self.module_obj_id = module_obj_id
-
-    def add_class(self, class_obj: str):
-        """
-        Add the id of the class, of which this class is a part of
-
-        :param class_obj_id: id of the parent class
-        :type class_obj_id: str
-        """
-        self.class_obj = class_obj
+    def __post_init__(self):
+        super().__post_init__(self)
+        self.missing_arg_types = set()
 
     def get_context(self) -> dict[str, list[str] | str]:
         """
@@ -387,8 +211,8 @@ class MethodObject(CodeObject):
         :return type: dict[str, list[str]|str]
         """
         result = super().get_context()
-        result["class_obj_id"] = self.class_obj_id
-        result["module_obj_id"] = self.module_obj_id
+        result["outer_class_id"] = self.outer_class_id
+        result["module_id"] = self.module_id
         return result
 
     def add_missing_arg_type(self, arg_name: str):
@@ -398,14 +222,14 @@ class MethodObject(CodeObject):
         :param arg_name: Name of the argument for which type information is missing
         :type arg_name: str
         """
-        self.missing_arg_types.append(arg_name)
+        self.missing_arg_types.add(arg_name)
 
-    def get_missing_arg_types(self) -> list[str]:
+    def get_missing_arg_types(self) -> set[str]:
         """
-        Get a list of arguments, for which the return type is missing
+        Get a set of arguments, for which the return type is missing
 
-        :return: list of arguments, for which the return type is missing
-        :return type: list[str]
+        :return: set of arguments, for which the return type is missing
+        :return type: set[str]
         """
         return self.missing_arg_types
 
@@ -423,7 +247,7 @@ class MethodObject(CodeObject):
         params = [param["name"] for param in self.get_arguments()]
         for param in params:
             if param not in missing_parameters:
-                missing_parameters.append(param)
+                missing_parameters.add(param)
         return missing_parameters
 
     def get_gpt_input(self, code_representer):
@@ -441,6 +265,70 @@ class MethodObject(CodeObject):
             parameters=code_representer.get_arguments(self.id),
             missing_parameters=self.get_missing_params(),
             return_missing=self.missing_return_type,
+        )
+
+
+@dataclass.dataclass(unsafe_hash=True)
+class ClassObject(CodeObject):
+    """
+    Represent a class. Extends CodeObject
+
+    :param name: Name of the code piece. Usually the method or class name
+    :type name: str
+    :param filename: File where the code is located
+    :type filename: str
+    :param signature: signature of the class
+    :type signature: str
+    :param ast: Ast representation of the code
+    :type ast: ast.AST
+    :param outer_class_id: id of the outer class, if exists. Optional
+    :type outer_class_id: str|None
+    :param module_id: id of the module which this class is part of, if exists. Optional
+    :type module_id: str|None
+    :param docstring: Docstring of the code piece. Optional
+    :type docstring: str
+    :param code: Code of the code piece
+    :type code: str
+    :param exceptions: Exceptions raised by the code piece. Optional
+    :type exceptions: list[str]
+    """
+
+    outer_class_id: str = field(default=None, compare=True, hash=True)
+    module_id: str = field(default=None, compare=True, hash=True)
+    inherited_from: str = field(default=None, compare=True, hash=True)
+
+    def get_context(self) -> dict[str, list[str] | str]:
+        """
+        Get the ids of context code pieces
+
+        :return: A dictionary of types of context, containing lists of code ids or a code id
+        :return type: dict[str, list[str]|str]
+        """
+        result = super().get_context()
+        result["class_obj_id"] = self.outer_class_id
+        result["module_obj_id"] = self.module_id
+        result["inherited_from"] = self.inherited_from
+        return result
+
+    def get_gpt_input(self, code_representer):
+        """
+        Create a gpt input object
+
+        :return: GptInput object
+        :return type: GptInputCodeObject
+        """
+        return GptInputClassObject(
+            id=self.id,
+            code_type=self.type,
+            name=self.name,
+            docstring=self.docstring,
+            code=self.code,
+            context=self.get_context(),
+            context_docstrings=code_representer.get_context_docstrings(self.id),
+            exceptions=self.exceptions,
+            parent_class_id=self.outer_class_id,
+            parent_module_id=self.module_id,
+            inherited_from=self.inherited_from,
         )
 
 

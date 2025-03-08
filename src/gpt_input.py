@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 
-@dataclass
+@dataclass.dataclass(frozen=True)
 class GptInputCodeObject:
     id: str = field(compare=True, hash=True)  #  = field(default_factory=build_id)
     code_type: str = field(compare=True, hash=True)
@@ -16,7 +16,7 @@ class GptInputCodeObject:
     #     pass
 
 
-@dataclass
+@dataclass.dataclass(frozen=True)
 class GptInputMethodObject(GptInputCodeObject):
     parameters: list[str] | None = field(default=None, compare=True, hash=True)
     missing_parameters: list | None = field(default=None, hash=False)
@@ -25,21 +25,21 @@ class GptInputMethodObject(GptInputCodeObject):
     parent_module_id: str | None = field(default=None, compare=True, hash=True)
 
 
-@dataclass
+@dataclass.dataclass(frozen=True)
 class GptInputClassObject(GptInputCodeObject):
     parent_class_id: str | None = field(default=None, compare=True, hash=True)
     parent_module_id: str | None = field(default=None, compare=True, hash=True)
     inherited_from: str | None = field(default=None, compare=True, hash=True)
 
 
-@dataclass
+@dataclass.dataclass(frozen=True)
 class GptOutput:
     id: str = field(compare=True, hash=True)
     no_change_necessary: bool = field(compare=True, hash=True)
     description: str
 
 
-@dataclass
+@dataclass.dataclass(frozen=True)
 class GptOutputMethod(GptOutput):
     parameter_types: dict[str, str]
     parameter_descriptions: dict[str, str]
