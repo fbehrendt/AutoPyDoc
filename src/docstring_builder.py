@@ -1,5 +1,5 @@
 import typing
-from code_representation import CodeObject
+from code_representation import CodeObject, MethodObject, ClassObject, ModuleObject
 
 
 class DocstringBuilder:
@@ -165,7 +165,7 @@ def create_docstring(
     if not debug:
         raise NotImplementedError
     docstring_builder.add_description(result.description)  # TODO
-    if code_obj.type == "method":
+    if isinstance(code_obj, MethodObject):
         for param in code_obj.arguments:
             if param["name"] == "self":  # skip self
                 continue
@@ -198,7 +198,7 @@ def create_docstring(
             docstring_builder.add_return(
                 return_type=return_type, return_description=result.return_description
             )  # TODO
-    elif code_obj.type == "class":
+    elif isinstance(code_obj, ClassObject):
         if not debug:
             raise NotImplementedError  # TODO
         pass

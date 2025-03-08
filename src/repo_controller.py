@@ -9,7 +9,13 @@ from github import Github
 from dotenv import load_dotenv
 
 from get_context import CodeParser
-from code_representation import CodeRepresenter, CodeObject
+from code_representation import (
+    CodeRepresenter,
+    CodeObject,
+    MethodObject,
+    ClassObject,
+    ModuleObject,
+)
 
 
 class RepoController:
@@ -172,27 +178,6 @@ class RepoController:
         return result
 
     @staticmethod
-    def get_method_id(changed_method: dict[str, str]) -> str:
-        """
-        Get a methods id based on change information. Static method
-
-        :param changed_method: change information of the method. Must contain keys filename, type, content
-        :type change_method: dict[str, str]
-
-        :return: method id
-        :return type: str
-        """
-        pattern = re.compile("def ([^\(]+)")
-        method_name = re.findall(pattern, changed_method["content"])[0]
-        return (
-            changed_method["filename"]
-            + "_"
-            + changed_method["type"]
-            + "_"
-            + method_name
-        )
-
-    @staticmethod
     def get_class_id(changed_class: dict[str, str]) -> str:
         """
         Get a classes id based on change information. Static method
@@ -267,11 +252,11 @@ class RepoController:
                     ):
                         start_pos = i + 1
                         break
-            if code_obj.type == "method":
+            if isinstance(code_obj, MethodObject):
                 prefix = "def "
-            elif code_obj.type == "class":
+            elif isinstance(code_obj, ClassObject):
                 prefix = "class "
-            elif code_obj.type == "module":
+            elif isinstance(code_obj, ModuleObject):
                 return (0, 0, len(lines))  # full file
             else:
                 raise NotImplementedError

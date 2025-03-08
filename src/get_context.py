@@ -5,6 +5,7 @@ from typing import Self
 
 from code_representation import (
     CodeObject,
+    ModuleObject,
     ClassObject,
     MethodObject,
     CodeRepresenter,
@@ -65,7 +66,7 @@ class CodeParser:
             return
         self.ducttape = True
         for code_obj in self.code_representer.objects.values():
-            if code_obj.type == "module":
+            if code_obj.code_type == "module":
                 pass  # TODO remove
             self.extract_class_and_method_calls(parent_obj=code_obj)
             self.extract_args_and_return_type(method_obj=code_obj)
@@ -79,19 +80,20 @@ class CodeParser:
         :param tree: abstract syntax tree of the file
         :type tree: ast.AST
         """
+        module_id = None
         if isinstance(tree, ast.Module):
             module_name = ""  # TODO get module name
             docstring = ast.get_docstring(node=tree, clean=True)
             source_code = open(self.full_path).read()
-            module_obj = CodeObject(
+            module_obj = ModuleObject(
                 name=module_name,
                 filename=self.full_path,
-                code_type="module",
-                body=tree.body,
-                ast_tree=tree,
+                ast=tree,
                 docstring=docstring,
                 code=source_code,
             )
+            # module_obj.name = "test" # test frozen variable
+            module_id = hash(module_obj)
             self.code_representer.objects[module_obj.id] = module_obj
         for node in tree.body:
             if isinstance(node, ast.FunctionDef):
@@ -103,11 +105,11 @@ class CodeParser:
                 method_obj = MethodObject(
                     name=func_def_name,
                     filename=self.full_path,
-                    signature="signature mock",
-                    body=node.body,
-                    ast_tree=node,
+                    ast=node,
                     docstring=docstring,
                     code=source_code,
+                    module_id=module_id,
+                    outer_class_id=None,
                 )
                 self.code_representer.add_code_obj(method_obj)
             if isinstance(node, ast.AsyncFunctionDef):
@@ -119,11 +121,11 @@ class CodeParser:
                 method_obj = MethodObject(
                     name=func_def_name,
                     filename=self.full_path,
-                    signature="signature mock",
-                    body=node.body,
-                    ast_tree=node,
+                    ast=node,
                     docstring=docstring,
                     code=source_code,
+                    module_id=module_id,
+                    outer_class_id=None,
                 )
                 self.code_representer.add_code_obj(method_obj)
             if isinstance(node, ast.Lambda):
@@ -137,19 +139,18 @@ class CodeParser:
                 class_obj = ClassObject(
                     name=class_def_name,
                     filename=self.full_path,
-                    signature="signature mock",
-                    body=node.body,
-                    ast_tree=node,
+                    ast=node,
                     docstring=docstring,
                     code=source_code,
+                    module_id=module_id,
+                    outer_class_id=None,
                 )
                 self.code_representer.add_code_obj(class_obj)
-                self.extract_class_methods_and_sub_classes(
-                    class_tree=node, class_obj_id=class_obj.id
-                )
+                self.extract_class_methods_and_sub_classes(class_obj_id=class_obj.id)
 
     def extract_class_methods_and_sub_classes(
-        self, class_tree: ast.AST, class_obj_id: str
+        self,
+        class_obj_id: str,
     ):
         """
         Extract methods and sub classes of the given class
@@ -159,7 +160,8 @@ class CodeParser:
         :param class_obj_id: ClassObject id
         :type class_obj_id: str
         """
-        for node in class_tree.body:
+        outer_class = self.code_representer.get(class_obj_id)
+        for node in outer_class.ast.body:
             if isinstance(node, ast.FunctionDef):
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
@@ -169,12 +171,11 @@ class CodeParser:
                 method_obj = MethodObject(
                     name=func_def_name,
                     filename=self.full_path,
-                    signature="signature mock",
-                    body=node.body,
-                    ast_tree=node,
-                    class_obj_id=class_obj_id,
+                    ast=node,
                     docstring=docstring,
                     code=source_code,
+                    module_id=outer_class.module_id,
+                    outer_class_id=outer_class.id,
                 )
                 self.code_representer.add_code_obj(method_obj)
             if isinstance(node, ast.AsyncFunctionDef):
@@ -186,12 +187,12 @@ class CodeParser:
                 method_obj = MethodObject(
                     name=func_def_name,
                     filename=self.full_path,
-                    signature="signature mock",
-                    body=node.body,
-                    ast_tree=node,
+                    ast=node,
                     class_obj_id=class_obj_id,
                     docstring=docstring,
                     code=source_code,
+                    module_id=outer_class.module_id,
+                    outer_class_id=outer_class.id,
                 )
                 self.code_representer.add_code_obj(method_obj)
             if isinstance(node, ast.Lambda):
@@ -205,12 +206,12 @@ class CodeParser:
                 inner_class_obj = ClassObject(
                     name=class_def_name,
                     filename=self.full_path,
-                    signature="signature mock",
-                    body=node.body,
-                    ast_tree=node,
+                    ast=node,
                     class_obj_id=class_obj_id,
                     docstring=docstring,
                     code=source_code,
+                    module_id=outer_class.module_id,
+                    outer_class_id=outer_class.id,
                 )
                 self.code_representer.add_code_obj(inner_class_obj)
                 self.extract_class_methods_and_sub_classes(
@@ -224,7 +225,7 @@ class CodeParser:
         :param parent_obj: CodeObject
         :type parent_obj: CodeObject
         """
-        for node in ast.walk(parent_obj.ast_tree):
+        for node in ast.walk(parent_obj.ast):
             # ast.get_source_segment(source, node.body[0])
             if isinstance(node, ast.Call):
                 variable_to_resolve = None  # TODO resolve variable(?)
@@ -288,34 +289,34 @@ class CodeParser:
                     else:
                         if len(matching_imports) == 1:
                             called_func_id = matching_imports[0].id
-                            if matching_imports[0].type == "class":
+                            if matching_imports[0].code_type == "class":
                                 parent_obj.add_called_class(matching_imports[0].id)
-                            elif matching_imports[0].type == "method":
+                            elif matching_imports[0].code_type == "method":
                                 parent_obj.add_called_method(matching_imports[0].id)
                             else:
                                 raise NotImplementedError
                         for item in matching_imports:
                             if item.name == called_func_name:
                                 called_func_id = item.id
-                                if item.type == "class":
+                                if item.code_type == "class":
                                     parent_obj.add_called_class(item.id)
-                                elif item.type == "method":
+                                elif item.code_type == "method":
                                     parent_obj.add_called_method(item.id)
                                 else:
                                     raise NotImplementedError
                         if not self.debug:
                             raise NotImplementedError
 
-                if parent_obj.type == "method":
+                if isinstance(parent_obj, MethodObject):
                     self.code_representer.objects[called_func_id].add_caller_method(
                         parent_obj.id
                     )
-                elif parent_obj.type == "class":
+                elif isinstance(parent_obj, ClassObject):
                     self.code_representer.objects[called_func_id].add_caller_class(
                         parent_obj.id
                     )
                 else:
-                    print("Unmatched parent type:", parent_obj.type)
+                    print("Unmatched parent type:", parent_obj.code_type)
 
     def extract_exceptions(self, code_obj: CodeObject):
         """
@@ -324,7 +325,7 @@ class CodeParser:
         :param code_obj: CodeObject
         :type code_obj: CodeObject
         """
-        for node in ast.walk(code_obj.ast_tree):
+        for node in ast.walk(code_obj.ast):
             # ast.get_source_segment(source, node.body[0])
             if isinstance(node, ast.Raise):
                 if hasattr(node.exc, "id"):
@@ -342,7 +343,7 @@ class CodeParser:
         :param method_obj: MethodObject
         :type method_obj: MethodObject
         """
-        node = method_obj.ast_tree
+        node = method_obj.ast
         if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
             arguments = []
             for i in range(len(node.args.args)):
@@ -362,7 +363,7 @@ class CodeParser:
                         new_arg["default"] = default.value
                     elif isinstance(default, ast.List):
                         new_arg["default"] = [item.value for item in default.elts]
-                arguments.append(new_arg)
+                method_obj.add_argument(new_arg)
             if hasattr(node.returns, "id"):
                 return_type = node.returns.id
             elif hasattr(node.returns, "value"):
@@ -371,7 +372,6 @@ class CodeParser:
                 return_type = None
             if isinstance(return_type, ast.Name):
                 return_type = return_type.id
-            method_obj.arguments = arguments
             method_obj.return_type = return_type
 
     def check_return_type(self, method_obj: MethodObject):
@@ -381,8 +381,8 @@ class CodeParser:
         :param method_obj: MethodObject
         :type method_obj: MethodObject
         """
-        if not isinstance(method_obj.ast_tree, ast.FunctionDef) and not isinstance(
-            method_obj.ast_tree, ast.AsyncFunctionDef
+        if not isinstance(method_obj.ast, ast.FunctionDef) and not isinstance(
+            method_obj.ast, ast.AsyncFunctionDef
         ):
             return
         if method_obj.return_type is None:
@@ -397,6 +397,6 @@ if __name__ == "__main__":
     code_parser.add_file()
     code_parser.create_dependencies()
     for node in code_parser.code_representer.objects.values():
-        docstring = ast.get_docstring(node=node.ast_tree)
+        docstring = ast.get_docstring(node=node.ast)
         print(docstring)
     print("finished")

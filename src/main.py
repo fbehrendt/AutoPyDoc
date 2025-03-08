@@ -1,4 +1,3 @@
-from code_representation import ClassObject, MethodObject
 from docstring_builder import create_docstring
 from extract_affected_code_from_change_info import (
     extract_classes_from_change_info,
@@ -55,17 +54,23 @@ class AutoPyDoc:
             if not self.debug:
                 raise NotImplementedError
             for changed_method in changed_methods:  # TODO not only methods
-                method_id = self.repo.get_method_id(changed_method)
-                self.queued_code_ids.append(method_id)
-                method_obj = self.repo.code_parser.code_representer.get(method_id)
+                method_obj = self.repo.code_parser.code_representer.get_by_type_filename_and_code(
+                    code_type="method",
+                    filename=changed_method["filename"],
+                    code=changed_method["content"],
+                )
+                self.queued_code_ids.append(method_obj.id)
                 method_obj.outdated = True
                 method_obj.dev_comments = self.repo.extract_dev_comments(method_obj)
 
             for changed_class in changed_classes:  # TODO not only methods
-                class_id = self.repo.get_class_id(changed_class)
-                self.queued_code_ids.append(class_id)
-                class_obj = self.repo.code_parser.code_representer.get(class_id)
+                class_obj = self.repo.code_parser.code_representer.get_by_type_filename_and_code(
+                    code_type="class",
+                    filename=changed_class["filename"],
+                    code=changed_class["content"],
+                )
                 class_obj.outdated = True
+                self.queued_code_ids.append(class_obj.id)
                 class_obj.dev_comments = self.repo.extract_dev_comments(class_obj)
 
         first_batch = self.generate_next_batch()
@@ -87,7 +92,7 @@ class AutoPyDoc:
         for id in ids:
             code_obj = self.repo.code_parser.code_representer.get(id)
             code_obj.send_to_gpt = True
-            # TODO add instance and class variables to above dict if code_obj.type is class
+            # TODO add instance and class variables to above dict if code_obj.code_type is class
             batch.append(
                 code_obj.get_gpt_input(
                     code_representer=self.repo.code_parser.code_representer
@@ -103,7 +108,9 @@ class AutoPyDoc:
         if not result.no_change_necessary:
             if not self.debug:
                 raise NotImplementedError
-            if code_obj.type != "method" and code_obj.type != "class":  # TODO remove
+            if (
+                code_obj.code_type != "method" and code_obj.code_type != "class"
+            ):  # TODO remove
                 raise NotImplementedError
             start_pos, indentation_level, end_pos = (
                 self.repo.identify_docstring_location(code_obj.id)

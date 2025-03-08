@@ -43,7 +43,7 @@ def extract_methods_from_change_info(
             continue
         line += 1
     if len(method_locations) > 0 and "end" not in method_locations[-1].keys():
-        method_locations[-1]["end"] = len(content) - 1
+        method_locations[-1]["end"] = len(content)
 
     methods = []
     for method_location in method_locations:
@@ -107,7 +107,7 @@ def extract_classes_from_change_info(
             continue
         line += 1
     if len(class_locations) > 0 and "end" not in class_locations[-1].keys():
-        class_locations[-1]["end"] = len(content) - 1
+        class_locations[-1]["end"] = len(content)
 
     classes = []
     for class_location in class_locations:
