@@ -1,6 +1,5 @@
 import logging
 
-from .deepseek_r1_local import LocalDeepseekR1Strategy
 from .model_strategy import DocstringModelStrategy
 
 
@@ -12,6 +11,12 @@ class ModelStrategyFactory:
         ModelStrategyFactory.logger.info("Creating model strategy [%s]", model_type)
 
         if model_type == "local_deepseek":
+            from .strategy_deepseek_r1_local import LocalDeepseekR1Strategy
+
             return LocalDeepseekR1Strategy(**kwargs)
+        if model_type == "mock":
+            from .strategy_mock import MockStrategy
+
+            return MockStrategy()
         else:
             raise ValueError(f"Unsupported model type: {model_type}")
