@@ -227,6 +227,8 @@ class RepoController:
         code_obj = self.code_parser.code_representer.get(code_obj_id)
         with open(file=code_obj.filename, mode="r") as f:
             lines = f.readlines()
+            if isinstance(code_obj, ModuleObject):
+                return (0, 0, len(lines))  # full file
             # get start pos
             class_nesting = []
             current_code_obj = code_obj
@@ -256,8 +258,6 @@ class RepoController:
                 prefix = "def "
             elif isinstance(code_obj, ClassObject):
                 prefix = "class "
-            elif isinstance(code_obj, ModuleObject):
-                return (0, 0, len(lines))  # full file
             else:
                 raise NotImplementedError
 

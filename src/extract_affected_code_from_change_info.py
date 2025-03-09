@@ -124,3 +124,30 @@ def extract_classes_from_change_info(
         )
 
     return classes
+
+
+def extract_module_from_change_info(
+    filename: str, change_start: int, change_length: int
+) -> list[dict[str | int]]:
+    """
+    Extract start, end and content of methods affected by change information
+
+    :param filename: filename
+    :type filename: str
+    :param change_start: line where the change begins
+    :type change_start: int
+    :param change_length: line length of the change
+    :type change_length: int
+
+    :return: list of method information as dict with keys type, filename, start, end, content
+    :return type: list[dict[str|int]]
+    """
+    with open(filename, "r") as f:
+        content = f.readlines()
+    return {
+        "type": "method",  # TODO only if applicable
+        "filename": filename,
+        "start": 0,
+        "end": len(content),
+        "content": "".join(content),
+    }

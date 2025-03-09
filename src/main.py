@@ -5,6 +5,7 @@ from docstring_builder import create_docstring
 from extract_affected_code_from_change_info import (
     extract_classes_from_change_info,
     extract_methods_from_change_info,
+    extract_module_from_change_info,
 )
 from gpt_input import GptInputCodeObject, GptOutput
 from gpt_interface import GptInterface
@@ -62,9 +63,11 @@ class AutoPyDoc:
             )
             if not self.debug:
                 raise NotImplementedError
-            changed_modules = []  # TODO
-            if not self.debug:
-                raise NotImplementedError
+            changed_module = extract_module_from_change_info(
+                filename=change["filename"],
+                change_start=change["start"],
+                change_length=change["lines_changed"],
+            )
             for changed_method in changed_methods:  # TODO not only methods
                 method_obj = self.repo.code_parser.code_representer.get_by_type_filename_and_code(
                     code_type="method",
@@ -84,6 +87,18 @@ class AutoPyDoc:
                 class_obj.outdated = True
                 self.queued_code_ids.append(class_obj.id)
                 class_obj.dev_comments = self.repo.extract_dev_comments(class_obj)
+
+            module_obj = (
+                self.repo.code_parser.code_representer.get_by_type_filename_and_code(
+                    code_type="module",
+                    filename=changed_module["filename"],
+                    code=changed_module["content"],
+                )
+            )
+
+            module_obj.outdated = True
+            self.queued_code_ids.append(module_obj.id)
+            module_obj.dev_comments = self.repo.extract_dev_comments(module_obj)
 
         first_batch = self.generate_next_batch()
         self.queries_sent_to_gpt = len(first_batch)
@@ -120,12 +135,6 @@ class AutoPyDoc:
         print("Waiting for", self.queries_sent_to_gpt, "more results")
         code_obj = self.repo.code_parser.code_representer.get(result.id)
         if not result.no_change_necessary:
-            if not self.debug:
-                raise NotImplementedError
-            if (
-                code_obj.code_type != "method" and code_obj.code_type != "class"
-            ):  # TODO remove
-                raise NotImplementedError
             start_pos, indentation_level, end_pos = (
                 self.repo.identify_docstring_location(code_obj.id)
             )
