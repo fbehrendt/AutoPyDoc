@@ -200,7 +200,11 @@ def create_docstring(
             )  # TODO
     elif isinstance(code_obj, ClassObject):
         if not debug:
-            raise NotImplementedError  # TODO
+            raise NotImplementedError  # TODO class and instance attributes, methods, sub classes
+        pass
+    elif isinstance(code_obj, ModuleObject):
+        if not debug:
+            raise NotImplementedError  # TODO classes and methods, exceptions when run as script
         pass
     else:
         raise NotImplementedError  # TODO
