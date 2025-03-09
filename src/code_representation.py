@@ -243,6 +243,23 @@ class ModuleObject(CodeObject):
         """
         self.method_ids.add(method_id)
 
+    def get_context(self) -> dict[str, list[str]]:
+        """
+        Get the context of a code piece
+
+        :return: A dictionary of types of context, containing lists of code ids
+        :return type: dict[str, list[str]]
+        """
+        return {
+            "called_methods": self.called_methods,
+            "called_classes": self.called_classes,
+            "called_by_methods": self.called_by_methods,
+            "called_by_classes": self.called_by_classes,
+            "called_by_modules": self.called_by_modules,
+            "class_ids": self.class_ids,
+            "method_id": self.method_ids,
+        }
+
 
 @dataclass(unsafe_hash=True)
 class MethodObject(CodeObject):
@@ -426,6 +443,8 @@ class ClassObject(CodeObject):
         result["outer_class_id"] = self.outer_class_id
         result["module_id"] = self.module_id
         result["inherited_from"] = self.inherited_from
+        result["class_ids"] = self.class_ids
+        result["method_id"] = self.method_ids
         return result
 
     def get_gpt_input(self, code_representer):
