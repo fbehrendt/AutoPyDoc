@@ -1,11 +1,22 @@
+import logging
+from typing import List
+
 from docstring_builder import create_docstring
 from extract_affected_code_from_change_info import (
     extract_classes_from_change_info,
     extract_methods_from_change_info,
 )
+from gpt_input import GptInputCodeObject, GptOutput
 from gpt_interface import GptInterface
 from repo_controller import RepoController
 from validate_docstring import validate_docstring
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="[%(asctime)s] %(levelname)8s: [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 
 class AutoPyDoc:
@@ -25,7 +36,8 @@ class AutoPyDoc:
 
         # initialize gpt interface early to fail early if model is unavailable or unable to load
         # TODO: make name configurable (see factory for available model names)
-        self.gpt_interface = GptInterface("local_deepseek")
+        self.gpt_interface = GptInterface("mock")
+        # self.gpt_interface = GptInterface("local_deepseek")
 
         # pull repo, create code representation, create dependencies
         self.repo = RepoController(
@@ -80,7 +92,9 @@ class AutoPyDoc:
             quit()
         self.gpt_interface.process_batch(first_batch, callback=self.process_gpt_result)
 
-    def generate_next_batch(self, ignore_dependencies=False):
+    def generate_next_batch(
+        self, ignore_dependencies=False
+    ) -> list[GptInputCodeObject]:
         ids = [
             id
             for id in self.queued_code_ids
@@ -88,7 +102,7 @@ class AutoPyDoc:
             or not self.repo.code_parser.code_representer.depends_on_outdated_code(id)
             and not self.repo.code_parser.code_representer.get(id).send_to_gpt
         ]
-        batch = []
+        batch: List[GptInputCodeObject] = []
         for id in ids:
             code_obj = self.repo.code_parser.code_representer.get(id)
             code_obj.send_to_gpt = True
@@ -100,7 +114,7 @@ class AutoPyDoc:
             )
         return batch
 
-    def process_gpt_result(self, result):
+    def process_gpt_result(self, result: GptOutput) -> None:
         self.queries_sent_to_gpt -= 1
         print("Received", result.id)
         print("Waiting for", self.queries_sent_to_gpt, "more results")
