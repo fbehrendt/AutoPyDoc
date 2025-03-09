@@ -1,7 +1,12 @@
 from ast import AST
 from dataclasses import dataclass, field, fields
 
-from gpt_input import GptInputCodeObject, GptInputMethodObject, GptInputClassObject
+from gpt_input import (
+    GptInputCodeObject,
+    GptInputMethodObject,
+    GptInputClassObject,
+    GptInputModuleObject,
+)
 
 
 def frozen_field_support(cls):
@@ -259,6 +264,24 @@ class ModuleObject(CodeObject):
             "class_ids": self.class_ids,
             "method_id": self.method_ids,
         }
+
+    def get_gpt_input(self, code_representer):
+        """
+        Create a gpt input object
+
+        :return: GptInput object
+        :return type: GptInputCodeObject
+        """
+        return GptInputModuleObject(
+            id=self.id,
+            code_type=self.code_type,
+            name=self.name,
+            docstring=self.docstring,
+            code=self.code,
+            context=self.get_context(),
+            context_docstrings=code_representer.get_context_docstrings(self.id),
+            exceptions=self.exceptions,
+        )
 
 
 @dataclass(unsafe_hash=True)
