@@ -318,16 +318,6 @@ class MethodObject(CodeObject):
             ]  # ignore self
         return None
 
-    def get_missing_params(self):
-        # TODO this is a fix
-        # for some unknown reason not all missing params are identified
-        missing_parameters = self.get_missing_arg_types()
-        params = [param["name"] for param in self.get_arguments()]
-        for param in params:
-            if param not in missing_parameters:
-                missing_parameters.add(param)
-        return missing_parameters
-
     def get_gpt_input(self, code_representer):
         return GptInputMethodObject(
             id=self.id,
@@ -341,7 +331,7 @@ class MethodObject(CodeObject):
             parent_class_id=self.outer_class_id,
             parent_module_id=self.module_id,
             parameters=code_representer.get_arguments(self.id),
-            missing_parameters=self.get_missing_params(),
+            missing_parameters=self.get_missing_arg_types(),
             return_missing=self.missing_return_type,
         )
 

@@ -348,10 +348,18 @@ class CodeParser:
             arguments = []
             for i in range(len(node.args.args)):
                 arg = node.args.args[i]
+                if arg.arg == "stats_total_collection":  # TODO DEBUG line remove
+                    print()
                 new_arg = {"name": arg.arg}
                 if arg.annotation is not None:
                     if hasattr(arg.annotation, "id"):
                         new_arg["type"] = arg.annotation.id
+                    elif hasattr(arg.annotation, "value") and hasattr(
+                        arg.annotation.value, "id"
+                    ):
+                        new_arg["type"] = arg.annotation.value.id
+                    elif hasattr(arg, "type_comment"):
+                        new_arg["type"] = arg.type_comment
                 else:
                     if i == 0 and arg.arg == "self":
                         new_arg["type"] = Self  # see https://peps.python.org/pep-0673/
