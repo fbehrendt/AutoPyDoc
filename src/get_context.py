@@ -112,6 +112,8 @@ class CodeParser:
                     outer_class_id=None,
                 )
                 self.code_representer.add_code_obj(method_obj)
+                if module_id is not None:
+                    module_obj.add_method_id(method_obj.id)
             if isinstance(node, ast.AsyncFunctionDef):
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
@@ -128,6 +130,8 @@ class CodeParser:
                     outer_class_id=None,
                 )
                 self.code_representer.add_code_obj(method_obj)
+                if module_id is not None:
+                    module_obj.add_method_id(method_obj.id)
             if isinstance(node, ast.Lambda):
                 print("Lambda")
             if isinstance(node, ast.ClassDef):
@@ -146,6 +150,8 @@ class CodeParser:
                     outer_class_id=None,
                 )
                 self.code_representer.add_code_obj(class_obj)
+                if module_id is not None:
+                    module_obj.add_class_id(class_obj.id)
                 self.extract_class_methods_and_sub_classes(class_obj_id=class_obj.id)
 
     def extract_class_methods_and_sub_classes(
@@ -178,6 +184,7 @@ class CodeParser:
                     outer_class_id=outer_class.id,
                 )
                 self.code_representer.add_code_obj(method_obj)
+                outer_class.add_method_id(method_obj.id)
             if isinstance(node, ast.AsyncFunctionDef):
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
@@ -195,6 +202,7 @@ class CodeParser:
                     outer_class_id=outer_class.id,
                 )
                 self.code_representer.add_code_obj(method_obj)
+                outer_class.add_method_id(method_obj.id)
             if isinstance(node, ast.Lambda):
                 print("Lambda")
             if isinstance(node, ast.ClassDef):
@@ -214,6 +222,7 @@ class CodeParser:
                     outer_class_id=outer_class.id,
                 )
                 self.code_representer.add_code_obj(inner_class_obj)
+                outer_class.add_class_id(method_obj.id)
                 self.extract_class_methods_and_sub_classes(
                     class_tree=node, class_obj_id=inner_class_obj.id
                 )

@@ -213,6 +213,8 @@ class ModuleObject(CodeObject):
     def __post_init__(self):
         super().__post_init__()
         self.code_type = "module"
+        self.class_ids = set()
+        self.method_ids = set()
 
     def add_exception(self, exception: str):
         """
@@ -222,6 +224,24 @@ class ModuleObject(CodeObject):
         :type exception: str
         """
         self.exceptions.add(exception)
+
+    def add_class_id(self, class_id: int):
+        """
+        Add a class id
+
+        :param class_id: class id
+        :type class_id: int
+        """
+        self.class_ids.add(class_id)
+
+    def add_method_id(self, method_id: int):
+        """
+        Add a method id
+
+        :param method_id: method id
+        :type method_id: int
+        """
+        self.method_ids.add(method_id)
 
 
 @dataclass(unsafe_hash=True)
@@ -365,6 +385,8 @@ class ClassObject(CodeObject):
     def __post_init__(self):
         super().__post_init__()
         self.code_type = "class"
+        self.class_ids = set()
+        self.method_ids = set()
 
     def add_exception(self, exception: str):
         """
@@ -374,6 +396,24 @@ class ClassObject(CodeObject):
         :type exception: str
         """
         self.exceptions.add(exception)
+
+    def add_class_id(self, class_id: int):
+        """
+        Add a class id
+
+        :param class_id: class id
+        :type class_id: int
+        """
+        self.class_ids.add(class_id)
+
+    def add_method_id(self, method_id: int):
+        """
+        Add a method id
+
+        :param method_id: method id
+        :type method_id: int
+        """
+        self.method_ids.add(method_id)
 
     def get_context(self) -> dict[str, list[str] | str]:
         """
