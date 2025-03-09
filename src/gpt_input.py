@@ -33,6 +33,11 @@ class GptInputClassObject(GptInputCodeObject):
 
 
 @dataclass(frozen=True)
+class GptInputModuleObject(GptInputCodeObject):
+    pass
+
+
+@dataclass(frozen=True)
 class GptOutput:
     id: str = field(compare=True, hash=True)
     no_change_necessary: bool = field(compare=True, hash=True)
