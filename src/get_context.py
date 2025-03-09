@@ -348,8 +348,6 @@ class CodeParser:
             arguments = []
             for i in range(len(node.args.args)):
                 arg = node.args.args[i]
-                if arg.arg == "stats_total_collection":  # TODO DEBUG line remove
-                    print()
                 new_arg = {"name": arg.arg}
                 if arg.annotation is not None:
                     if hasattr(arg.annotation, "id"):
