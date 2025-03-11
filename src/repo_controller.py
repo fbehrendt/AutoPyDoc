@@ -228,76 +228,85 @@ class RepoController:
         with open(file=code_obj.filename, mode="r") as f:
             lines = f.readlines()
             if isinstance(code_obj, ModuleObject):
-                return (0, 0, len(lines))  # full file
-            # get start pos
-            class_nesting = []
-            current_code_obj = code_obj
-            while (
-                hasattr(current_code_obj, "class_obj_id")
-                and current_code_obj.class_obj_id is not None
-            ):
-                current_code_obj = self.code_parser.code_representer.get(
-                    code_obj.class_obj_id
-                )
-                class_nesting.append(current_code_obj)
-            start_pos = 0
-            for outer_class_obj in class_nesting[
-                ::-1
-            ]:  # iterate from outer most class to inner most class
-                # search for class
+                start_pos = 0
+                indentation_level = 0
+                start_line = lines[0]
+                i = start_pos
+            else:
+                # get start pos
+                class_nesting = []
+                current_code_obj = code_obj
+                while (
+                    hasattr(current_code_obj, "outer_class_id")
+                    and current_code_obj.outer_class_id is not None
+                ):
+                    current_code_obj = self.code_parser.code_representer.get(
+                        code_obj.outer_class_id
+                    )
+                    class_nesting.append(current_code_obj)
+                start_pos = 0
+                for outer_class_obj in class_nesting[
+                    ::-1
+                ]:  # iterate from outer most class to inner most class
+                    # search for class
+                    for i in range(start_pos, len(lines)):
+                        if (
+                            lines[i]
+                            .lstrip()
+                            .lower()
+                            .startswith("class " + outer_class_obj.name.lower())
+                        ):
+                            start_pos = i + 1
+                            break
+                if isinstance(code_obj, MethodObject):
+                    prefix = "def "
+                elif isinstance(code_obj, ClassObject):
+                    prefix = "class "
+                else:
+                    raise NotImplementedError
+
+                # get start of signature
                 for i in range(start_pos, len(lines)):
                     if (
                         lines[i]
                         .lstrip()
                         .lower()
-                        .startswith("class " + outer_class_obj.name.lower())
+                        .startswith(prefix + code_obj.name.lower())
                     ):
-                        start_pos = i + 1
+                        start_pos = i
+                        start_line = lines[start_pos]
                         break
-            if isinstance(code_obj, MethodObject):
-                prefix = "def "
-            elif isinstance(code_obj, ClassObject):
-                prefix = "class "
-            else:
-                raise NotImplementedError
 
-            # get start of signature
-            for i in range(start_pos, len(lines)):
-                if lines[i].lstrip().lower().startswith(prefix + code_obj.name.lower()):
-                    start_pos = i
-                    start_line = lines[start_pos]
-                    break
+                # find end of signature
+                open_brackets = 0
+                for j in range(start_pos, len(lines)):
+                    # TODO this can still fail for cases like def func(a="sfr("):
+                    open_brackets += lines[j].count("(")
+                    open_brackets -= lines[j].count(")")
+                    if open_brackets < 1:
+                        start_pos = j + 1
+                        break
 
-            # find end of signature
-            open_brackets = 0
-            for j in range(start_pos, len(lines)):
-                # TODO this can still fail for cases like def func(a="sfr("):
-                open_brackets += lines[j].count("(")
-                open_brackets -= lines[j].count(")")
-                if open_brackets < 1:
-                    start_pos = j + 1
-                    break
-
-            # get indentation level
-            indentation_level = (
-                sum(
-                    4 if char == "\t" else 1
-                    for char in start_line[: -len(start_line.lstrip())]
+                # get indentation level
+                indentation_level = (
+                    sum(
+                        4 if char == "\t" else 1
+                        for char in start_line[: -len(start_line.lstrip())]
+                    )
+                    + 4
                 )
-                + 4
-            )
-            end_pos = len(lines)
-            i = start_pos
-            for j in range(start_pos, len(lines)):
-                if len(lines[j].strip()) > 0:
-                    i = j
-                    break
+                end_pos = len(lines)
+                i = start_pos
+                for j in range(start_pos, len(lines)):
+                    if len(lines[j].strip()) > 0:
+                        i = j
+                        break
             if lines[i].strip().startswith('"""'):
                 if (
                     lines[i].strip().rstrip("\n").endswith('"""')
                     and len(lines[i].strip()) >= 6
                 ):  # inline docstring
-                    end_pos = i + 1
+                    end_pos = i
                 else:
                     for j in range(i + 1, len(lines)):
                         if lines[j].strip().rstrip("\n").endswith('"""'):
