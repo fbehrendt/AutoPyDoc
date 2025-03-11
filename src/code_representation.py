@@ -427,8 +427,8 @@ class ClassObject(CodeObject):
         self.code_type = "class"
         self.class_ids = set()
         self.method_ids = set()
-        self.class_attributes = set()
-        self.instance_attributes = set()
+        self.class_attributes = list()
+        self.instance_attributes = list()
 
     def add_exception(self, exception: str):
         """
@@ -457,24 +457,24 @@ class ClassObject(CodeObject):
         """
         self.method_ids.add(method_id)
 
-    def add_class_attribute(self, attribute_name):
+    def add_class_attribute(self, attribute: dict[str, str]):
         """
         Add a class attribute
 
         :param attribute_name: attribute name
         :type attribute_name: str
         """
-        self.class_attributes.add(attribute_name)
+        self.class_attributes.append(attribute)
 
-    def add_instance_attribute(self, attribute_name):
+    def add_instance_attribute(self, attribute: dict[str, str]):
         """
         Add an instance attribute
 
         :param attribute_name: attribute name
         :type attribute_name: str
         """
-        if attribute_name not in self.class_attributes:
-            self.instance_attributes.add(attribute_name)
+        if attribute["name"] not in [attr["name"] for attr in self.class_attributes]:
+            self.instance_attributes.append(attribute)
 
     def get_context(self) -> dict[str, list[str] | str]:
         """
@@ -510,6 +510,20 @@ class ClassObject(CodeObject):
             parent_class_id=self.outer_class_id,
             parent_module_id=self.module_id,
             inherited_from=self.inherited_from,
+            class_ids=self.class_ids,
+            method_ids=self.method_ids,
+            class_attributes=self.class_attributes,
+            instance_attributes=self.instance_attributes,
+            missing_class_attribute_types=[
+                attr["name"]
+                for attr in self.class_attributes
+                if "type" not in attr.keys()
+            ],
+            missing_instance_attributes_types=[
+                attr["name"]
+                for attr in self.instance_attributes
+                if "type" not in attr.keys()
+            ],
         )
 
 
@@ -738,13 +752,16 @@ class CodeRepresenter:
         :return type: dict[str, str]
         """
         code_obj = self.get(code_obj_id)
-        tmp = code_obj.get_context()
+        code_obj_context = code_obj.get_context()
         keys = set()
-        for sub_list in tmp.values():
+        for sub_list in code_obj_context.values():
             if isinstance(sub_list, set):
                 keys.update(sub_list)
-        keys.add(code_obj.outer_class_id)
-        keys.add(code_obj.module_id)
+        if isinstance(code_obj, MethodObject) or isinstance(code_obj, ClassObject):
+            keys.add(code_obj.outer_class_id)
+            keys.add(code_obj.module_id)
+        if isinstance(code_obj, ClassObject):
+            keys.add(code_obj.inherited_from)
         result = {}
         for key in keys:
             if key is None:
@@ -772,12 +789,14 @@ class CodeRepresenter:
         for code_id in code_obj.called_methods:
             if self.get(code_id).outdated:
                 return True
-        if hasattr(code_obj, "outer_class_id") and code_obj.outer_class_id is not None:
-            if self.get(code_obj.outer_class_id).outdated:
-                return True
-        if hasattr(code_obj, "module_id") and code_obj.module_id is not None:
-            if self.get(code_obj.module_id).outdated:
-                return True
+        if isinstance(code_obj, ClassObject) or isinstance(code_obj, ModuleObject):
+            for class_id in code_obj.class_ids:
+                if self.get(class_id).outdated:
+                    return True
+        if isinstance(code_obj, ClassObject):
+            for method_id in code_obj.method_ids:
+                if self.get(method_id).outdated:
+                    return True
         return False
 
     def update_docstring(self, code_obj_id: str, new_docstring: str):
