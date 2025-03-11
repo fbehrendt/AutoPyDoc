@@ -30,11 +30,22 @@ class GptInputClassObject(GptInputCodeObject):
     parent_class_id: str | None = field(default=None, compare=True, hash=True)
     parent_module_id: str | None = field(default=None, compare=True, hash=True)
     inherited_from: str | None = field(default=None, compare=True, hash=True)
+    class_ids: set = field(default_factory=set, compare=True, hash=True)
+    method_ids: set = field(default_factory=set, compare=True, hash=True)
+    class_attributes: dict = field(default_factory=dict, compare=True, hash=True)
+    instance_attributes: dict = field(default_factory=dict, compare=True, hash=True)
+    missing_class_attribute_types: dict[str, str] = field(
+        default_factory=dict, compare=True, hash=True
+    )
+    missing_instance_attributes_types: dict[str, str] = field(
+        default_factory=dict, compare=True, hash=True
+    )
 
 
 @dataclass(frozen=True)
 class GptInputModuleObject(GptInputCodeObject):
-    pass
+    class_ids: set = field(default_factory=set, compare=True, hash=True)
+    method_ids: set = field(default_factory=set, compare=True, hash=True)
 
 
 @dataclass(frozen=True)
@@ -52,3 +63,16 @@ class GptOutputMethod(GptOutput):
     return_description: str
     return_missing: bool
     return_type: str = field(default=None)
+
+
+@dataclass(frozen=True)
+class GptOutputClass(GptOutput):
+    class_attribute_descriptions: dict[str, str]
+    class_attribute_types: dict[str, str]
+    instance_attribute_descriptions: dict[str, str]
+    instance_attribute_types: dict[str, str]
+
+
+@dataclass(frozen=True)
+class GptOutputModule(GptOutput):
+    exception_descriptions: dict[str, str]
