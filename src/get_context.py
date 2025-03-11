@@ -71,7 +71,10 @@ class CodeParser:
             self.extract_class_and_method_calls(parent_obj=code_obj)
             self.extract_args_and_return_type(method_obj=code_obj)
             self.extract_exceptions(code_obj=code_obj)
-            self.check_return_type(method_obj=code_obj)
+            if isinstance(code_obj, MethodObject):
+                self.check_return_type(method_obj=code_obj)
+            elif isinstance(code_obj, ClassObject):
+                self.extract_attributes(class_obj=code_obj)
 
     def extract_file_modules_classes_and_methods(self, tree: ast.AST):
         """
@@ -405,6 +408,12 @@ class CodeParser:
             for line in method_obj.code.split("\n"):
                 if line.lstrip().startswith("return"):
                     method_obj.missing_return_type = True
+
+    def extract_attributes(self, class_obj: ClassObject):
+        for node in ast.walk(class_obj.ast):
+            if isinstance(node, ast.AnnAssign):
+                class_obj.add_class_attribute(attribute_name=node.target.id)
+        print()
 
 
 if __name__ == "__main__":
