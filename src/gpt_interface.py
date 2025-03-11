@@ -1,6 +1,5 @@
 import logging
-from collections.abc import Callable
-from functools import reduce
+from typing import Callable
 
 from gpt_input import (
     GptInputCodeObject,
