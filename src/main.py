@@ -113,7 +113,10 @@ class AutoPyDoc:
         ids = [
             id
             for id in self.queued_code_ids
-            if ignore_dependencies
+            if (
+                ignore_dependencies
+                and self.repo.code_parser.code_representer.get(id).outdated
+            )
             or not self.repo.code_parser.code_representer.depends_on_outdated_code(id)
             and not self.repo.code_parser.code_representer.get(id).send_to_gpt
         ]
@@ -179,7 +182,7 @@ class AutoPyDoc:
             ]
             if len(missing_items) > 0:
                 print("Some parts are still missing updates")
-                print("\n".join(missing_items))
+                print("\n".join([str(item) for item in missing_items]))
                 next_batch = self.generate_next_batch(ignore_dependencies=True)
                 if len(next_batch) > 0:
                     self.queries_sent_to_gpt += len(next_batch)
