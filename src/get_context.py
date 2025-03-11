@@ -410,9 +410,27 @@ class CodeParser:
                     method_obj.missing_return_type = True
 
     def extract_attributes(self, class_obj: ClassObject):
+        for node in class_obj.ast.body:
+            if isinstance(node, ast.Assign):
+                if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+                    class_obj.add_class_attribute(attribute_name=node.targets[0].id)
+            elif isinstance(node, ast.AnnAssign):
+                if isinstance(node.target, ast.Name):
+                    class_obj.add_class_attribute(attribute_name=node.target.id)
         for node in ast.walk(class_obj.ast):
-            if isinstance(node, ast.AnnAssign):
-                class_obj.add_class_attribute(attribute_name=node.target.id)
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if hasattr(target, "id"):
+                        print()
+                    if hasattr(target, "attr"):
+                        print(target.attr)
+                        if hasattr(target.value, "id"):
+                            print(target.value.id)
+                            if target.value.id == "self":
+                                class_obj.add_instance_attribute(
+                                    attribute_name=target.attr
+                                )
+
         print()
 
 

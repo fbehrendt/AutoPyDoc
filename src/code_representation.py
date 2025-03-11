@@ -262,7 +262,7 @@ class ModuleObject(CodeObject):
             "called_by_classes": self.called_by_classes,
             "called_by_modules": self.called_by_modules,
             "class_ids": self.class_ids,
-            "method_id": self.method_ids,
+            "method_ids": self.method_ids,
         }
 
     def get_gpt_input(self, code_representer):
@@ -427,7 +427,8 @@ class ClassObject(CodeObject):
         self.code_type = "class"
         self.class_ids = set()
         self.method_ids = set()
-        self.attributes = set()
+        self.class_attributes = set()
+        self.instance_attributes = set()
 
     def add_exception(self, exception: str):
         """
@@ -463,7 +464,17 @@ class ClassObject(CodeObject):
         :param attribute_name: attribute name
         :type attribute_name: str
         """
-        self.attributes.add(attribute_name)
+        self.class_attributes.add(attribute_name)
+
+    def add_instance_attribute(self, attribute_name):
+        """
+        Add an instance attribute
+
+        :param attribute_name: attribute name
+        :type attribute_name: str
+        """
+        if attribute_name not in self.class_attributes:
+            self.instance_attributes.add(attribute_name)
 
     def get_context(self) -> dict[str, list[str] | str]:
         """
@@ -477,7 +488,7 @@ class ClassObject(CodeObject):
         result["module_id"] = self.module_id
         result["inherited_from"] = self.inherited_from
         result["class_ids"] = self.class_ids
-        result["method_id"] = self.method_ids
+        result["method_ids"] = self.method_ids
         return result
 
     def get_gpt_input(self, code_representer):
