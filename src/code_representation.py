@@ -427,6 +427,7 @@ class ClassObject(CodeObject):
         self.code_type = "class"
         self.class_ids = set()
         self.method_ids = set()
+        self.attributes = set()
 
     def add_exception(self, exception: str):
         """
@@ -454,6 +455,15 @@ class ClassObject(CodeObject):
         :type method_id: int
         """
         self.method_ids.add(method_id)
+
+    def add_class_attribute(self, attribute_name):
+        """
+        Add a class attribute
+
+        :param attribute_name: attribute name
+        :type attribute_name: str
+        """
+        self.attributes.add(attribute_name)
 
     def get_context(self) -> dict[str, list[str] | str]:
         """
