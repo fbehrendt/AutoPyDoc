@@ -22,7 +22,11 @@ class AutoPyDoc:
         pass
 
     def main(
-        self, repo_path: str = None, pull_request_token=None, debug=False
+        self,
+        repo_path: str = None,
+        pull_request_token=None,
+        branch: str = "main",
+        debug=False,
     ) -> None:  # repo_path will be required later
         """Generates new docstrings for modified parts of the code
 
@@ -33,7 +37,6 @@ class AutoPyDoc:
         """
 
         # initialize gpt interface early to fail early if model is unavailable or unable to load
-        # TODO: make name configurable (see factory for available model names)
         self.gpt_interface = GptInterface("mock")
         # self.gpt_interface = GptInterface("local_deepseek")
 
@@ -41,7 +44,10 @@ class AutoPyDoc:
         self.debug = debug
 
         self.repo = RepoController(
-            repo_path=repo_path, pull_request_token=pull_request_token, debug=debug
+            repo_path=repo_path,
+            pull_request_token=pull_request_token,
+            branch=branch,
+            debug=debug,
         )
         self.code_parser = CodeParser(
             code_representer=CodeRepresenter(),

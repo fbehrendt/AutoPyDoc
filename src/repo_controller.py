@@ -20,7 +20,11 @@ class RepoController:
     """A class to control interactions with the target repository"""
 
     def __init__(
-        self, repo_path: str, pull_request_token: str = None, debug: bool = False
+        self,
+        repo_path: str,
+        pull_request_token: str = None,
+        debug: bool = False,
+        branch: str = "main",
     ):
         """
         A class to control interactions with the target repository
@@ -49,7 +53,7 @@ class RepoController:
             self.repo = Repo(self.working_dir)
             if not self.debug:
                 raise NotImplementedError
-        self.branch = "main"  # TODO change
+        self.branch = branch
 
         # self.repo = {} # {file_name: 'filename', 'methods': {'name': 'method_name', 'content': 'method content'}, 'classes': {'name': 'classname', 'methods' = {'name': 'method_name', 'content': 'method content'}}}
         self.get_latest_commit()
@@ -113,6 +117,7 @@ class RepoController:
         dir = os.listdir(self.working_dir)
         if len(dir) == 0:
             self.repo = Repo.clone_from(self.repo_url, self.working_dir)
+            self.repo.git.checkout(self.branch)
             assert not self.repo.bare
         elif self.debug:
             self.repo = Repo(self.working_dir)
@@ -120,6 +125,7 @@ class RepoController:
         else:
             self.clear_working_dir()
             self.repo = Repo.clone_from(self.repo_url, self.working_dir)
+            self.repo.git.checkout(self.branch)
             assert not self.repo.bare
 
     def get_changes(self) -> list[dict]:
@@ -132,9 +138,6 @@ class RepoController:
         print("###extracting changes###")
         current_commit = self.repo.head.commit  # get most recent commit
         if self.initial_run:
-            # diff = self.repo.index.diff(None, current_commit)
-            # latest_commit = self.repo.commit("4b825dc642cb6eb9a060e54bf8d69288fbee4904") # https://jiby.tech/post/git-diff-empty-repo/ fails
-            # TODO change
             result = []
             for file in self.get_files_in_repo():
                 with open(file=file, mode="r") as f:
@@ -202,6 +205,7 @@ class RepoController:
 
         :raises Exception("End of docstring not found"): raised when the end of the docstring cannot be located
         """
+        # TODO use ast.get_source_code_segment() and/or look into asttokens
         code_obj = code_representer.get(code_obj_id)
         with open(file=code_obj.filename, mode="r") as f:
             lines = f.readlines()
@@ -386,7 +390,7 @@ class RepoController:
             # pushing to new branch
             self.repo.git.push("--set-upstream", "origin", current)
             return new_branch
-        raise Exception  # TODO
+        raise Exception("Bare repository")
 
     def create_pull_request(
         self,
@@ -448,7 +452,7 @@ class RepoController:
             description="Automatically created docstrings for recently changed code",
             head_branch=new_branch,
             base_branch=self.branch,
-        )  # TODO
+        )
 
         # if repo_path is local filepath:
         # if config['Default']['local_repo_behaviour'] == "commit":
