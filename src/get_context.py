@@ -265,7 +265,7 @@ class CodeParser:
                 if (
                     self.full_path + "_" + "method" + "_" + called_func_name
                     in self.code_representer.objects.keys()
-                ):
+                ):  # TODO this is no longer correct
                     called_func_type = "method"
                     called_func_id = (
                         self.full_path + "_" + called_func_type + "_" + called_func_name
@@ -274,7 +274,7 @@ class CodeParser:
                 elif (
                     self.full_path + "_" + "class" + "_" + called_func_name
                     in self.code_representer.objects.keys()
-                ):
+                ):  # TODO this is no longer correct
                     called_func_type = "class"
                     called_func_id = (
                         self.full_path + "_" + called_func_type + "_" + called_func_name
@@ -349,7 +349,6 @@ class CodeParser:
         """
         node = method_obj.ast
         if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
-            arguments = []
             for i in range(len(node.args.args)):
                 arg = node.args.args[i]
                 new_arg = {"name": arg.arg}
