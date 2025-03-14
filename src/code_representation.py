@@ -555,7 +555,7 @@ class CodeRepresenter:
         :param code_obj: CodeObject to be added
         :type code_object: CodeObject
         """
-        if code_obj.id not in self.objects:
+        if code_obj.id not in self.objects.keys():
             self.objects[code_obj.id] = code_obj
 
     def get_docstring(self, code_obj_id: str) -> str | None:
