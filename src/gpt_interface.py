@@ -11,7 +11,9 @@ from models import ModelStrategyFactory
 class GptInterface:
     def __init__(self, model_name: str):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.model = ModelStrategyFactory.create_strategy(model_name, device="cuda")
+        self.model = ModelStrategyFactory.create_strategy(
+            model_name, device="cuda", context_size=2**13
+        )
 
         self.debug_abort = False
 
@@ -38,9 +40,9 @@ class GptInterface:
         # generate exception descriptions (?)
 
         for current_code_object in batch:
-            # if self.debug_abort:
-            #     self.logger.info("Debugging, aborting!")
-            #     break
+            if self.debug_abort:
+                self.logger.info("Debugging, aborting!")
+                break
 
             try:
                 change_necessary = (

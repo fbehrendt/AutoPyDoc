@@ -14,17 +14,27 @@ DOCSTRING_GENERATION_JSON_OUTPUT_REGEX = r"{.*}"
 
 
 class LocalDeepseekR1Strategy(DocstringModelStrategy):
-    def __init__(self, device="cuda"):
+    def __init__(self, device="cuda", context_size=2048):
         super().__init__()
 
         self.device = device
+        self.context_size = context_size
 
         model_name = "DeepSeek-R1-Distill-Llama-8B-Q4_0.gguf"
 
         self.logger.info(
-            "Using GPT4All model [%s] on device [%s]", model_name, self.device
+            "Using GPT4All model [%s] with context size [%d]",
+            model_name,
+            self.context_size,
         )
         self.gpt_model = GPT4All(model_name=model_name, device=self.device)
+
+        self.logger.info(
+            "Using device [%s], requested [%s]", self.gpt_model.device, self.device
+        )
+
+        if self.gpt_model.device is None:
+            raise Exception("Unable to load gpt model")
 
     def check_outdated(self, code_object: GptInputCodeObject) -> bool:
         try:
