@@ -844,3 +844,24 @@ class CodeRepresenter:
             code_obj.send_to_gpt = True
             batch.append(code_obj.get_gpt_input(code_representer=self))
         return batch
+
+    def get_modules(self):
+        return [
+            code_obj
+            for code_obj in list(self.objects.values())
+            if isinstance(code_obj, ModuleObject)
+        ]
+
+    def get_classes(self):
+        return [
+            code_obj
+            for code_obj in list(self.objects.values())
+            if isinstance(code_obj, ClassObject)
+        ]
+
+    def get_methods(self):
+        return [
+            code_obj
+            for code_obj in list(self.objects.values())
+            if isinstance(code_obj, MethodObject)
+        ]
