@@ -1,15 +1,13 @@
 import logging
 
 from docstring_builder import create_docstring
-from extract_affected_code_from_change_info import (
-    extract_classes_from_change_info,
-    extract_methods_from_change_info,
-    extract_module_from_change_info,
-)
-from gpt_input import GptInputCodeObject, GptOutput
+
+from gpt_input import GptOutput
 from gpt_interface import GptInterface
 from repo_controller import RepoController
 from validate_docstring import validate_docstring
+from get_context import CodeParser
+from code_representation import CodeRepresenter
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -40,73 +38,43 @@ class AutoPyDoc:
         # self.gpt_interface = GptInterface("local_deepseek")
 
         # pull repo, create code representation, create dependencies
+        self.debug = debug
+
         self.repo = RepoController(
             repo_path=repo_path, pull_request_token=pull_request_token, debug=debug
         )
-        self.debug = debug
+        self.code_parser = CodeParser(
+            code_representer=CodeRepresenter(),
+            working_dir=self.working_dir,
+            debug=True,
+            files=self.repo.get_files_in_repo(),
+        )
+
+        self.code_parser.create_dependencies()
+
+        self.code_parser.extract_class_and_method_calls()
+        self.code_parser.extract_args_and_return_type()
+        self.code_parser.extract_exceptions()
+        self.code_parser.check_return_type()
+        self.code_parser.extract_attributes()
 
         # get changes between last commit the tool ran for and now
         self.changes = self.repo.get_changes()
+        self.code_parser.set_code_affected_by_changes_to_outdated(changes=self.changes)
 
-        for change in self.changes:
-            changed_methods = extract_methods_from_change_info(
-                filename=change["filename"],
-                change_start=change["start"],
-                change_length=change["lines_changed"],
-            )
-            changed_classes = extract_classes_from_change_info(
-                filename=change["filename"],
-                change_start=change["start"],
-                change_length=change["lines_changed"],
-            )
-            if not self.debug:
-                raise NotImplementedError
-            changed_module = extract_module_from_change_info(
-                filename=change["filename"],
-                change_start=change["start"],
-                change_length=change["lines_changed"],
-            )
-            for changed_method in changed_methods:
-                method_obj = self.repo.code_parser.code_representer.get_by_type_filename_and_code(
-                    code_type="method",
-                    filename=changed_method["filename"],
-                    code=changed_method["content"],
-                )
-                method_obj.outdated = True
-                method_obj.dev_comments = self.repo.extract_dev_comments(method_obj)
-
-            for changed_class in changed_classes:
-                class_obj = self.repo.code_parser.code_representer.get_by_type_filename_and_code(
-                    code_type="class",
-                    filename=changed_class["filename"],
-                    code=changed_class["content"],
-                )
-                class_obj.outdated = True
-                class_obj.dev_comments = self.repo.extract_dev_comments(class_obj)
-
-            module_obj = (
-                self.repo.code_parser.code_representer.get_by_type_filename_and_code(
-                    code_type="module",
-                    filename=changed_module["filename"],
-                    code=changed_module["content"],
-                )
-            )
-
-            module_obj.outdated = True
-            module_obj.dev_comments = self.repo.extract_dev_comments(module_obj)
-
-        first_batch = self.repo.code_parser.code_representer.generate_next_batch()
-        if len(self.repo.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
+        first_batch = self.code_parser.code_representer.generate_next_batch()
+        if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
             print("No need to do anything")
             quit()
         self.gpt_interface.process_batch(first_batch, callback=self.process_gpt_result)
 
         # if parts are still outdated
-        while len(self.repo.code_parser.code_representer.get_outdated_ids()) > 0:
-            missing_items = self.repo.code_parser.code_representer.get_outdated_ids()
+        while len(self.code_parser.code_representer.get_outdated_ids()) > 0:
+            missing_items = self.code_parser.code_representer.get_outdated_ids()
             print("Some parts are still missing updates")
             print("\n".join([str(item) for item in missing_items]))
-            next_batch = self.repo.code_parser.code_representer.generate_next_batch(
+            # force generate all, ignore dependencies
+            next_batch = self.code_parser.code_representer.generate_next_batch(
                 ignore_dependencies=True
             )
             if len(next_batch) > 0:
@@ -124,7 +92,7 @@ class AutoPyDoc:
         changed_files = []
         for filename in [
             code_obj.filename
-            for code_obj in self.repo.code_parser.code_representer.objects.values()
+            for code_obj in self.code_parser.code_representer.objects.values()
             if code_obj.is_updated
         ]:
             if filename not in changed_files:
@@ -137,13 +105,15 @@ class AutoPyDoc:
         print("Received", result.id)
         print(
             "Waiting for",
-            len(self.repo.code_parser.code_representer.get_sent_to_gpt_ids()),
+            len(self.code_parser.code_representer.get_sent_to_gpt_ids()),
             "more results",
         )
-        code_obj = self.repo.code_parser.code_representer.get(result.id)
+        code_obj = self.code_parser.code_representer.get(result.id)
         if not result.no_change_necessary:
             start_pos, indentation_level, end_pos = (
-                self.repo.identify_docstring_location(code_obj.id)
+                self.repo.identify_docstring_location(
+                    code_obj.id, code_representer=self.code_parser.code_representer
+                )
             )
 
             # build docstring
@@ -171,7 +141,7 @@ class AutoPyDoc:
             code_obj.is_updated = True
         code_obj.outdated = False
         # if parts are still outdated
-        next_batch = self.repo.code_parser.code_representer.generate_next_batch()
+        next_batch = self.code_parser.code_representer.generate_next_batch()
         if len(next_batch) > 0:
             self.gpt_interface.process_batch(
                 next_batch, callback=self.process_gpt_result

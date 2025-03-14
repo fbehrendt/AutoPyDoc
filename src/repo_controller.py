@@ -8,10 +8,8 @@ from pathlib import Path
 from github import Github
 from dotenv import load_dotenv
 
-from get_context import CodeParser
 from code_representation import (
     CodeRepresenter,
-    CodeObject,
     MethodObject,
     ClassObject,
     ModuleObject,
@@ -53,12 +51,6 @@ class RepoController:
                 raise NotImplementedError
         self.branch = "main"  # TODO change
 
-        self.code_parser = CodeParser(
-            code_representer=CodeRepresenter(), working_dir=self.working_dir, debug=True
-        )
-        for file in self.get_files_in_repo():
-            self.code_parser.add_file(file)
-        self.code_parser.create_dependencies()
         # self.repo = {} # {file_name: 'filename', 'methods': {'name': 'method_name', 'content': 'method content'}, 'classes': {'name': 'classname', 'methods' = {'name': 'method_name', 'content': 'method content'}}}
         self.get_latest_commit()
         if not self.debug:
@@ -194,37 +186,23 @@ class RepoController:
             changed_class["filename"] + "_" + changed_class["type"] + "_" + class_name
         )
 
-    def extract_dev_comments(self, code_obj: CodeObject) -> list[str]:
-        """
-        Extract developer comments. NOT IMPLEMENTED
-
-        :param code_obj: A dictionary with details regarding a method/class/module
-        :code_obj type: CodeObject
-
-        :return: dev comments
-        :return type: list[str]
-
-        :raises NotImplementedError: raised when not in debug mode, because this is not yet implemented
-        """
-        print("###MOCK### Extracting developer comments")
-        if not self.debug:
-            raise NotImplementedError
-        else:
-            return ["A developer comment"]
-
-    def identify_docstring_location(self, code_obj_id: str) -> tuple[int]:
+    def identify_docstring_location(
+        self, code_obj_id: str, code_representer: CodeRepresenter
+    ) -> tuple[int]:
         """
         Identify the docstring location and indentation given a CodeObject
 
         :param code_obj_id: CodeObject id
         :type code_obj_id: str
+        :param code_representer: CodeRepresenter
+        :type code_representer: CodeRepresenter
 
         :return: tuple(start, indentation level, end)
         :rtype: tuple[int]
 
         :raises Exception("End of docstring not found"): raised when the end of the docstring cannot be located
         """
-        code_obj = self.code_parser.code_representer.get(code_obj_id)
+        code_obj = code_representer.get(code_obj_id)
         with open(file=code_obj.filename, mode="r") as f:
             lines = f.readlines()
             if isinstance(code_obj, ModuleObject):
@@ -240,9 +218,7 @@ class RepoController:
                     hasattr(current_code_obj, "outer_class_id")
                     and current_code_obj.outer_class_id is not None
                 ):
-                    current_code_obj = self.code_parser.code_representer.get(
-                        code_obj.outer_class_id
-                    )
+                    current_code_obj = code_representer.get(code_obj.outer_class_id)
                     class_nesting.append(current_code_obj)
                 start_pos = 0
                 for outer_class_obj in class_nesting[
