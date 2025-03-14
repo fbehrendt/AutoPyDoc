@@ -2,8 +2,11 @@ from gpt_input import (
     GptInputClassObject,
     GptInputCodeObject,
     GptInputMethodObject,
+    GptInputModuleObject,
     GptOutput,
     GptOutputMethod,
+    GptOutputClass,
+    GptOutputModule,
 )
 
 from .model_strategy import DocstringModelStrategy
@@ -47,10 +50,34 @@ class MockStrategy(DocstringModelStrategy):
                 return_type=return_type,
             )
         elif isinstance(code_object, GptInputClassObject):
-            return GptOutput(
+            return GptOutputClass(
                 id=code_object.id,
                 no_change_necessary=False,
                 description="MOCK This is a docstring description.",
+                class_attribute_descriptions={
+                    attr_name: "MOCK class attr description"
+                    for attr_name in GptInputClassObject.class_attributes.keys()
+                },
+                class_attribute_types={
+                    attr_name: "MOCK type"
+                    for attr_name in GptInputClassObject.class_attributes.keys()
+                },
+                instance_attribute_descriptions={
+                    attr_name: "MOCK instance attr description"
+                    for attr_name in GptInputClassObject.instance_attributes.keys()
+                },
+                instance_attribute_types={
+                    attr_name: "MOCK type"
+                    for attr_name in GptInputClassObject.instance_attributes.keys()
+                },
             )
-        else:
-            raise NotImplementedError
+        elif isinstance(code_object, GptInputModuleObject):
+            return GptOutputModule(
+                id=code_object.id,
+                no_change_necessary=False,
+                description="MOCK This is a docstring description.",
+                exception_descriptions={
+                    exception: "MOCK exception description"
+                    for exception in code_object.exceptions
+                },
+            )
