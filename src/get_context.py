@@ -225,13 +225,13 @@ class CodeParser:
                     code_obj_id=inner_class_obj.id
                 )
 
-    def extract_class_and_method_calls(self, parent_obj: CodeObject):
+    def extract_class_and_method_calls(self):
         """
         Extract classes and methods called by the CodeObject
         """
-        for parent_obj in self.code_representer.get_modules().extend(
-            self.code_representer.get_classes()
-        ):
+        classes_and_modules = self.code_representer.get_modules()
+        classes_and_modules.extend(self.code_representer.get_classes())
+        for parent_obj in classes_and_modules:
             for node in ast.walk(parent_obj.ast):
                 # ast.get_source_segment(source, node.body[0])
                 if isinstance(node, ast.Call):
@@ -337,9 +337,9 @@ class CodeParser:
         """
         Extract exceptions raised by the CodeObject
         """
-        for code_obj in self.code_representer.get_modules().extend(
-            self.code_representer.get_classes()
-        ):
+        classes_and_modules = self.code_representer.get_modules()
+        classes_and_modules.extend(self.code_representer.get_classes())
+        for code_obj in classes_and_modules:
             for node in ast.walk(code_obj.ast):
                 # ast.get_source_segment(source, node.body[0])
                 if isinstance(node, ast.Raise):

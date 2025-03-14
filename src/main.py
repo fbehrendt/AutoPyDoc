@@ -45,7 +45,7 @@ class AutoPyDoc:
         )
         self.code_parser = CodeParser(
             code_representer=CodeRepresenter(),
-            working_dir=self.working_dir,
+            working_dir=self.repo.working_dir,
             debug=True,
             files=self.repo.get_files_in_repo(),
         )
@@ -89,17 +89,12 @@ class AutoPyDoc:
         if not self.debug:
             raise NotImplementedError
 
-        changed_files = []
-        for filename in [
-            code_obj.filename
-            for code_obj in self.code_parser.code_representer.objects.values()
-            if code_obj.is_updated
-        ]:
-            if filename not in changed_files:
-                changed_files.append(filename)
-        self.repo.apply_changes(changed_files=changed_files)
+        self.repo.apply_changes(
+            changed_files=self.code_parser.code_representer.get_changed_files()
+        )
         if not self.debug:
             raise NotImplementedError
+        print("Finished successfully")
 
     def process_gpt_result(self, result: GptOutput) -> None:
         print("Received", result.id)

@@ -835,8 +835,8 @@ class CodeRepresenter:
             id
             for id in self.get_outdated_ids()
             if (ignore_dependencies)
-            or not self.repo.code_parser.code_representer.depends_on_outdated_code(id)
-            and not self.repo.code_parser.code_representer.get(id).send_to_gpt
+            or not self.depends_on_outdated_code(id)
+            and not self.get(id).send_to_gpt
         ]
         batch: List[GptInputCodeObject] = []
         for id in ids:
@@ -865,3 +865,13 @@ class CodeRepresenter:
             for code_obj in list(self.objects.values())
             if isinstance(code_obj, MethodObject)
         ]
+
+    def get_changed_files(self):
+        changed_files = set()
+        for filename in [
+            code_obj.filename
+            for code_obj in self.objects.values()
+            if code_obj.is_updated
+        ]:
+            changed_files.add(filename)
+        return list(changed_files)
