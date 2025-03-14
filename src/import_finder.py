@@ -17,16 +17,12 @@ class ImportFinder:
                 for item in node.names:
                     current_file_imports.append(item.name)
             elif isinstance(node, ast.ImportFrom):
-                module = node.module
-                if self.debug:  # TODO
-                    if module is None:
-                        continue
+                module = node.module  # TODO I don't think this is how this works
                 for item in node.names:
                     current_file_imports.append(module + "." + item.name)
         self.imports[filename] = current_file_imports
 
     def resolve_external_call(self, call, filename, code_representer):
-        # TODO does ast resolve external calls as module.method, or as method with module stored separately?
         # TODO resolve calls like class_obj_variable.class_method_call => get type of class_obj_variable
         # TODO resolve calls like self.class_obj.method, where class_obj was imported
         relevant_imports = self.imports[filename]
@@ -88,9 +84,7 @@ class ImportFinder:
                 j += 1
             if j > 0:
                 filename = os.path.join(self.working_dir, *split_path)
-                potential_matches.extend(
-                    code_representer.get_by_filename(filename)
-                )  # TODO
+                potential_matches.extend(code_representer.get_by_filename(filename))
         if len(potential_matches) > 0:
             return potential_matches
         else:

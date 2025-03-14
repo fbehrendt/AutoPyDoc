@@ -49,7 +49,7 @@ def extract_methods_from_change_info(
     for method_location in method_locations:
         methods.append(
             {
-                "type": "method",  # TODO only if applicable
+                "type": "method",
                 "filename": filename,
                 "start": method_location["start"],
                 "end": method_location["end"],
@@ -98,7 +98,7 @@ def extract_classes_from_change_info(
         if content[line].lstrip().startswith("class "):
             if len(class_locations) > 0:
                 class_locations[-1]["end"] = line - 1
-                # TODO detect and remove newlines before next method
+                # TODO detect and remove newlines before next class
                 num_class += 1
             if line > change_length:
                 break
@@ -126,9 +126,7 @@ def extract_classes_from_change_info(
     return classes
 
 
-def extract_module_from_change_info(
-    filename: str, change_start: int, change_length: int
-) -> list[dict[str | int]]:
+def extract_module_from_change_info(filename: str) -> list[dict[str | int]]:
     """
     Extract start, end and content of methods affected by change information
 
@@ -145,7 +143,7 @@ def extract_module_from_change_info(
     with open(filename, "r") as f:
         content = f.readlines()
     return {
-        "type": "method",  # TODO only if applicable
+        "type": "module",
         "filename": filename,
         "start": 0,
         "end": len(content),

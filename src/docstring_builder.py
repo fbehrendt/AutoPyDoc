@@ -387,7 +387,7 @@ def create_docstring(
     """
     if isinstance(code_obj, MethodObject):
         docstring_builder = DocstringBuilderMethod(indentation_level=indentation_level)
-        docstring_builder.add_description(result.description)  # TODO
+        docstring_builder.add_description(result.description)
         for param in code_obj.arguments:
             if param["name"] == "self":  # skip self
                 continue
@@ -401,17 +401,17 @@ def create_docstring(
                     param_type=param_type,
                     param_default=param["default"],
                     param_description=result.parameter_descriptions[param["name"]],
-                )  # TODO
+                )
             else:
                 docstring_builder.add_param(
                     param_name=param["name"],
                     param_type=param_type,
                     param_description=result.parameter_descriptions[param["name"]],
-                )  # TODO
+                )
         for exception, exception_description in result.exception_descriptions.items():
             docstring_builder.add_exception(
                 exception_name=exception, exception_description=exception_description
-            )  # TODO
+            )
         if not code_obj.missing_return_type and code_obj.return_type is not None:
             if result.return_missing:
                 return_type = result.return_type
@@ -419,10 +419,10 @@ def create_docstring(
                 return_type = code_obj.return_type
             docstring_builder.add_return(
                 return_type=return_type, return_description=result.return_description
-            )  # TODO
+            )
     elif isinstance(code_obj, ClassObject):
         docstring_builder = DocstringBuilderClass(indentation_level=indentation_level)
-        docstring_builder.add_description(result.description)  # TODO
+        docstring_builder.add_description(result.description)
         for class_attribute_name in result.class_attribute_descriptions.keys():
             tmp = [
                 attr["type"]
@@ -439,7 +439,7 @@ def create_docstring(
                 class_attribute_description=result.class_attribute_descriptions[
                     class_attribute_name
                 ],
-            )  # TODO
+            )
         for instance_attribute_name in result.instance_attribute_descriptions.keys():
             tmp = [
                 attr["type"]
@@ -456,15 +456,15 @@ def create_docstring(
                 instance_attribute_description=result.instance_attribute_descriptions[
                     instance_attribute_name
                 ],
-            )  # TODO
+            )
 
     elif isinstance(code_obj, ModuleObject):
         docstring_builder = DocstringBuilderModule(indentation_level=indentation_level)
-        docstring_builder.add_description(result.description)  # TODO
+        docstring_builder.add_description(result.description)
         for exception, exception_description in result.exception_descriptions.items():
             docstring_builder.add_exception(
                 exception_name=exception, exception_description=exception_description
-            )  # TODO
+            )
     else:
-        raise NotImplementedError  # TODO
+        raise NotImplementedError
     return docstring_builder.build()

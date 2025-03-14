@@ -41,7 +41,6 @@ class CodeParser:
         :type debug: bool"""
         self.code_representer = code_representer
         self.working_dir = working_dir
-        self.ducttape = False  # TODO create a proper solution. For now only allow dependency creation once
         self.debug = debug
         self.import_finder = ImportFinder(working_dir=working_dir, debug=self.debug)
         for file in files:
@@ -55,29 +54,13 @@ class CodeParser:
         :type filename: str
         """
         dir = pathlib.Path().resolve()
-        self.full_path = os.path.join(dir, filename)
-        self.tree = ast.parse(open(self.full_path).read())
-        self.import_finder.add_file(self.full_path)
-        self.extract_file_modules_classes_and_methods(tree=self.tree)
+        tree = ast.parse(open(filename).read())
+        self.import_finder.add_file(filename)
+        self.extract_file_modules_classes_and_methods(
+            tree=tree, file_path=os.path.join(dir, filename)
+        )
 
-    def create_dependencies(self):
-        """Create dependencies between modules, classes and methods"""
-        # TODO id collisions possible with subclasses/class methods (only within the same file)
-        # example
-        # class A():
-        #   def func_a():
-        #       pass
-        # class B():
-        #   class A(): # class name collision
-        # def func_a(): # method name collision
-        #   pass
-        # or
-        # class
-        if self.ducttape:
-            return
-        self.ducttape = True
-
-    def extract_file_modules_classes_and_methods(self, tree: ast.AST):
+    def extract_file_modules_classes_and_methods(self, tree: ast.AST, file_path: str):
         """
         Extract file level modules, classes and methods
 
@@ -88,10 +71,10 @@ class CodeParser:
         if isinstance(tree, ast.Module):
             module_name = ""  # TODO get module name
             docstring = ast.get_docstring(node=tree, clean=True)
-            source_code = open(self.full_path).read()
+            source_code = open(file_path).read()
             module_obj = ModuleObject(
                 name=module_name,
-                filename=self.full_path,
+                filename=file_path,
                 ast=tree,
                 docstring=docstring,
                 code=source_code,
@@ -105,11 +88,11 @@ class CodeParser:
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(
-                    open(self.full_path).read(), node, padded=False
+                    open(file_path).read(), node, padded=False
                 )
                 method_obj = MethodObject(
                     name=func_def_name,
-                    filename=self.full_path,
+                    filename=file_path,
                     ast=node,
                     docstring=docstring,
                     code=source_code,
@@ -123,11 +106,11 @@ class CodeParser:
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(
-                    open(self.full_path).read(), node, padded=False
+                    open(file_path).read(), node, padded=False
                 )
                 method_obj = MethodObject(
                     name=func_def_name,
-                    filename=self.full_path,
+                    filename=file_path,
                     ast=node,
                     docstring=docstring,
                     code=source_code,
@@ -143,11 +126,11 @@ class CodeParser:
                 class_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(
-                    open(self.full_path).read(), node, padded=False
+                    open(file_path).read(), node, padded=False
                 )
                 class_obj = ClassObject(
                     name=class_def_name,
-                    filename=self.full_path,
+                    filename=file_path,
                     ast=node,
                     docstring=docstring,
                     code=source_code,
@@ -189,11 +172,11 @@ class CodeParser:
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(
-                    open(self.full_path).read(), node, padded=False
+                    open(outer_code_obj.filename).read(), node, padded=False
                 )
                 method_obj = MethodObject(
                     name=func_def_name,
-                    filename=self.full_path,
+                    filename=outer_code_obj.filename,
                     ast=node,
                     docstring=docstring,
                     code=source_code,
@@ -208,11 +191,11 @@ class CodeParser:
                 class_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(
-                    open(self.full_path).read(), node, padded=False
+                    open(outer_code_obj.filename).read(), node, padded=False
                 )
                 inner_class_obj = ClassObject(
                     name=class_def_name,
-                    filename=self.full_path,
+                    filename=outer_code_obj.filename,
                     ast=node,
                     docstring=docstring,
                     code=source_code,
@@ -265,32 +248,14 @@ class CodeParser:
                         if not self.debug:
                             raise NotImplementedError
 
-                    if (
-                        self.full_path + "_" + "method" + "_" + called_func_name
-                        in self.code_representer.objects.keys()
-                    ):  # TODO this is no longer correct
-                        called_func_type = "method"
-                        called_func_id = (
-                            self.full_path
-                            + "_"
-                            + called_func_type
-                            + "_"
-                            + called_func_name
-                        )
-                        parent_obj.add_called_method(called_func_id)
-                    elif (
-                        self.full_path + "_" + "class" + "_" + called_func_name
-                        in self.code_representer.objects.keys()
-                    ):  # TODO this is no longer correct
-                        called_func_type = "class"
-                        called_func_id = (
-                            self.full_path
-                            + "_"
-                            + called_func_type
-                            + "_"
-                            + called_func_name
-                        )
-                        parent_obj.add_called_class(called_func_id)
+                    code_obj = self.code_representer.get_by_filename_and_name(
+                        filename=parent_obj.filename, name=called_func_name
+                    )  # TODO could be ambiguous
+
+                    if isinstance(code_obj, MethodObject):
+                        parent_obj.add_called_method(code_obj.id)
+                    elif isinstance(code_obj, ClassObject):
+                        parent_obj.add_called_class(code_obj.id)
                     else:
                         # print("Call from external file. Trying to resolve")
                         matching_imports = self.import_finder.resolve_external_call(
@@ -454,9 +419,7 @@ class CodeParser:
             if not self.debug:
                 raise NotImplementedError
             changed_module = extract_module_from_change_info(
-                filename=change["filename"],
-                change_start=change["start"],
-                change_length=change["lines_changed"],
+                filename=change["filename"]
             )
             for changed_method in changed_methods:
                 method_obj = self.code_representer.get_by_type_filename_and_code(
