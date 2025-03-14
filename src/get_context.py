@@ -248,55 +248,73 @@ class CodeParser:
                         if not self.debug:
                             raise NotImplementedError
 
-                    code_obj = self.code_representer.get_by_filename_and_name(
-                        filename=parent_obj.filename, name=called_func_name
-                    )  # TODO could be ambiguous
-
-                    if isinstance(code_obj, MethodObject):
-                        parent_obj.add_called_method(code_obj.id)
-                    elif isinstance(code_obj, ClassObject):
-                        parent_obj.add_called_class(code_obj.id)
-                    else:
-                        # print("Call from external file. Trying to resolve")
-                        matching_imports = self.import_finder.resolve_external_call(
-                            call=called_func_name,
-                            filename=parent_obj.filename,
-                            code_representer=self.code_representer,
-                        )
-                        if matching_imports is None or matching_imports == []:
-                            # print("Called code not found. (Happens when calling a class or method not defined in the file)")
-                            continue
+                    try:
+                        code_obj = self.code_representer.get_by_filename_and_name(
+                            filename=parent_obj.filename, name=called_func_name
+                        )  # TODO could be ambiguous
+                        if isinstance(code_obj, MethodObject):
+                            parent_obj.add_called_method(code_obj.id)
+                        elif isinstance(code_obj, ClassObject):
+                            parent_obj.add_called_class(code_obj.id)
                         else:
-                            if len(matching_imports) == 1:
-                                called_func_id = matching_imports[0].id
-                                if matching_imports[0].code_type == "class":
-                                    parent_obj.add_called_class(matching_imports[0].id)
-                                elif matching_imports[0].code_type == "method":
-                                    parent_obj.add_called_method(matching_imports[0].id)
+                            raise NotImplementedError
+                        if isinstance(parent_obj, MethodObject):
+                            self.code_representer.objects[
+                                code_obj.id
+                            ].add_caller_method(parent_obj.id)
+                        elif isinstance(parent_obj, ClassObject):
+                            self.code_representer.objects[code_obj.id].add_caller_class(
+                                parent_obj.id
+                            )
+                        elif isinstance(parent_obj, ModuleObject):
+                            self.code_representer.objects[
+                                code_obj.id
+                            ].add_caller_module(parent_obj.id)
+                        else:
+                            raise NotImplementedError
+                    except Exception as e:
+                        # Just print(e) is cleaner and more likely what you want,
+                        # but if you insist on printing message specifically whenever possible...
+                        if hasattr(e, "args"):
+                            if e.args[0] == "No matches":
+                                # print("Call from external file. Trying to resolve")
+                                matching_imports = (
+                                    self.import_finder.resolve_external_call(
+                                        call=called_func_name,
+                                        filename=parent_obj.filename,
+                                        code_representer=self.code_representer,
+                                    )
+                                )
+                                if matching_imports is None or matching_imports == []:
+                                    # print("Called code not found. (Happens when calling a class or method not defined in the file)")
+                                    continue
                                 else:
-                                    raise NotImplementedError
-                            for item in matching_imports:
-                                if item.name == called_func_name:
-                                    called_func_id = item.id
-                                    if item.code_type == "class":
-                                        parent_obj.add_called_class(item.id)
-                                    elif item.code_type == "method":
-                                        parent_obj.add_called_method(item.id)
+                                    if len(matching_imports) == 1:
+                                        called_func_id = matching_imports[0].id
+                                        if matching_imports[0].code_type == "class":
+                                            parent_obj.add_called_class(called_func_id)
+                                        elif matching_imports[0].code_type == "method":
+                                            parent_obj.add_called_method(called_func_id)
+                                        else:
+                                            raise NotImplementedError
                                     else:
                                         raise NotImplementedError
-                            if not self.debug:
+                                    if isinstance(parent_obj, MethodObject):
+                                        self.code_representer.objects[
+                                            called_func_id
+                                        ].add_caller_method(parent_obj.id)
+                                    elif isinstance(parent_obj, ClassObject):
+                                        self.code_representer.objects[
+                                            called_func_id
+                                        ].add_caller_class(parent_obj.id)
+                                    elif isinstance(parent_obj, ModuleObject):
+                                        self.code_representer.objects[
+                                            called_func_id
+                                        ].add_caller_module(parent_obj.id)
+                                    else:
+                                        raise NotImplementedError
+                            elif e.args[0] == "More than one match":
                                 raise NotImplementedError
-
-                    if isinstance(parent_obj, MethodObject):
-                        self.code_representer.objects[called_func_id].add_caller_method(
-                            parent_obj.id
-                        )
-                    elif isinstance(parent_obj, ClassObject):
-                        self.code_representer.objects[called_func_id].add_caller_class(
-                            parent_obj.id
-                        )
-                    else:
-                        print("Unmatched parent type:", parent_obj.code_type)
 
     def extract_exceptions(self):
         """

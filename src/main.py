@@ -56,8 +56,6 @@ class AutoPyDoc:
             files=self.repo.get_files_in_repo(),
         )
 
-        self.code_parser.create_dependencies()
-
         self.code_parser.extract_class_and_method_calls()
         self.code_parser.extract_args_and_return_type()
         self.code_parser.extract_exceptions()

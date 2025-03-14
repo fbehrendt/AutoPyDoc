@@ -17,14 +17,18 @@ class ImportFinder:
                 for item in node.names:
                     current_file_imports.append(item.name)
             elif isinstance(node, ast.ImportFrom):
-                module = node.module  # TODO I don't think this is how this works
+                module = node.module
                 for item in node.names:
-                    current_file_imports.append(module + "." + item.name)
+                    if module is None:
+                        current_file_imports.append(item.name)
+                    else:
+                        current_file_imports.append(module + "." + item.name)
         self.imports[filename] = current_file_imports
 
     def resolve_external_call(self, call, filename, code_representer):
         # TODO resolve calls like class_obj_variable.class_method_call => get type of class_obj_variable
         # TODO resolve calls like self.class_obj.method, where class_obj was imported
+        # TODO not working properly
         relevant_imports = self.imports[filename]
         matches = [
             current_import
