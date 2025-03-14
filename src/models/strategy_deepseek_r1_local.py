@@ -145,36 +145,31 @@ Please reason step by step to find out if the existing docstring matches the cod
 
     def _build_generate_docstring_prompt(self, code_content, language="english") -> str:
         return f"""
-You are an AI documentation assistant, and your task is to generate a docstring based on the given code of the function.
-The purpose of the documentation is to help developers and beginners understand the function and specific usage of the code.
+You are an AI documentation assistant, and your task is to analyze the code of a Python function.
+The purpose of the analysis is to help developers and beginners understand the function and specific usage of the code.
+Use plain text (including all details), in language {language} in a deterministic tone.
 
 The content of the code is as follows:
 '''
 {code_content}
 '''
 
-Please generate a detailed explanation document for this object based on the code of the target object itself.
-
-
-Please write out the docstring of this function in bold plain text, followed by a detailed analysis in plain text (including all details), in language {language} to serve as the documentation for this part of the code.
-
 Please note:
-- Write mainly in the desired language. If necessary, you can write with some English words in the analysis and description to enhance the document's readability because you do not need to translate the function name or variable name into the target language.
-- Keep the docstring short and concise, and avoid unnecessary details.
+- Write mainly in the {language} language. If necessary, you can write with some English words in the analysis and description to enhance the document's readability because you do not need to translate the function name or variable name into the target language.
+- Keep the text short and concise, and avoid unnecessary details.
 - Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know you're provided with code snippet and documents.
 - AVOID ANY SPECULATION and inaccurate descriptions!
-- DO NOT use markdown syntax in the final output
-- The output will be used in the reStructuredText Docstring Format according to PEP 287
+- DO NOT use markdown syntax in the output
 
 Now, provide the documentation for the target object in {language} in a professional way.
-Please reason step by step, and put your final answer within {{
+Please reason step by step, and put your final answer within the following json format {{
     "description": "your docstring description goes here",
     "parameters": [
         {{"name": "parameter name", "type": "parameter type", "description": "description for this parameter"}},
         for each parameter
     ],
     "returns": {{"type": "return type", "description": "description for this return value"}}
-}}.
+}}. Stick to this format WITHOUT EXCEPTIONS.
 
 <think>
 """
