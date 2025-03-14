@@ -77,6 +77,10 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
         # - https://help.openai.com/en/articles/10032626-prompt-engineering-best-practices-for-chatgpt
         # - https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B#usage-recommendations
 
+        truncated_code_content = code_content[
+            : self.context_size - len(existing_docstring) - 577
+        ]
+
         return f"""
 You are an AI documentation assistant, and your task is to evaluate if an existing function docstring correctly descibes the given code of the function.
 The purpose of the documentation is to help developers and beginners understand the function and specific usage of the code.
@@ -88,7 +92,7 @@ The existing docstring is as follows:
 
 The content of the code is as follows:
 '''
-{code_content}
+{truncated_code_content}
 '''
 
 Please reason step by step to find out if the existing docstring matches the code, and put your final answer within {{
@@ -142,8 +146,13 @@ Please reason step by step to find out if the existing docstring matches the cod
                 "An error occurred during docstring generation", exc_info=e
             )
             raise e
+    def _build_generate_docstring_prompt(
+        self, code_content: str, language="english"
+    ) -> str:
+        truncated_code_content = code_content[
+            : self.context_size - len(language) * 3 - 1500
+        ]
 
-    def _build_generate_docstring_prompt(self, code_content, language="english") -> str:
         return f"""
 You are an AI documentation assistant, and your task is to analyze the code of a Python function.
 The purpose of the analysis is to help developers and beginners understand the function and specific usage of the code.
@@ -151,7 +160,7 @@ Use plain text (including all details), in language {language} in a deterministi
 
 The content of the code is as follows:
 '''
-{code_content}
+{truncated_code_content}
 '''
 
 Please note:
