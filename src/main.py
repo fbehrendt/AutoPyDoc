@@ -68,7 +68,7 @@ class AutoPyDoc:
                 change_start=change["start"],
                 change_length=change["lines_changed"],
             )
-            for changed_method in changed_methods:  # TODO not only methods
+            for changed_method in changed_methods:
                 method_obj = self.repo.code_parser.code_representer.get_by_type_filename_and_code(
                     code_type="method",
                     filename=changed_method["filename"],
@@ -78,7 +78,7 @@ class AutoPyDoc:
                 method_obj.outdated = True
                 method_obj.dev_comments = self.repo.extract_dev_comments(method_obj)
 
-            for changed_class in changed_classes:  # TODO not only methods
+            for changed_class in changed_classes:
                 class_obj = self.repo.code_parser.code_representer.get_by_type_filename_and_code(
                     code_type="class",
                     filename=changed_class["filename"],
@@ -106,6 +106,50 @@ class AutoPyDoc:
             print("No need to do anything")
             quit()
         self.gpt_interface.process_batch(first_batch, callback=self.process_gpt_result)
+
+        # if parts are still outdated
+        while (
+            len(
+                [
+                    id
+                    for id in self.queued_code_ids
+                    if self.repo.code_parser.code_representer.get(id).outdated
+                ]
+            )
+            > 0
+        ):
+            missing_items = [
+                id
+                for id in self.queued_code_ids
+                if self.repo.code_parser.code_representer.get(id).outdated
+            ]
+            print("Some parts are still missing updates")
+            print("\n".join([str(item) for item in missing_items]))
+            next_batch = self.generate_next_batch(ignore_dependencies=True)
+            if len(next_batch) > 0:
+                self.queries_sent_to_gpt += len(next_batch)
+                self.gpt_interface.process_batch(
+                    next_batch, callback=self.process_gpt_result
+                )
+            if not self.debug:
+                raise NotImplementedError
+
+        # if every docstring is updated
+        # TODO validate code integrity
+        if not self.debug:
+            raise NotImplementedError
+
+        changed_files = []
+        for filename in [
+            code_obj.filename
+            for code_obj in self.repo.code_parser.code_representer.objects.values()
+            if code_obj.is_updated
+        ]:
+            if filename not in changed_files:
+                changed_files.append(filename)
+        self.repo.apply_changes(changed_files=changed_files)
+        if not self.debug:
+            raise NotImplementedError
 
     def generate_next_batch(
         self, ignore_dependencies=False
@@ -173,40 +217,6 @@ class AutoPyDoc:
             self.gpt_interface.process_batch(
                 next_batch, callback=self.process_gpt_result
             )
-        # if every docstring is updated
-        elif self.queries_sent_to_gpt < 1:
-            missing_items = [
-                id
-                for id in self.queued_code_ids
-                if self.repo.code_parser.code_representer.get(id).outdated
-            ]
-            if len(missing_items) > 0:
-                print("Some parts are still missing updates")
-                print("\n".join([str(item) for item in missing_items]))
-                next_batch = self.generate_next_batch(ignore_dependencies=True)
-                if len(next_batch) > 0:
-                    self.queries_sent_to_gpt += len(next_batch)
-                    self.gpt_interface.process_batch(
-                        next_batch, callback=self.process_gpt_result
-                    )
-                if not self.debug:
-                    raise NotImplementedError
-
-            # TODO validate code integrity
-            if not self.debug:
-                raise NotImplementedError
-
-            changed_files = []
-            for filename in [
-                code_obj.filename
-                for code_obj in self.repo.code_parser.code_representer.objects.values()
-                if code_obj.is_updated
-            ]:
-                if filename not in changed_files:
-                    changed_files.append(filename)
-            self.repo.apply_changes(changed_files=changed_files)
-            if not self.debug:
-                raise NotImplementedError
 
 
 if __name__ == "__main__":
