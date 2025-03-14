@@ -1,5 +1,6 @@
 from ast import AST
 from dataclasses import dataclass, field, fields
+from typing import List
 
 from gpt_input import (
     GptInputCodeObject,
@@ -190,6 +191,9 @@ class CodeObject:
             context_docstrings=code_representer.get_context_docstrings(self.id),
             exceptions=self.exceptions,
         )
+
+    def get_sent_to_gpt(self):
+        return self.send_to_gpt
 
 
 @dataclass(unsafe_hash=True)
@@ -813,3 +817,30 @@ class CodeRepresenter:
         code_obj.docstring = new_docstring
         code_obj.is_updated = True
         code_obj.outdated = False
+
+    def get_outdated_ids(self):
+        return [code_obj.id for code_obj in self.objects.values() if code_obj.outdated]
+
+    def get_sent_to_gpt_ids(self):
+        return [
+            code_obj.id
+            for code_obj in self.objects.values()
+            if code_obj.get_sent_to_gpt()
+        ]
+
+    def generate_next_batch(
+        self, ignore_dependencies=False
+    ) -> list[GptInputCodeObject]:
+        ids = [
+            id
+            for id in self.get_outdated_ids()
+            if (ignore_dependencies)
+            or not self.repo.code_parser.code_representer.depends_on_outdated_code(id)
+            and not self.repo.code_parser.code_representer.get(id).send_to_gpt
+        ]
+        batch: List[GptInputCodeObject] = []
+        for id in ids:
+            code_obj = self.get(id)
+            code_obj.send_to_gpt = True
+            batch.append(code_obj.get_gpt_input(code_representer=self))
+        return batch

@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from docstring_builder import create_docstring
 from extract_affected_code_from_change_info import (
@@ -45,7 +44,6 @@ class AutoPyDoc:
             repo_path=repo_path, pull_request_token=pull_request_token, debug=debug
         )
         self.debug = debug
-        self.queued_code_ids = []
 
         # get changes between last commit the tool ran for and now
         self.changes = self.repo.get_changes()
@@ -74,7 +72,6 @@ class AutoPyDoc:
                     filename=changed_method["filename"],
                     code=changed_method["content"],
                 )
-                self.queued_code_ids.append(method_obj.id)
                 method_obj.outdated = True
                 method_obj.dev_comments = self.repo.extract_dev_comments(method_obj)
 
@@ -85,7 +82,6 @@ class AutoPyDoc:
                     code=changed_class["content"],
                 )
                 class_obj.outdated = True
-                self.queued_code_ids.append(class_obj.id)
                 class_obj.dev_comments = self.repo.extract_dev_comments(class_obj)
 
             module_obj = (
@@ -97,37 +93,23 @@ class AutoPyDoc:
             )
 
             module_obj.outdated = True
-            self.queued_code_ids.append(module_obj.id)
             module_obj.dev_comments = self.repo.extract_dev_comments(module_obj)
 
-        first_batch = self.generate_next_batch()
-        self.queries_sent_to_gpt = len(first_batch)
-        if self.queries_sent_to_gpt == 0:
+        first_batch = self.repo.code_parser.code_representer.generate_next_batch()
+        if len(self.repo.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
             print("No need to do anything")
             quit()
         self.gpt_interface.process_batch(first_batch, callback=self.process_gpt_result)
 
         # if parts are still outdated
-        while (
-            len(
-                [
-                    id
-                    for id in self.queued_code_ids
-                    if self.repo.code_parser.code_representer.get(id).outdated
-                ]
-            )
-            > 0
-        ):
-            missing_items = [
-                id
-                for id in self.queued_code_ids
-                if self.repo.code_parser.code_representer.get(id).outdated
-            ]
+        while len(self.repo.code_parser.code_representer.get_outdated_ids()) > 0:
+            missing_items = self.repo.code_parser.code_representer.get_outdated_ids()
             print("Some parts are still missing updates")
             print("\n".join([str(item) for item in missing_items]))
-            next_batch = self.generate_next_batch(ignore_dependencies=True)
+            next_batch = self.repo.code_parser.code_representer.generate_next_batch(
+                ignore_dependencies=True
+            )
             if len(next_batch) > 0:
-                self.queries_sent_to_gpt += len(next_batch)
                 self.gpt_interface.process_batch(
                     next_batch, callback=self.process_gpt_result
                 )
@@ -151,35 +133,13 @@ class AutoPyDoc:
         if not self.debug:
             raise NotImplementedError
 
-    def generate_next_batch(
-        self, ignore_dependencies=False
-    ) -> list[GptInputCodeObject]:
-        ids = [
-            id
-            for id in self.queued_code_ids
-            if (
-                ignore_dependencies
-                and self.repo.code_parser.code_representer.get(id).outdated
-            )
-            or not self.repo.code_parser.code_representer.depends_on_outdated_code(id)
-            and not self.repo.code_parser.code_representer.get(id).send_to_gpt
-        ]
-        batch: List[GptInputCodeObject] = []
-        for id in ids:
-            code_obj = self.repo.code_parser.code_representer.get(id)
-            code_obj.send_to_gpt = True
-            # TODO add instance and class variables to above dict if code_obj.code_type is class
-            batch.append(
-                code_obj.get_gpt_input(
-                    code_representer=self.repo.code_parser.code_representer
-                )
-            )
-        return batch
-
     def process_gpt_result(self, result: GptOutput) -> None:
-        self.queries_sent_to_gpt -= 1
         print("Received", result.id)
-        print("Waiting for", self.queries_sent_to_gpt, "more results")
+        print(
+            "Waiting for",
+            len(self.repo.code_parser.code_representer.get_sent_to_gpt_ids()),
+            "more results",
+        )
         code_obj = self.repo.code_parser.code_representer.get(result.id)
         if not result.no_change_necessary:
             start_pos, indentation_level, end_pos = (
@@ -211,9 +171,8 @@ class AutoPyDoc:
             code_obj.is_updated = True
         code_obj.outdated = False
         # if parts are still outdated
-        next_batch = self.generate_next_batch()
+        next_batch = self.repo.code_parser.code_representer.generate_next_batch()
         if len(next_batch) > 0:
-            self.queries_sent_to_gpt += len(next_batch)
             self.gpt_interface.process_batch(
                 next_batch, callback=self.process_gpt_result
             )
