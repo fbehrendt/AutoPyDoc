@@ -745,6 +745,31 @@ class CodeRepresenter:
             raise Exception("No matches")
         return matches[0]
 
+    def get_by_filename_and_name(self, filename: str, name: str) -> CodeObject:
+        """
+        Get CodeObjects by filename
+
+        :param filename: filename for which CodeObjects should be returned
+        :type filename: str
+        :param name: name of the class, module, or method
+        :type name: str
+
+        :return: list of matching CodeObjecs
+        :return type: list[CodeObject]
+        """
+        candidates = self.get_by_filename(filename=filename)
+        matches = []
+        for candidate in candidates:
+            if (
+                candidate.name == name  # TODO ambiguous
+            ):
+                matches.append(candidate)
+        if len(matches) > 1:
+            raise Exception("More than one match")
+        if len(matches) == 0:
+            raise Exception("No matches")
+        return matches[0]
+
     def get_context_docstrings(self, code_obj_id: str) -> dict[str, str]:
         """
         Get the docstrings of context CodeObjects as a dict of CodeObject id to docstring
