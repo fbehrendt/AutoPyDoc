@@ -308,19 +308,6 @@ class DocstringBuilderModule(DocstringBuilder):
         super().__init__(indentation_level=indentation_level)
         self.exceptions = []
 
-    def add_description(self, description: str) -> typing.Self:
-        """
-        Add description section
-
-        :param description: description without indentation
-        :type description: str
-
-        :return: self
-        :return type: DocstringBuilder
-        """
-        self.description = description
-        return self
-
     def add_exception(
         self, exception_name: str, exception_description: str
     ) -> typing.Self:
