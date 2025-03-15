@@ -456,7 +456,7 @@ class CodeParser:
                     filename=changed_method["filename"],
                     code=changed_method["content"],
                 )
-                method_obj.outdated = True
+                self.code_representer.set_outdated(method_obj.id)
                 method_obj.dev_comments = self.extract_dev_comments(method_obj)
 
             for changed_class in changed_classes:
@@ -465,7 +465,7 @@ class CodeParser:
                     filename=changed_class["filename"],
                     code=changed_class["content"],
                 )
-                class_obj.outdated = True
+                self.code_representer.set_outdated(class_obj.id)
                 class_obj.dev_comments = self.extract_dev_comments(class_obj)
 
             module_obj = self.code_representer.get_by_type_filename_and_code(
@@ -473,7 +473,7 @@ class CodeParser:
                 filename=changed_module["filename"],
                 code=changed_module["content"],
             )
-            module_obj.outdated = True
+            self.code_representer.set_outdated(module_obj.id)
             module_obj.dev_comments = self.extract_dev_comments(class_obj)
 
     def extract_dev_comments(self, code_obj: CodeObject) -> list[str]:

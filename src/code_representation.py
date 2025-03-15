@@ -903,3 +903,15 @@ class CodeRepresenter:
         ]:
             changed_files.add(filename)
         return list(changed_files)
+
+    def set_outdated(self, code_obj_id: int):
+        code_obj = self.get(code_obj_id)
+        code_obj.outdated = True
+        if isinstance(code_obj, MethodObject) or isinstance(code_obj, ClassObject):
+            if code_obj.outer_class_id is not None:
+                outer_class = self.get(code_obj.outer_class_id)
+                outer_class.outdated = True
+            if code_obj.module_id is not None:
+                module_obj = self.get(code_obj.module_id)
+                module_obj.outdated = True
+        # TODO use this
