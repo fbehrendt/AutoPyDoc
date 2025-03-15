@@ -212,9 +212,7 @@ class CodeParser:
         """
         Extract classes and methods called by the CodeObject
         """
-        classes_and_modules = self.code_representer.get_modules()
-        classes_and_modules.extend(self.code_representer.get_classes())
-        for parent_obj in classes_and_modules:
+        for parent_obj in self.code_representer.get_code_objects():
             for node in ast.walk(parent_obj.ast):
                 # ast.get_source_segment(source, node.body[0])
                 if isinstance(node, ast.Call):
@@ -273,8 +271,6 @@ class CodeParser:
                         else:
                             raise NotImplementedError
                     except Exception as e:
-                        # Just print(e) is cleaner and more likely what you want,
-                        # but if you insist on printing message specifically whenever possible...
                         if hasattr(e, "args"):
                             if e.args[0] == "No matches":
                                 # print("Call from external file. Trying to resolve")
@@ -321,7 +317,7 @@ class CodeParser:
         Extract exceptions raised by the CodeObject
         """
         classes_and_modules = self.code_representer.get_modules()
-        classes_and_modules.extend(self.code_representer.get_classes())
+        classes_and_modules.extend(self.code_representer.get_methods())
         for code_obj in classes_and_modules:
             for node in ast.walk(code_obj.ast):
                 # ast.get_source_segment(source, node.body[0])
@@ -421,6 +417,8 @@ class CodeParser:
                                 if target.value.id == "self":
                                     attr = {"name": target.attr}
                                     class_obj.add_instance_attribute(attribute=attr)
+                elif isinstance(node, ast.AnnAssign):
+                    raise NotImplementedError
 
     def set_code_affected_by_changes_to_outdated(self, changes: list):
         for change in changes:
