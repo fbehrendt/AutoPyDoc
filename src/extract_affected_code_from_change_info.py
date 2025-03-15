@@ -36,7 +36,7 @@ def extract_methods_from_change_info(
                 method_locations[-1]["end"] = line - 1
                 # TODO detect and remove newlines before next method
                 num_method += 1
-            if line > change_length:
+            if line > change_start + change_length:
                 break
             method_locations.append({"start": line})
             line += 2
