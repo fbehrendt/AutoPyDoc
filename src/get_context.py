@@ -418,7 +418,20 @@ class CodeParser:
                                     attr = {"name": target.attr}
                                     class_obj.add_instance_attribute(attribute=attr)
                 elif isinstance(node, ast.AnnAssign):
-                    raise NotImplementedError
+                    if hasattr(node.target, "value") and hasattr(
+                        node.target.value, "id"
+                    ):
+                        if node.target.value.id == "self":
+                            if hasattr(node.annotation, "id"):
+                                attr_type = node.annotation.id
+                            elif hasattr(node.annotation, "value") and hasattr(
+                                node.annotation.value, "id"
+                            ):
+                                attr_type = node.annotation.value.id
+                            else:
+                                raise NotImplementedError
+                            attr = {"name": node.target.id, "type": attr_type}
+                            class_obj.add_instance_attribute(attribute=attr)
 
     def set_code_affected_by_changes_to_outdated(self, changes: list):
         for change in changes:
