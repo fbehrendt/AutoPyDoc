@@ -870,6 +870,9 @@ class CodeRepresenter:
             batch.append(code_obj.get_gpt_input(code_representer=self))
         return batch
 
+    def get_code_objects(self):
+        return list(self.objects.values())
+
     def get_modules(self):
         return [
             code_obj
