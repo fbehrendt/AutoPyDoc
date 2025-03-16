@@ -162,7 +162,7 @@ class RepoController:
             diff = self.repo.git.diff(latest_commit, current_commit)
 
             pattern = re.compile(
-                "\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@"
+                r"\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@"
             )
             changes = re.findall(pattern, diff)
             result = []
@@ -192,7 +192,7 @@ class RepoController:
         :return: class id
         :return type: str
         """
-        pattern = re.compile("class ([^\(:]+)")
+        pattern = re.compile(r"class ([^\(:]+)")
         class_name = re.findall(pattern, changed_class["content"])[0]
         return (
             changed_class["filename"] + "_" + changed_class["type"] + "_" + class_name
