@@ -85,13 +85,13 @@ class AutoPyDoc:
                 self.gpt_interface.process_batch(
                     next_batch, callback=self.process_gpt_result
                 )
-            if not self.debug:
-                raise NotImplementedError
 
         # if every docstring is updated
         # TODO validate code integrity
-        if not self.debug:
-            raise NotImplementedError
+        if not self.repo.validate_code_integrity():
+            raise Exception("Code integrity no longer given!!! aborting")
+            quit()  # saveguard in case someone tries to catch the exception and continue anyways
+        print("Code integrity validated")
 
         self.repo.apply_changes(
             changed_files=self.code_parser.code_representer.get_changed_files()
@@ -137,6 +137,7 @@ class AutoPyDoc:
                 end=end_pos,
                 new_docstring=new_docstring,
             )
+
             code_obj.is_updated = True
         code_obj.outdated = False
         # if parts are still outdated

@@ -7,6 +7,11 @@ import pathlib
 from pathlib import Path
 from github import Github
 from dotenv import load_dotenv
+import shutil
+import ast
+import astunparse
+import difflib
+import filecmp
 
 from code_representation import (
     CodeRepresenter,
@@ -39,6 +44,7 @@ class RepoController:
         parent_dir = pathlib.Path().resolve()
         dir = "working_repo"
         self.working_dir = os.path.join(parent_dir, dir)
+        self.cmp_files = []
 
         self.debug = debug
 
@@ -54,6 +60,9 @@ class RepoController:
             if not self.debug:
                 raise NotImplementedError
         self.branch = branch
+
+        if os.path.exists(os.path.join(parent_dir, "saved_files")):
+            shutil.rmtree(os.path.join(parent_dir, "saved_files"))
 
         # self.repo = {} # {file_name: 'filename', 'methods': {'name': 'method_name', 'content': 'method content'}, 'classes': {'name': 'classname', 'methods' = {'name': 'method_name', 'content': 'method content'}}}
         self.get_latest_commit()
@@ -298,8 +307,24 @@ class RepoController:
                 end_pos = start_pos
         return (start_pos, indentation_level, end_pos)
 
-    @staticmethod
-    def insert_docstring(filename: str, start: int, end: int, new_docstring: str):
+    def save_file_for_comparison(self, filename: str):
+        new_partial_filename = (
+            filename.split("working_repo")[-1].lstrip("/").lstrip("\\\\")
+        )
+        parent_dir = pathlib.Path().resolve()
+        dir = "saved_files"
+        dir = os.path.join(parent_dir, dir)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        new_filename = os.path.join(dir, new_partial_filename)
+        new_location = os.path.dirname(new_filename)
+        if not os.path.isfile(new_filename):
+            if not os.path.exists(new_location):
+                os.makedirs(new_location)
+            new_path = shutil.copy(filename, new_location)
+            self.cmp_files.append([filename, new_path])
+
+    def insert_docstring(self, filename: str, start: int, end: int, new_docstring: str):
         """
         Insert the new docstring. Lines between start and end will be overridden. Static method
 
@@ -312,6 +337,7 @@ class RepoController:
         :param new_docstring: new docstring
         :type new_docstring: str
         """
+        self.save_file_for_comparison(filename)
         with open(filename, "r") as f:
             content = f.readlines()
             before = content[:start]
@@ -320,6 +346,27 @@ class RepoController:
 
             with open(filename, "w") as file:
                 file.write(new_content)
+
+    def remove_comments(self, filename: str) -> str:
+        with open(filename) as f:
+            lines = astunparse.unparse(ast.parse(f.read())).split("\n")
+            content = []
+            for line in lines:
+                if line.lstrip()[:1] not in ("'", '"'):
+                    content.append(line)
+            content = "\n".join(content)
+            new_filename = filename.rstrip(".py") + "_no_comments.py"
+            with open(new_filename, mode="w") as f:
+                f.write(content)
+            return new_filename
+
+    def validate_code_integrity(self):
+        for file_before, file_after in self.cmp_files:
+            file_before_no_comments = self.remove_comments(file_before)
+            file_after_no_comments = self.remove_comments(file_after)
+            if not filecmp.cmp(file_before_no_comments, file_after_no_comments):
+                return False
+        return True
 
     def update_latest_commit(self):
         """
