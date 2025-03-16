@@ -55,20 +55,22 @@ class MockStrategy(DocstringModelStrategy):
                 no_change_necessary=False,
                 description="MOCK This is a docstring description.",
                 class_attribute_descriptions={
-                    attr_name: "MOCK class attr description"
-                    for attr_name in GptInputClassObject.class_attributes.keys()
+                    attr["name"]: "MOCK class attr description"
+                    for attr in code_object.class_attributes
                 },
                 class_attribute_types={
-                    attr_name: "MOCK type"
-                    for attr_name in GptInputClassObject.class_attributes.keys()
+                    attr["name"]: "MOCK type"
+                    for attr in code_object.class_attributes
+                    if "type" not in attr.keys()
                 },
                 instance_attribute_descriptions={
-                    attr_name: "MOCK instance attr description"
-                    for attr_name in GptInputClassObject.instance_attributes.keys()
+                    attr["name"]: "MOCK instance attr description"
+                    for attr in code_object.instance_attributes
                 },
                 instance_attribute_types={
-                    attr_name: "MOCK type"
-                    for attr_name in GptInputClassObject.instance_attributes.keys()
+                    attr["name"]: "MOCK type"
+                    for attr in code_object.instance_attributes
+                    if "type" not in attr.keys()
                 },
             )
         elif isinstance(code_object, GptInputModuleObject):
