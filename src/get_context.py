@@ -54,7 +54,13 @@ class CodeParser:
         :type filename: str
         """
         dir = pathlib.Path().resolve()
-        tree = ast.parse(open(filename).read())
+        try:
+            tree = ast.parse(open(filename).read())
+        except Exception as e:
+            if e.args[0] == "invalid syntax":
+                print(filename, "has invalid syntax and will be ignored")
+                return
+        # TODO add to pull request
         self.import_finder.add_file(filename)
         self.extract_file_modules_classes_and_methods(
             tree=tree, file_path=os.path.join(dir, filename)
