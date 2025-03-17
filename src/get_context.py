@@ -106,6 +106,7 @@ class CodeParser:
                     ast=node,
                     docstring=docstring,
                     code=source_code,
+                    parent_id=module_id,
                     module_id=module_id,
                     outer_class_id=None,
                 )
@@ -127,6 +128,7 @@ class CodeParser:
                     ast=node,
                     docstring=docstring,
                     code=source_code,
+                    parent_id=module_id,
                     module_id=module_id,
                     outer_class_id=None,
                 )
@@ -173,6 +175,7 @@ class CodeParser:
                     ast=node,
                     docstring=docstring,
                     code=source_code,
+                    parent_id=outer_code_obj.id,
                     module_id=module_id,
                     outer_class_id=class_id,
                     outer_method_id=method_id,
@@ -194,6 +197,7 @@ class CodeParser:
                     ast=node,
                     docstring=docstring,
                     code=source_code,
+                    parent_id=outer_code_obj.id,
                     module_id=module_id,
                     outer_class_id=class_id,
                     outer_method_id=method_id,

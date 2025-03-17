@@ -1,5 +1,11 @@
 import typing
-from code_representation import CodeObject, MethodObject, ClassObject, ModuleObject
+from code_representation import (
+    CodeObject,
+    MethodObject,
+    ClassObject,
+    ModuleObject,
+    CodeRepresenter,
+)
 
 
 class DocstringBuilder:
@@ -353,7 +359,11 @@ class DocstringBuilderModule(DocstringBuilder):
 
 
 def create_docstring(
-    code_obj: CodeObject, result: dict, indentation_level: int, debug: bool = False
+    code_obj: CodeObject,
+    result: dict,
+    indentation_level: int,
+    code_representer: CodeRepresenter,
+    debug: bool = False,
 ) -> str:
     """
     Create a docstring for a CodeObject, using the GPT results
@@ -372,86 +382,207 @@ def create_docstring(
 
     :raises NotImplementedError: raised when trying to access functionality that is not yet implemented
     """
+
+    def generate_parent_chain(code_obj, code_representer):
+        parent_chain = code_obj.name
+        code_obj_2 = code_obj
+        while code_obj_2.parent_id is not None:
+            code_obj_2 = code_representer.get(code_obj_2.parent_id)
+            parent_chain = code_obj_2.name + "->" + parent_chain
+        return parent_chain
+
+    pr_notes = []
     if isinstance(code_obj, MethodObject):
         docstring_builder = DocstringBuilderMethod(indentation_level=indentation_level)
-        docstring_builder.add_description(result.description)
+        if isinstance(result.description, bool) and not result.description:
+            pr_notes.append(
+                f"Please manully add a description for method {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+            )
+            description = "<failed to generate>"
+        else:
+            description = result.description
+        docstring_builder.add_description(description)
         for param in code_obj.arguments:
             if param["name"] == "self":  # skip self
                 continue
-            if param["name"] in result.parameter_types.keys():
-                param_type = result.parameter_types[param["name"]]
+            if (
+                isinstance(result.parameter_descriptions[param["name"]], bool)
+                and not result.parameter_descriptions[param["name"]]
+            ):
+                pr_notes.append(
+                    f"Please manully add a description for parameter {param['name']} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                )
+                param_description = "<failed to generate>"
             else:
+                param_description = result.parameter_descriptions[param["name"]]
+            if hasattr(param, "type"):
                 param_type = param["type"]
+            else:
+                if (
+                    isinstance(result.parameter_types[param["name"]], bool)
+                    and not result.parameter_types[param["name"]]
+                ):
+                    pr_notes.append(
+                        f"Unknown type for param {param['name']} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    )
+                    param_type = "<unknown>"
+                else:
+                    param_type = result.parameter_types[param["name"]]
             if "default" in param.keys():
                 docstring_builder.add_param(
                     param_name=param["name"],
                     param_type=param_type,
                     param_default=param["default"],
-                    param_description=result.parameter_descriptions[param["name"]],
+                    param_description=param_description,
                 )
             else:
                 docstring_builder.add_param(
                     param_name=param["name"],
                     param_type=param_type,
-                    param_description=result.parameter_descriptions[param["name"]],
+                    param_description=param_description,
                 )
         for exception, exception_description in result.exception_descriptions.items():
+            if isinstance(exception_description, bool) and not exception_description:
+                pr_notes.append(
+                    f"Please manully add a description for exception {exception} in method {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                )
+                exception_description = "<failed to generate>"
             docstring_builder.add_exception(
                 exception_name=exception, exception_description=exception_description
             )
-        if not code_obj.missing_return_type and code_obj.return_type is not None:
-            if result.return_missing:
-                return_type = result.return_type
+        if code_obj.return_type is not None:
+            if (
+                isinstance(result.return_description, bool)
+                and not result.return_description
+            ):
+                pr_notes.append(
+                    f"Please manully add a return description in method {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                )
+                return_description = "<failed to generate>"
             else:
+                return_description = result.return_type
+            if not code_obj.missing_return_type:
                 return_type = code_obj.return_type
+            else:
+                if isinstance(result.return_type, bool) and not result.return_type:
+                    pr_notes.append(
+                        f"Please manully add a return type in method {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    )
+                    return_type = "<failed to generate>"
+                else:
+                    return_type = result.return_type
             docstring_builder.add_return(
-                return_type=return_type, return_description=result.return_description
+                return_type=return_type, return_description=return_description
             )
     elif isinstance(code_obj, ClassObject):
         docstring_builder = DocstringBuilderClass(indentation_level=indentation_level)
-        docstring_builder.add_description(result.description)
+        if isinstance(result.description, bool) and not result.description:
+            pr_notes.append(
+                f"Please manully add a description for class {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+            )
+            description = "<failed to generate>"
+        else:
+            description = result.description
+        docstring_builder.add_description(description)
         for class_attribute_name in result.class_attribute_descriptions.keys():
-            tmp = [
+            if (
+                isinstance(
+                    result.class_attribute_descriptions[class_attribute_name], bool
+                )
+                and not result.class_attribute_descriptions[class_attribute_name]
+            ):
+                pr_notes.append(
+                    f"Please manully add a description for class attribute {class_attribute_name} for class {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                )
+                class_attribute_description = "<failed to generate>"
+            else:
+                class_attribute_description = result.class_attribute_descriptions[
+                    class_attribute_name
+                ]
+            class_attr_annotation = [
                 attr["type"]
                 for attr in code_obj.class_attributes
                 if attr["name"] == class_attribute_name and "type" in attr.keys()
-            ]
-            if len(tmp) > 0:
-                attr_type = tmp[0]
+            ][0]
+            if len(class_attr_annotation) > 0:
+                attr_type = class_attr_annotation
             else:
-                attr_type = result.class_attribute_types[class_attribute_name]
+                if (
+                    isinstance(result.class_attribute_types[class_attribute_name], bool)
+                    and not result.class_attribute_types[class_attribute_name]
+                ):
+                    pr_notes.append(
+                        f"Unknown type for class attribute {class_attribute_name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    )
+                    attr_type = "<unknown>"
+                else:
+                    attr_type = result.class_attribute_types[class_attribute_name]
             docstring_builder.add_class_attribute(
                 class_attribute_name=class_attribute_name,
                 class_attribute_type=attr_type,
-                class_attribute_description=result.class_attribute_descriptions[
-                    class_attribute_name
-                ],
+                class_attribute_description=class_attribute_description,
             )
         for instance_attribute_name in result.instance_attribute_descriptions.keys():
-            tmp = [
+            if (
+                isinstance(
+                    result.instance_attribute_descriptions[instance_attribute_name],
+                    bool,
+                )
+                and not result.instance_attribute_descriptions[instance_attribute_name]
+            ):
+                pr_notes.append(
+                    f"Please manully add a description for instance attribute {instance_attribute_name} for class {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                )
+                instance_attribute_description = "<failed to generate>"
+            else:
+                instance_attribute_description = result.instance_attribute_descriptions[
+                    instance_attribute_name
+                ]
+            class_attr_annotation = [
                 attr["type"]
                 for attr in code_obj.instance_attributes
                 if attr["name"] == instance_attribute_name and "type" in attr.keys()
             ]
-            if len(tmp) > 0:
-                attr_type = tmp[0]
+            if len(class_attr_annotation) > 0:
+                attr_type = class_attr_annotation[0]
             else:
-                attr_type = result.instance_attribute_types[instance_attribute_name]
+                if (
+                    isinstance(
+                        result.instance_attribute_types[instance_attribute_name], bool
+                    )
+                    and not result.instance_attribute_types[instance_attribute_name]
+                ):
+                    pr_notes.append(
+                        f"Unknown type for class attribute {instance_attribute_name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    )
+                    attr_type = "<unknown>"
+                else:
+                    attr_type = result.instance_attribute_types[instance_attribute_name]
             docstring_builder.add_instance_attribute(
                 instance_attribute_name=instance_attribute_name,
                 instance_attribute_type=attr_type,
-                instance_attribute_description=result.instance_attribute_descriptions[
-                    instance_attribute_name
-                ],
+                instance_attribute_description=instance_attribute_description,
             )
 
     elif isinstance(code_obj, ModuleObject):
         docstring_builder = DocstringBuilderModule(indentation_level=indentation_level)
-        docstring_builder.add_description(result.description)
+        if isinstance(result.description, bool) and not result.description:
+            pr_notes.append(
+                f"Please manully add a description for module {code_obj.name} in {code_obj.filename}"
+            )
+            description = "<failed to generate>"
+        else:
+            description = result.description
+        docstring_builder.add_description(description)
         for exception, exception_description in result.exception_descriptions.items():
+            if isinstance(exception_description, bool) and not exception_description:
+                pr_notes.append(
+                    f"Please manully add a description for exception {exception} in module {code_obj.name} in {code_obj.filename}"
+                )
+                exception_description = "<failed to generate>"
             docstring_builder.add_exception(
                 exception_name=exception, exception_description=exception_description
             )
     else:
         raise NotImplementedError
-    return docstring_builder.build()
+    return docstring_builder.build(), pr_notes

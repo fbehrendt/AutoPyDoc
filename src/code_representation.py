@@ -72,6 +72,7 @@ class CodeObject:
     ast: AST = field(compare=False, hash=False, metadata={"frozen": True})
     docstring: str | None = field(compare=False, hash=False)
     code: str | None = field(compare=True, hash=True, metadata={"frozen": True})
+    parent_id: int | None = field(compare=True, hash=True, metadata={"frozen": True})
 
     def __post_init__(self):
         # self.__set_fields_frozen()

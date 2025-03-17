@@ -117,9 +117,10 @@ class AutoPyDoc:
             )
 
             # build docstring
-            new_docstring = create_docstring(
+            new_docstring, new_pr_notes = create_docstring(
                 code_obj, result, indentation_level, debug=True
             )
+            self.repo.pr_notes.extend(new_pr_notes)
 
             # merge new docstring with developer comments
             if not self.debug:
