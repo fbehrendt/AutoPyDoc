@@ -65,6 +65,7 @@ class AutoPyDoc:
         # get changes between last commit the tool ran for and now
         self.changes = self.repo.get_changes()
         self.code_parser.set_code_affected_by_changes_to_outdated(changes=self.changes)
+        self.extract_dev_comments()
 
         first_batch = self.code_parser.code_representer.generate_next_batch()
         if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
@@ -153,6 +154,23 @@ class AutoPyDoc:
             self.gpt_interface.process_batch(
                 next_batch, callback=self.process_gpt_result
             )
+
+    def extract_dev_comments(self):
+        tree = self.repo.repo.head.commit.tree
+        for code_obj_id in self.code_parser.code_representer.get_outdated_ids():
+            code_obj = self.code_parser.code_representer.get(code_obj_id)
+            filename = code_obj.filename
+            commits = list(
+                self.repo.repo.iter_commits(all=True, max_count=10, paths=filename)
+            )
+            print(filename)
+            for commit in commits:
+                print("    " + commit.message, "    " + commit.hexsha)
+            print()
+            # TODO get version before and after
+            # TODO ast parse visit code ast.docstring() on both files
+            # diff
+        print()
 
 
 if __name__ == "__main__":
