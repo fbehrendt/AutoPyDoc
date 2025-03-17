@@ -127,6 +127,7 @@ class AutoPyDoc:
             # validate docstring syntax
             errors = validate_docstring(new_docstring)
             if len(errors) > 0:
+                # TODO resent to GPT, with note. If this is the second time, don't update this docstring and put note in pull request description
                 if not self.debug:
                     raise NotImplementedError
 
@@ -137,6 +138,7 @@ class AutoPyDoc:
                 end=end_pos,
                 new_docstring=new_docstring,
             )
+            code_obj.update_docstring(new_docstring=new_docstring)
 
             code_obj.is_updated = True
         code_obj.outdated = False

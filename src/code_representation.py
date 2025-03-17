@@ -159,6 +159,18 @@ class CodeObject:
         """
         self.docstring = docstring
 
+    def update_docstring(self, new_docstring: str):
+        """
+        Update the docstring of a CodeObject
+
+        :param new_docstring: the new docstring
+        :type new_docstring: str
+        """
+        self.old_docstring = self.docstring
+        self.docstring = new_docstring
+        self.is_updated = True
+        self.outdated = False
+
     def get_context(self) -> dict[str, list[int]]:
         """
         Get the context of a code piece
