@@ -2,6 +2,7 @@ import configparser
 import validators
 from git import Repo, Actor
 import os
+import sys
 import re
 import pathlib
 from pathlib import Path
@@ -351,7 +352,9 @@ class RepoController:
 
     def remove_comments(self, filename: str) -> str:
         with open(filename) as f:
+            sys.stderr = open(os.devnull, "w")
             lines = astunparse.unparse(ast.parse(f.read())).split("\n")
+            sys.stderr = sys.__stderr__
             content = []
             for line in lines:
                 if line.lstrip()[:1] not in ("'", '"'):

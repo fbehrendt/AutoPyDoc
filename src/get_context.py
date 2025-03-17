@@ -1,5 +1,6 @@
 import ast
 import os
+import sys
 import pathlib
 from typing import Self
 
@@ -57,16 +58,18 @@ class CodeParser:
         """
         dir = pathlib.Path().resolve()
         try:
+            sys.stderr = open(os.devnull, "w")
             tree = ast.parse(open(filename).read())
+            self.import_finder.add_file(filename)
+            self.extract_file_modules_classes_and_methods(
+                tree=tree, file_path=os.path.join(dir, filename)
+            )
+            sys.stderr = sys.__stderr__
         except Exception as e:
             if e.args[0] == "invalid syntax":
                 self.logger.info(filename + " has invalid syntax and will be ignored")
                 return
         # TODO add to pull request
-        self.import_finder.add_file(filename)
-        self.extract_file_modules_classes_and_methods(
-            tree=tree, file_path=os.path.join(dir, filename)
-        )
 
     def extract_file_modules_classes_and_methods(self, tree: ast.AST, file_path: str):
         """
