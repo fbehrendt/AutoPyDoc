@@ -27,6 +27,7 @@ class CodeParser:
         self,
         code_representer: CodeRepresenter,
         working_dir: str,
+        logger,
         debug: bool = False,
         files: list = [],
     ):
@@ -42,6 +43,7 @@ class CodeParser:
         self.code_representer = code_representer
         self.working_dir = working_dir
         self.debug = debug
+        self.logger = logger
         self.import_finder = ImportFinder(working_dir=working_dir, debug=self.debug)
         for file in files:
             self.add_file(file)
@@ -58,7 +60,7 @@ class CodeParser:
             tree = ast.parse(open(filename).read())
         except Exception as e:
             if e.args[0] == "invalid syntax":
-                print(filename, "has invalid syntax and will be ignored")
+                self.logger.info(filename, "has invalid syntax and will be ignored")
                 return
         # TODO add to pull request
         self.import_finder.add_file(filename)
@@ -112,7 +114,7 @@ class CodeParser:
                     module_obj.add_method_id(method_obj.id)
                 self.extract_sub_classes_and_methods(code_obj_id=method_obj.id)
             elif isinstance(node, ast.Lambda):
-                print("Lambda")
+                self.logger.info("Skipping lambda")
             elif isinstance(node, ast.ClassDef):
                 class_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
@@ -179,7 +181,7 @@ class CodeParser:
                 outer_code_obj.add_method_id(method_obj.id)
                 self.extract_sub_classes_and_methods(code_obj_id=method_obj.id)
             elif isinstance(node, ast.Lambda):
-                print("Lambda")
+                self.logger.info("Skipping lambda")
             elif isinstance(node, ast.ClassDef):
                 class_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
@@ -480,7 +482,7 @@ class CodeParser:
 
         :raises NotImplementedError: raised when not in debug mode, because this is not yet implemented
         """
-        print("###MOCK### Extracting developer comments")
+        self.logger.info("###MOCK### Extracting developer comments")
         if not self.debug:
             raise NotImplementedError
         else:

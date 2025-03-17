@@ -14,12 +14,11 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)8s: [%(name)s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger(__name__)
 
 
 class AutoPyDoc:
     def __init__(self):
-        pass
+        self.logger = logging.getLogger(__name__)
 
     def main(
         self,
@@ -47,6 +46,7 @@ class AutoPyDoc:
             repo_path=repo_path,
             pull_request_token=pull_request_token,
             branch=branch,
+            logger=self.logger,
             debug=debug,
         )
         self.code_parser = CodeParser(
@@ -54,6 +54,7 @@ class AutoPyDoc:
             working_dir=self.repo.working_dir,
             debug=True,
             files=self.repo.get_files_in_repo(),
+            logger=self.logger,
         )
 
         self.code_parser.extract_class_and_method_calls()
@@ -68,15 +69,15 @@ class AutoPyDoc:
 
         first_batch = self.code_parser.code_representer.generate_next_batch()
         if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
-            print("No need to do anything")
+            self.logger.info("No need to do anything")
             quit()
         self.gpt_interface.process_batch(first_batch, callback=self.process_gpt_result)
 
         # if parts are still outdated
         while len(self.code_parser.code_representer.get_outdated_ids()) > 0:
             missing_items = self.code_parser.code_representer.get_outdated_ids()
-            print("Some parts are still missing updates")
-            print("\n".join([str(item) for item in missing_items]))
+            self.logger.info("Some parts are still missing updates")
+            self.logger.info("\n".join([str(item) for item in missing_items]))
             # force generate all, ignore dependencies
             next_batch = self.code_parser.code_representer.generate_next_batch(
                 ignore_dependencies=True
@@ -91,18 +92,18 @@ class AutoPyDoc:
         if not self.repo.validate_code_integrity():
             raise Exception("Code integrity no longer given!!! aborting")
             quit()  # saveguard in case someone tries to catch the exception and continue anyways
-        print("Code integrity validated")
+        self.logger.info("Code integrity validated")
 
         self.repo.apply_changes(
             changed_files=self.code_parser.code_representer.get_changed_files()
         )
         if not self.debug:
             raise NotImplementedError
-        print("Finished successfully")
+        self.logger.info("Finished successfully")
 
     def process_gpt_result(self, result: GptOutput) -> None:
-        print("Received", result.id)
-        print(
+        self.logger.info("Received", result.id)
+        self.logger.info(
             "Waiting for",
             len(self.code_parser.code_representer.get_sent_to_gpt_ids()),
             "more results",

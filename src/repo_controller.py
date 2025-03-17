@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 import shutil
 import ast
 import astunparse
-import difflib
 import filecmp
 
 from code_representation import (
@@ -27,6 +26,7 @@ class RepoController:
     def __init__(
         self,
         repo_path: str,
+        logger,
         pull_request_token: str = None,
         debug: bool = False,
         branch: str = "main",
@@ -47,6 +47,7 @@ class RepoController:
         self.cmp_files = []
 
         self.debug = debug
+        self.logger = logger
 
         self.pull_request_token = pull_request_token
 
@@ -114,13 +115,13 @@ class RepoController:
             # shutil.move(self.working_dir, tmp)
             # shutil.rmtree(tmp)
             # shutil.rmtree(self.working_dir)
-            print("Please remove working_dir folder manually, then rerun")
+            self.logger.error("Please remove working_dir folder manually, then rerun")
             quit()
         os.makedirs(self.working_dir)
 
     def pull_repo(self):
         """Pulls a repository into the self.working_dir folder"""
-        print("###pulling remote repository###")
+        self.logger.info("###pulling remote repository###")
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
         dir = os.listdir(self.working_dir)
@@ -144,7 +145,7 @@ class RepoController:
         :return: A list of changed methods/classes/modules as dicts. Keys: type, content, signature, filenames, start, end
         :return type: list[dict]
         """
-        print("###extracting changes###")
+        self.logger.info("###extracting changes###")
         current_commit = self.repo.head.commit  # get most recent commit
         if self.initial_run:
             result = []
@@ -373,7 +374,7 @@ class RepoController:
         Update latest_commit file in target repo. Create if none exists
         """
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
-        print("Commit of docstring update:", current_commit)
+        self.logger.info("Commit of docstring update:", current_commit)
         with open(self.latest_commit_file_name, mode="w") as f:
             f.write(current_commit)
         self.repo.index.add([self.latest_commit_file_name])
@@ -410,7 +411,7 @@ class RepoController:
             # verify staging area
             modified_files = self.repo.index.diff(None)
             count_modified_files = len(modified_files)
-            print(
+            self.logger.info(
                 "Modified files:",
                 count_modified_files,
                 "\n",
@@ -419,17 +420,17 @@ class RepoController:
 
             staged_files = self.repo.index.diff("HEAD")
             count_staged_files = len(staged_files)
-            print(
+            self.logger.info(
                 "Staged files:",
                 count_staged_files,
                 "\n",
                 "\n".join([staged_file.b_path for staged_file in staged_files]),
             )
 
-            print("Modified files:", count_modified_files)
-            print("Staged files:", count_staged_files)
+            self.logger.info("Modified files:", count_modified_files)
+            self.logger.info("Staged files:", count_staged_files)
             if count_staged_files < 2:
-                print("No files modified. Quitting")
+                self.logger.info("No files modified. Quitting")
                 quit()
 
             # create commit
@@ -491,12 +492,12 @@ class RepoController:
 
         :raises NotImplementedError: raised when not in debug mode, because the config file is not yet implemented
         """
-        print("###MOCK### Applying changes")
+        self.logger.info("###Applying changes###")
         config = configparser.ConfigParser()
         config.read("src/config.ini")
 
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
-        print("Commit before docstring update:", current_commit)
+        self.logger.info("Commit before docstring update:", current_commit)
         new_branch = self.commit_to_new_branch(changed_files=changed_files)
 
         # create pull request
