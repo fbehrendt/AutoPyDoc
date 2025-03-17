@@ -102,11 +102,11 @@ class AutoPyDoc:
         self.logger.info("Finished successfully")
 
     def process_gpt_result(self, result: GptOutput) -> None:
-        self.logger.info("Received", result.id)
+        self.logger.info("Received" + str(result.id))
         self.logger.info(
-            "Waiting for",
-            len(self.code_parser.code_representer.get_sent_to_gpt_ids()),
-            "more results",
+            "Waiting for"
+            + str(len(self.code_parser.code_representer.get_sent_to_gpt_ids()))
+            + "more results"
         )
         code_obj = self.code_parser.code_representer.get(result.id)
         if not result.no_change_necessary:
@@ -118,7 +118,11 @@ class AutoPyDoc:
 
             # build docstring
             new_docstring, new_pr_notes = create_docstring(
-                code_obj, result, indentation_level, debug=True
+                code_obj,
+                result,
+                indentation_level,
+                code_representer=self.code_parser.code_representer,
+                debug=True,
             )
             self.repo.pr_notes.extend(new_pr_notes)
 

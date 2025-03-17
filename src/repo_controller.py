@@ -45,6 +45,8 @@ class RepoController:
         dir = "working_repo"
         self.working_dir = os.path.join(parent_dir, dir)
         self.cmp_files = []
+        self.pr_notes = []
+        self.branch = branch
 
         self.debug = debug
         self.logger = logger
@@ -60,8 +62,6 @@ class RepoController:
             self.repo = Repo(self.working_dir)
             if not self.debug:
                 raise NotImplementedError
-        self.branch = branch
-        self.pr_notes = []
 
         if os.path.exists(os.path.join(parent_dir, "saved_files")):
             shutil.rmtree(os.path.join(parent_dir, "saved_files"))
