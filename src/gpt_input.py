@@ -53,26 +53,30 @@ class GptInputModuleObject(GptInputCodeObject):
 class GptOutput:
     id: int = field(compare=True, hash=True)
     no_change_necessary: bool = field(compare=True, hash=True)
-    description: str | bool
+    description: str | bool = field(compare=False, hash=False)
 
 
 @dataclass(frozen=True)
 class GptOutputMethod(GptOutput):
-    parameter_types: dict[str, str | bool]
-    parameter_descriptions: dict[str, str | bool]
-    exception_descriptions: dict[str, str | bool]
-    return_description: str | bool
-    return_type: str | bool | None = field(default=None)
+    parameter_types: dict[str, str | bool] = field(compare=False, hash=False)
+    parameter_descriptions: dict[str, str | bool] = field(compare=False, hash=False)
+    exception_descriptions: dict[str, str | bool] = field(compare=False, hash=False)
+    return_description: str | bool = field(compare=False, hash=False)
+    return_type: str | bool | None = field(default=None, compare=False, hash=False)
 
 
 @dataclass(frozen=True)
 class GptOutputClass(GptOutput):
-    class_attribute_descriptions: dict[str, str | bool]
-    class_attribute_types: dict[str, str | bool]
-    instance_attribute_descriptions: dict[str, str | bool]
-    instance_attribute_types: dict[str, str | bool]
+    class_attribute_descriptions: dict[str, str | bool] = field(
+        compare=False, hash=False
+    )
+    class_attribute_types: dict[str, str | bool] = field(compare=False, hash=False)
+    instance_attribute_descriptions: dict[str, str | bool] = field(
+        compare=False, hash=False
+    )
+    instance_attribute_types: dict[str, str | bool] = field(compare=False, hash=False)
 
 
 @dataclass(frozen=True)
 class GptOutputModule(GptOutput):
-    exception_descriptions: dict[str, str | bool]
+    exception_descriptions: dict[str, str | bool] = field(compare=False, hash=False)
