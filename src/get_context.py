@@ -60,7 +60,7 @@ class CodeParser:
             tree = ast.parse(open(filename).read())
         except Exception as e:
             if e.args[0] == "invalid syntax":
-                self.logger.info(filename, "has invalid syntax and will be ignored")
+                self.logger.info(filename + " has invalid syntax and will be ignored")
                 return
         # TODO add to pull request
         self.import_finder.add_file(filename)
@@ -86,6 +86,7 @@ class CodeParser:
                 ast=tree,
                 docstring=docstring,
                 code=source_code,
+                parent_id=None,
             )
             # module_obj.name = "test" # test frozen variable
             module_id = hash(module_obj)

@@ -26,7 +26,7 @@ class GptInterface:
         :type callback: (GptOutput) -> None
         """
         self.logger.info(
-            "Now working on:\n", "\n".join([str(item.id) for item in batch])
+            "Now working on:\n" + "\n".join([str(item.id) for item in batch])
         )
         # TODO parallelize
         # flag developer comments
