@@ -88,9 +88,11 @@ class CodeParser:
             # module_obj.name = "test" # test frozen variable
             module_id = hash(module_obj)
             self.code_representer.objects[module_obj.id] = module_obj
-            self.extract_class_or_module_methods_and_sub_classes(code_obj_id=module_id)
+            self.extract_sub_classes_and_methods(code_obj_id=module_id)
         for node in tree.body:
-            if isinstance(node, ast.FunctionDef):
+            if isinstance(node, ast.FunctionDef) or isinstance(
+                node, ast.AsyncFunctionDef
+            ):
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(
@@ -108,27 +110,10 @@ class CodeParser:
                 self.code_representer.add_code_obj(method_obj)
                 if module_id is not None:
                     module_obj.add_method_id(method_obj.id)
-            if isinstance(node, ast.AsyncFunctionDef):
-                func_def_name = node.name
-                docstring = ast.get_docstring(node=node, clean=True)
-                source_code = ast.get_source_segment(
-                    open(file_path).read(), node, padded=False
-                )
-                method_obj = MethodObject(
-                    name=func_def_name,
-                    filename=file_path,
-                    ast=node,
-                    docstring=docstring,
-                    code=source_code,
-                    module_id=module_id,
-                    outer_class_id=None,
-                )
-                self.code_representer.add_code_obj(method_obj)
-                if module_id is not None:
-                    module_obj.add_method_id(method_obj.id)
-            if isinstance(node, ast.Lambda):
+                self.extract_sub_classes_and_methods(code_obj_id=method_obj.id)
+            elif isinstance(node, ast.Lambda):
                 print("Lambda")
-            if isinstance(node, ast.ClassDef):
+            elif isinstance(node, ast.ClassDef):
                 class_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(
@@ -146,19 +131,15 @@ class CodeParser:
                 self.code_representer.add_code_obj(class_obj)
                 if module_id is not None:
                     module_obj.add_class_id(class_obj.id)
-                self.extract_class_or_module_methods_and_sub_classes(
-                    code_obj_id=class_obj.id
-                )
+                self.extract_sub_classes_and_methods(code_obj_id=class_obj.id)
 
-    def extract_class_or_module_methods_and_sub_classes(
+    def extract_sub_classes_and_methods(
         self,
         code_obj_id: str,
     ):
         """
-        Extract methods and sub classes of the given class
+        Extract methods and sub classes of the given code object
 
-        :param class_tree: abstract syntax tree of the class
-        :type class_tree: ast.AST
         :param class_obj_id: ClassObject id
         :type class_obj_id: str
         """
@@ -171,6 +152,10 @@ class CodeParser:
             class_id = outer_code_obj.id
         else:
             class_id = None
+        if isinstance(outer_code_obj, MethodObject):
+            method_id = outer_code_obj.id
+        else:
+            method_id = None
         for node in outer_code_obj.ast.body:
             if isinstance(node, ast.FunctionDef) or isinstance(
                 node, ast.AsyncFunctionDef
@@ -188,12 +173,14 @@ class CodeParser:
                     code=source_code,
                     module_id=module_id,
                     outer_class_id=class_id,
+                    outer_method_id=method_id,
                 )
                 self.code_representer.add_code_obj(method_obj)
                 outer_code_obj.add_method_id(method_obj.id)
-            if isinstance(node, ast.Lambda):
+                self.extract_sub_classes_and_methods(code_obj_id=method_obj.id)
+            elif isinstance(node, ast.Lambda):
                 print("Lambda")
-            if isinstance(node, ast.ClassDef):
+            elif isinstance(node, ast.ClassDef):
                 class_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(
@@ -207,12 +194,11 @@ class CodeParser:
                     code=source_code,
                     module_id=module_id,
                     outer_class_id=class_id,
+                    outer_method_id=method_id,
                 )
                 self.code_representer.add_code_obj(inner_class_obj)
                 outer_code_obj.add_class_id(inner_class_obj.id)
-                self.extract_class_or_module_methods_and_sub_classes(
-                    code_obj_id=inner_class_obj.id
-                )
+                self.extract_sub_classes_and_methods(code_obj_id=inner_class_obj.id)
 
     def extract_class_and_method_calls(self):
         """
