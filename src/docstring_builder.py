@@ -391,12 +391,15 @@ def create_docstring(
             parent_chain = code_obj_2.name + "->" + parent_chain
         return parent_chain
 
+    def get_rel_filename(abs_filename):
+        return abs_filename.split("working_repo")[1].lstrip("/").lstrip("\\")
+
     pr_notes = []
     if isinstance(code_obj, MethodObject):
         docstring_builder = DocstringBuilderMethod(indentation_level=indentation_level)
         if isinstance(result.description, bool) and not result.description:
             pr_notes.append(
-                f"Please manully add a description for method {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                f"Please manully add a description for method {code_obj.name} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
             )
             description = "<failed to generate>"
         else:
@@ -410,7 +413,7 @@ def create_docstring(
                 and not result.parameter_descriptions[param["name"]]
             ):
                 pr_notes.append(
-                    f"Please manully add a description for parameter {param['name']} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Please manully add a description for parameter {param['name']} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 param_description = "<failed to generate>"
             else:
@@ -423,7 +426,7 @@ def create_docstring(
                     and not result.parameter_types[param["name"]]
                 ):
                     pr_notes.append(
-                        f"Unknown type for param {param['name']} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                        f"Unknown type for param {param['name']} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                     )
                     param_type = "<unknown>"
                 else:
@@ -444,7 +447,7 @@ def create_docstring(
         for exception, exception_description in result.exception_descriptions.items():
             if isinstance(exception_description, bool) and not exception_description:
                 pr_notes.append(
-                    f"Please manully add a description for exception {exception} in method {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Please manully add a description for exception {exception} in method {code_obj.name} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 exception_description = "<failed to generate>"
             docstring_builder.add_exception(
@@ -456,7 +459,7 @@ def create_docstring(
                 and not result.return_description
             ):
                 pr_notes.append(
-                    f"Please manully add a return description in method {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Please manully add a return description in method {code_obj.name} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 return_description = "<failed to generate>"
             else:
@@ -466,7 +469,7 @@ def create_docstring(
             else:
                 if isinstance(result.return_type, bool) and not result.return_type:
                     pr_notes.append(
-                        f"Please manully add a return type in method {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                        f"Please manully add a return type in method {code_obj.name} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                     )
                     return_type = "<failed to generate>"
                 else:
@@ -478,7 +481,7 @@ def create_docstring(
         docstring_builder = DocstringBuilderClass(indentation_level=indentation_level)
         if isinstance(result.description, bool) and not result.description:
             pr_notes.append(
-                f"Please manully add a description for class {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                f"Please manully add a description for class {code_obj.name} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
             )
             description = "<failed to generate>"
         else:
@@ -492,7 +495,7 @@ def create_docstring(
                 and not result.class_attribute_descriptions[class_attribute_name]
             ):
                 pr_notes.append(
-                    f"Please manully add a description for class attribute {class_attribute_name} for class {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Please manully add a description for class attribute {class_attribute_name} for class {code_obj.name} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 class_attribute_description = "<failed to generate>"
             else:
@@ -512,7 +515,7 @@ def create_docstring(
                     and not result.class_attribute_types[class_attribute_name]
                 ):
                     pr_notes.append(
-                        f"Unknown type for class attribute {class_attribute_name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                        f"Unknown type for class attribute {class_attribute_name} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                     )
                     attr_type = "<unknown>"
                 else:
@@ -531,7 +534,7 @@ def create_docstring(
                 and not result.instance_attribute_descriptions[instance_attribute_name]
             ):
                 pr_notes.append(
-                    f"Please manully add a description for instance attribute {instance_attribute_name} for class {code_obj.name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Please manully add a description for instance attribute {instance_attribute_name} for class {code_obj.name} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 instance_attribute_description = "<failed to generate>"
             else:
@@ -553,7 +556,7 @@ def create_docstring(
                     and not result.instance_attribute_types[instance_attribute_name]
                 ):
                     pr_notes.append(
-                        f"Unknown type for class attribute {instance_attribute_name} in {code_obj.filename}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                        f"Unknown type for class attribute {instance_attribute_name} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                     )
                     attr_type = "<unknown>"
                 else:
@@ -568,7 +571,7 @@ def create_docstring(
         docstring_builder = DocstringBuilderModule(indentation_level=indentation_level)
         if isinstance(result.description, bool) and not result.description:
             pr_notes.append(
-                f"Please manully add a description for module {code_obj.name} in {code_obj.filename}"
+                f"Please manully add a description for module {code_obj.name} in {get_rel_filename(code_obj.filename)}"
             )
             description = "<failed to generate>"
         else:
@@ -577,7 +580,7 @@ def create_docstring(
         for exception, exception_description in result.exception_descriptions.items():
             if isinstance(exception_description, bool) and not exception_description:
                 pr_notes.append(
-                    f"Please manully add a description for exception {exception} in module {code_obj.name} in {code_obj.filename}"
+                    f"Please manully add a description for exception {exception} in module {code_obj.name} in {get_rel_filename(code_obj.filename)}"
                 )
                 exception_description = "<failed to generate>"
             docstring_builder.add_exception(
