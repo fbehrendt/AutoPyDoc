@@ -414,6 +414,7 @@ class MethodObject(CodeObject):
         """
         result = super().get_context()
         result["outer_class_id"] = self.outer_class_id
+        result["outer_method_id"] = self.outer_method_id
         result["module_id"] = self.module_id
         result["class_ids"] = self.class_ids
         result["method_ids"] = self.method_ids
@@ -429,6 +430,7 @@ class MethodObject(CodeObject):
             context=self.get_context(),
             context_docstrings=code_representer.get_context_docstrings(self.id),
             exceptions=self.exceptions,
+            parent_method_id=self.outer_method_id,
             parent_class_id=self.outer_class_id,
             parent_module_id=self.module_id,
             parameters=code_representer.get_arguments(self.id),
@@ -531,6 +533,7 @@ class ClassObject(CodeObject):
         """
         result = super().get_context()
         result["outer_class_id"] = self.outer_class_id
+        result["outer_method_id"] = self.outer_method_id
         result["module_id"] = self.module_id
         result["inherited_from"] = self.inherited_from
         result["class_ids"] = self.class_ids
@@ -553,6 +556,7 @@ class ClassObject(CodeObject):
             context=self.get_context(),
             context_docstrings=code_representer.get_context_docstrings(self.id),
             exceptions=self.exceptions,
+            parent_method_id=self.outer_method_id,
             parent_class_id=self.outer_class_id,
             parent_module_id=self.module_id,
             inherited_from=self.inherited_from,
