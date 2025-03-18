@@ -476,7 +476,7 @@ class CodeParser:
                 code=changed_module["content"],
             )
             self.code_representer.set_outdated(module_obj.id)
-            module_obj.dev_comments = self.extract_dev_comments(class_obj)
+            module_obj.dev_comments = self.extract_dev_comments(module_obj)
 
     def extract_dev_comments(self, code_obj: CodeObject) -> list[str]:
         """
