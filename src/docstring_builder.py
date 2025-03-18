@@ -248,12 +248,12 @@ class DocstringBuilderClass(DocstringBuilder):
         :return: self
         :return type: DocstringBuilder
         """
-        class_attribute = {
+        instance_attribute = {
             "name": instance_attribute_name,
             "description": instance_attribute_description,
             "type": instance_attribute_type,
         }
-        self.instance_attributes.append(class_attribute)
+        self.instance_attributes.append(instance_attribute)
         return self
 
     def build(self) -> str:

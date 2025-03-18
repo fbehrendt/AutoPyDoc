@@ -1,54 +1,54 @@
-from github import Github
-from github import InputGitAuthor
-import os
-from dotenv import load_dotenv
+import re
 
-load_dotenv()
+class DocstringUnBuilder:
+  def __init__(self, docstring: str):
+      self.docstring = docstring
+      
+      self.description_pattern = r'"""\n?[ ]*([^:]+)(?::param|:return|:raises|:class attribute|:instance attribute)'
+      
+      self.func_param_pattern = r"\n[ ]*:param (\w+): (\N+)\n[ ]*:type (\w+): (\N+)"
+      self.func_param_name_pattern = r"\n[ ]*:param (\w+):"
+      self.func_param_description_pattern = r"\n[ ]*:param \w+: (\N+)"
+      self.func_param_type_pattern = r"\n[ ]*:param \w+: \N+\n[ ]*:type \w+: (\N+)"
 
-auth_token = os.getenv("GitHubAuthToken")
+      self.func_return_pattern = r"\n[ ]*:return: (\N+)\n[ ]*:rtype: (\N+)"
+      
+      self.func_return_description_pattern = r"\n[ ]*:return: (\N+)"
+      self.func_return_type_pattern = r"\n[ ]*:rtype: (\N+)"
+      
+      self.exception_pattern = r"\n[ ]*:raises (\w+): (\N+)"
+      self.exception_name_pattern = r"\n[ ]*:raises (\w+): \N+"
+      self.exception_description_pattern = r"\n[ ]*:raises \w+: (\N+)"
 
-# Authentication is defined via github.Auth
-from github import Auth
+      self.class_attr_pattern = r"\n[ ]*:class attribute (\w+): (\N+)\n[ ]*:type (\w+): (\N+)"
+      self.class_attr_name_pattern = r"\n[ ]*:class attribute (\w+): \N+"
+      self.class_attr_description_pattern = r"\n[ ]*:class attribute \w+: (\N+)"
+      self.class_attr_type_pattern = r"\n[ ]*:class attribute \w+: \N+\n[ ]*:type \w+: (\N+)"
 
-# using an access token
-auth = Auth.Token(auth_token)
+      self.instance_attr_pattern = r"\n[ ]*:instance attribute (\w+): (\N+)\n[ ]*:type (\w+): (\N+)"
+      self.instance_attr_name_pattern = r"\n[ ]*:instance attribute (\w+): \N+"
+      self.instance_attr_description_pattern = r"\n[ ]*:instance attribute \w+: (\N+)"
+      self.instance_attr_type_pattern = r"\n[ ]*:instance attribute \w+: \N+\n[ ]*:type \w+: (\N+)"
 
-# First create a Github instance:
+      self.description = self.apply_pattern(self.description_pattern)
+      self.params = self.apply_pattern(self.func_param_pattern)
+      self.return_info = self.apply_pattern(self.func_return_pattern)
+      self.exceptions = self.apply_pattern(self.exception_pattern)
+      self.class_attrs = self.apply_pattern(self.class_attr_pattern)
+      self.instance_attrs = self.apply_pattern(self.instance_attrs)
 
-# Public Web Github
-github_object = Github(auth=auth)
+      print("Description", self.description)
+      print("params", self.params)
+      print("return", self.return_info)
+      print("exceptions", self.exceptions)
+      print("class attrs", self.class_attrs)
+      print("instance attrs", self.instance_attrs)
 
-repo = github_object.get_repo("fbehrendt/bachelor_testing_repo")
+  def apply_pattern(self, pattern):
+      pattern = re.compile(pattern)
+      return re.findall(pattern, self.docstring)
+  
+docstring1 = '"""\n    Create a docstring for a CodeObject, using the GPT results\n\n    :param code_obj: CodeObject in question\n    :type code_obj: CodeObject\n    :param result: the 1 GPT results,.;:\n    :type result: dict\n    :param indentation_level: indentation level the docstring should have\n    :type indentation_level: int\n    :param debug: toggle debug mode. Default False\n    :type debug: bool\n\n    :return: docstring for the CodeObject\n    :rtype: str\n\n    :raises NotImplementedError: raised when trying to access functionality that is not yet implemented\n\n    :class attribute filename: description for class attr filename\n    :type filename: str\n    :instance attribute filename: description for instance attr filename\n    :type filename: str\n"""'
 
-file = repo.get_contents("src/main.py")
-new_file_content = "updated file content"
-file_message = "Update src/main.py"
-repo.update_file("src/main.py", file_message, new_file_content, file.sha)
-
-# Commit the changes
-author = InputGitAuthor("AutoPyDoc", "alltheunnecessaryjunk@gmail.com")
-commit_message = "Updated multiple files"
-new_tree = repo.create_git_tree(tree_new)
-commit = repo.create_git_commit(commit_message, new_tree.sha, [branch.commit.sha])
-repo.get_git_ref("heads/master").commit(
-    "New commit",
-    repo.get_contents("src/main.py").sha,
-    author=author,
-    committer=author,
-    tree=repo.get_git_tree("master").sha,
-)
-
-body = """
-SUMMARY
-Change HTTP library used to send requests
-
-TESTS
-  - [x] Send 'GET' request
-  - [x] Send 'POST' request with/without body
-"""
-
-pull_request = repo.create_pull(
-    title="Pull Request Title", body="Pull Request Body", head="main", base="master"
-)
-# To close connections after use
-github_object.close()
+if __name__ == "__main__":
+  docstring_unbuilder = DocstringUnBuilder(docstring=docstring1)
