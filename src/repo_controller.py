@@ -2,16 +2,19 @@ import configparser
 import validators
 from git import Repo, Actor
 import os
+import sys
 import re
 import pathlib
 from pathlib import Path
 from github import Github
 from dotenv import load_dotenv
+import shutil
+import ast
+import astunparse
+import filecmp
 
-from get_context import CodeParser
 from code_representation import (
     CodeRepresenter,
-    CodeObject,
     MethodObject,
     ClassObject,
     ModuleObject,
@@ -22,7 +25,12 @@ class RepoController:
     """A class to control interactions with the target repository"""
 
     def __init__(
-        self, repo_path: str, pull_request_token: str = None, debug: bool = False
+        self,
+        repo_path: str,
+        logger,
+        pull_request_token: str = None,
+        debug: bool = False,
+        branch: str = "main",
     ):
         """
         A class to control interactions with the target repository
@@ -37,8 +45,12 @@ class RepoController:
         parent_dir = pathlib.Path().resolve()
         dir = "working_repo"
         self.working_dir = os.path.join(parent_dir, dir)
+        self.cmp_files = []
+        self.pr_notes = []
+        self.branch = branch
 
         self.debug = debug
+        self.logger = logger
 
         self.pull_request_token = pull_request_token
 
@@ -51,14 +63,10 @@ class RepoController:
             self.repo = Repo(self.working_dir)
             if not self.debug:
                 raise NotImplementedError
-        self.branch = "main"  # TODO change
 
-        self.code_parser = CodeParser(
-            code_representer=CodeRepresenter(), working_dir=self.working_dir, debug=True
-        )
-        for file in self.get_files_in_repo():
-            self.code_parser.add_file(file)
-        self.code_parser.create_dependencies()
+        if os.path.exists(os.path.join(parent_dir, "saved_files")):
+            shutil.rmtree(os.path.join(parent_dir, "saved_files"))
+
         # self.repo = {} # {file_name: 'filename', 'methods': {'name': 'method_name', 'content': 'method content'}, 'classes': {'name': 'classname', 'methods' = {'name': 'method_name', 'content': 'method content'}}}
         self.get_latest_commit()
         if not self.debug:
@@ -109,18 +117,19 @@ class RepoController:
             # shutil.move(self.working_dir, tmp)
             # shutil.rmtree(tmp)
             # shutil.rmtree(self.working_dir)
-            print("Please remove working_dir folder manually, then rerun")
+            self.logger.error("Please remove working_dir folder manually, then rerun")
             quit()
         os.makedirs(self.working_dir)
 
     def pull_repo(self):
         """Pulls a repository into the self.working_dir folder"""
-        print("###pulling remote repository###")
+        self.logger.info("###pulling remote repository###")
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
         dir = os.listdir(self.working_dir)
         if len(dir) == 0:
             self.repo = Repo.clone_from(self.repo_url, self.working_dir)
+            self.repo.git.checkout(self.branch)
             assert not self.repo.bare
         elif self.debug:
             self.repo = Repo(self.working_dir)
@@ -128,6 +137,7 @@ class RepoController:
         else:
             self.clear_working_dir()
             self.repo = Repo.clone_from(self.repo_url, self.working_dir)
+            self.repo.git.checkout(self.branch)
             assert not self.repo.bare
 
     def get_changes(self) -> list[dict]:
@@ -137,12 +147,9 @@ class RepoController:
         :return: A list of changed methods/classes/modules as dicts. Keys: type, content, signature, filenames, start, end
         :return type: list[dict]
         """
-        print("###extracting changes###")
+        self.logger.info("###extracting changes###")
         current_commit = self.repo.head.commit  # get most recent commit
         if self.initial_run:
-            # diff = self.repo.index.diff(None, current_commit)
-            # latest_commit = self.repo.commit("4b825dc642cb6eb9a060e54bf8d69288fbee4904") # https://jiby.tech/post/git-diff-empty-repo/ fails
-            # TODO change
             result = []
             for file in self.get_files_in_repo():
                 with open(file=file, mode="r") as f:
@@ -158,7 +165,7 @@ class RepoController:
             diff = self.repo.git.diff(latest_commit, current_commit)
 
             pattern = re.compile(
-                "\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@"
+                r"\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@"
             )
             changes = re.findall(pattern, diff)
             result = []
@@ -188,43 +195,30 @@ class RepoController:
         :return: class id
         :return type: str
         """
-        pattern = re.compile("class ([^\(:]+)")
+        pattern = re.compile(r"class ([^\(:]+)")
         class_name = re.findall(pattern, changed_class["content"])[0]
         return (
             changed_class["filename"] + "_" + changed_class["type"] + "_" + class_name
         )
 
-    def extract_dev_comments(self, code_obj: CodeObject) -> list[str]:
-        """
-        Extract developer comments. NOT IMPLEMENTED
-
-        :param code_obj: A dictionary with details regarding a method/class/module
-        :code_obj type: CodeObject
-
-        :return: dev comments
-        :return type: list[str]
-
-        :raises NotImplementedError: raised when not in debug mode, because this is not yet implemented
-        """
-        print("###MOCK### Extracting developer comments")
-        if not self.debug:
-            raise NotImplementedError
-        else:
-            return ["A developer comment"]
-
-    def identify_docstring_location(self, code_obj_id: str) -> tuple[int]:
+    def identify_docstring_location(
+        self, code_obj_id: str, code_representer: CodeRepresenter
+    ) -> tuple[int]:
         """
         Identify the docstring location and indentation given a CodeObject
 
         :param code_obj_id: CodeObject id
         :type code_obj_id: str
+        :param code_representer: CodeRepresenter
+        :type code_representer: CodeRepresenter
 
         :return: tuple(start, indentation level, end)
         :rtype: tuple[int]
 
         :raises Exception("End of docstring not found"): raised when the end of the docstring cannot be located
         """
-        code_obj = self.code_parser.code_representer.get(code_obj_id)
+        # TODO use ast.get_source_code_segment() and/or look into asttokens
+        code_obj = code_representer.get(code_obj_id)
         with open(file=code_obj.filename, mode="r") as f:
             lines = f.readlines()
             if isinstance(code_obj, ModuleObject):
@@ -240,9 +234,7 @@ class RepoController:
                     hasattr(current_code_obj, "outer_class_id")
                     and current_code_obj.outer_class_id is not None
                 ):
-                    current_code_obj = self.code_parser.code_representer.get(
-                        code_obj.outer_class_id
-                    )
+                    current_code_obj = code_representer.get(code_obj.outer_class_id)
                     class_nesting.append(current_code_obj)
                 start_pos = 0
                 for outer_class_obj in class_nesting[
@@ -318,8 +310,24 @@ class RepoController:
                 end_pos = start_pos
         return (start_pos, indentation_level, end_pos)
 
-    @staticmethod
-    def insert_docstring(filename: str, start: int, end: int, new_docstring: str):
+    def save_file_for_comparison(self, filename: str):
+        new_partial_filename = (
+            filename.split("working_repo")[-1].lstrip("/").lstrip("\\\\")
+        )
+        parent_dir = pathlib.Path().resolve()
+        dir = "saved_files"
+        dir = os.path.join(parent_dir, dir)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        new_filename = os.path.join(dir, new_partial_filename)
+        new_location = os.path.dirname(new_filename)
+        if not os.path.isfile(new_filename):
+            if not os.path.exists(new_location):
+                os.makedirs(new_location)
+            new_path = shutil.copy(filename, new_location)
+            self.cmp_files.append([filename, new_path])
+
+    def insert_docstring(self, filename: str, start: int, end: int, new_docstring: str):
         """
         Insert the new docstring. Lines between start and end will be overridden. Static method
 
@@ -332,6 +340,7 @@ class RepoController:
         :param new_docstring: new docstring
         :type new_docstring: str
         """
+        self.save_file_for_comparison(filename)
         with open(filename, "r") as f:
             content = f.readlines()
             before = content[:start]
@@ -341,12 +350,35 @@ class RepoController:
             with open(filename, "w") as file:
                 file.write(new_content)
 
+    def remove_comments(self, filename: str) -> str:
+        with open(filename) as f:
+            sys.stderr = open(os.devnull, "w")
+            lines = astunparse.unparse(ast.parse(f.read())).split("\n")
+            sys.stderr = sys.__stderr__
+            content = []
+            for line in lines:
+                if line.lstrip()[:1] not in ("'", '"'):
+                    content.append(line)
+            content = "\n".join(content)
+            new_filename = filename.rstrip(".py") + "_no_comments.py"
+            with open(new_filename, mode="w") as f:
+                f.write(content)
+            return new_filename
+
+    def validate_code_integrity(self):
+        for file_before, file_after in self.cmp_files:
+            file_before_no_comments = self.remove_comments(file_before)
+            file_after_no_comments = self.remove_comments(file_after)
+            if not filecmp.cmp(file_before_no_comments, file_after_no_comments):
+                return False
+        return True
+
     def update_latest_commit(self):
         """
         Update latest_commit file in target repo. Create if none exists
         """
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
-        print("Commit of docstring update:", current_commit)
+        self.logger.info("Commit of docstring update:", current_commit)
         with open(self.latest_commit_file_name, mode="w") as f:
             f.write(current_commit)
         self.repo.index.add([self.latest_commit_file_name])
@@ -363,8 +395,15 @@ class RepoController:
         if self.repo is not None:
             # create new branch
             new_branch = self.branch + "_AutoPyDoc"
-            current = self.repo.create_head(new_branch)
-            current.checkout()
+            if new_branch not in [ref.name for ref in self.repo.references]:
+                current = self.repo.create_head(new_branch)
+                current.checkout()
+            else:
+                i = 1
+                while new_branch in [ref.name for ref in self.repo.references]:
+                    new_branch = self.branch + "_AutoPyDoc_" + str(i)
+                current = self.repo.create_head(new_branch)
+                current.checkout()
             main = self.repo.heads.main
             self.repo.git.pull("origin", main)
 
@@ -376,7 +415,7 @@ class RepoController:
             # verify staging area
             modified_files = self.repo.index.diff(None)
             count_modified_files = len(modified_files)
-            print(
+            self.logger.info(
                 "Modified files:",
                 count_modified_files,
                 "\n",
@@ -385,17 +424,17 @@ class RepoController:
 
             staged_files = self.repo.index.diff("HEAD")
             count_staged_files = len(staged_files)
-            print(
+            self.logger.info(
                 "Staged files:",
                 count_staged_files,
                 "\n",
                 "\n".join([staged_file.b_path for staged_file in staged_files]),
             )
 
-            print("Modified files:", count_modified_files)
-            print("Staged files:", count_staged_files)
+            self.logger.info("Modified files:", count_modified_files)
+            self.logger.info("Staged files:", count_staged_files)
             if count_staged_files < 2:
-                print("No files modified. Quitting")
+                self.logger.info("No files modified. Quitting")
                 quit()
 
             # create commit
@@ -410,7 +449,7 @@ class RepoController:
             # pushing to new branch
             self.repo.git.push("--set-upstream", "origin", current)
             return new_branch
-        raise Exception  # TODO
+        raise Exception("Bare repository")
 
     def create_pull_request(
         self,
@@ -457,22 +496,27 @@ class RepoController:
 
         :raises NotImplementedError: raised when not in debug mode, because the config file is not yet implemented
         """
-        print("###MOCK### Applying changes")
+        self.logger.info("###Applying changes###")
         config = configparser.ConfigParser()
         config.read("src/config.ini")
 
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
-        print("Commit before docstring update:", current_commit)
+        self.logger.info("Commit before docstring update:", current_commit)
         new_branch = self.commit_to_new_branch(changed_files=changed_files)
+
+        description = "Automatically created docstrings for recently changed code"
+        if len(self.pr_notes) > 0:
+            description += "\n\nNotes:\n"
+            description += "\n".join(self.pr_notes)
 
         # create pull request
         self.create_pull_request(
-            repo_name="fbehrendt/bachelor_testing_repo",
+            repo_name="fbehrendt/bachelor_testing_repo",  # TODO get programmatically
             title="Autogenerated Docstrings",
-            description="Automatically created docstrings for recently changed code",
+            description=description,
             head_branch=new_branch,
             base_branch=self.branch,
-        )  # TODO
+        )
 
         # if repo_path is local filepath:
         # if config['Default']['local_repo_behaviour'] == "commit":

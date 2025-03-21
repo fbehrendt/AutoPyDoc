@@ -1,5 +1,6 @@
 from ast import AST
 from dataclasses import dataclass, field, fields
+from typing import List
 
 from gpt_input import (
     GptInputCodeObject,
@@ -71,6 +72,7 @@ class CodeObject:
     ast: AST = field(compare=False, hash=False, metadata={"frozen": True})
     docstring: str | None = field(compare=False, hash=False)
     code: str | None = field(compare=True, hash=True, metadata={"frozen": True})
+    parent_id: int | None = field(compare=True, hash=True, metadata={"frozen": True})
 
     def __post_init__(self):
         # self.__set_fields_frozen()
@@ -104,48 +106,48 @@ class CodeObject:
 
                 setattr(self, field_name, property(local_getter, frozen(field_name)))
 
-    def add_called_method(self, called_method_id: str):
+    def add_called_method(self, called_method_id: int):
         """
         Add a called method by its id
 
         :param called_method_id: id of the called method
-        :type called_method_id: str
+        :type called_method_id: int
         """
         self.called_methods.add(called_method_id)
 
-    def add_called_class(self, called_class_id: str):
+    def add_called_class(self, called_class_id: int):
         """
         Add a called class by its id
 
         :param called_class_id: id of the called class
-        :type called_class_id: str
+        :type called_class_id: int
         """
         self.called_classes.add(called_class_id)
 
-    def add_caller_method(self, caller_method_id: str):
+    def add_caller_method(self, caller_method_id: int):
         """
         Add a method calling this code object by its id
 
         :param caller_method_id: id of the calling method
-        :type caller_method_id: str
+        :type caller_method_id: int
         """
         self.called_by_methods.add(caller_method_id)
 
-    def add_caller_class(self, caller_class_id: str):
+    def add_caller_class(self, caller_class_id: int):
         """
         Add a class calling this code object by its id
 
         :param caller_class_id: id of the calling class
-        :type caller_class_id: str
+        :type caller_class_id: int
         """
         self.called_by_classes.add(caller_class_id)
 
-    def add_caller_module(self, caller_module_id: str):
+    def add_caller_module(self, caller_module_id: int):
         """
         Add a module calling this code object by its id
 
         :param caller_module_id: id of the calling module
-        :type caller_module_id: str
+        :type caller_module_id: int
         """
         self.called_by_modules.add(caller_module_id)
 
@@ -158,12 +160,24 @@ class CodeObject:
         """
         self.docstring = docstring
 
-    def get_context(self) -> dict[str, list[str]]:
+    def update_docstring(self, new_docstring: str):
+        """
+        Update the docstring of a CodeObject
+
+        :param new_docstring: the new docstring
+        :type new_docstring: str
+        """
+        self.old_docstring = self.docstring
+        self.docstring = new_docstring
+        self.is_updated = True
+        self.outdated = False
+
+    def get_context(self) -> dict[str, list[int]]:
         """
         Get the context of a code piece
 
         :return: A dictionary of types of context, containing lists of code ids
-        :return type: dict[str, list[str]]
+        :return type: dict[str, list[int]]
         """
         return {
             "called_methods": self.called_methods,
@@ -173,7 +187,7 @@ class CodeObject:
             "called_by_modules": self.called_by_modules,
         }
 
-    def get_gpt_input(self, code_representer):
+    def get_gpt_input(self, code_representer) -> GptInputCodeObject:
         """
         Create a gpt input object
 
@@ -190,6 +204,9 @@ class CodeObject:
             context_docstrings=code_representer.get_context_docstrings(self.id),
             exceptions=self.exceptions,
         )
+
+    def get_sent_to_gpt(self) -> bool:
+        return self.send_to_gpt
 
 
 @dataclass(unsafe_hash=True)
@@ -248,12 +265,12 @@ class ModuleObject(CodeObject):
         """
         self.method_ids.add(method_id)
 
-    def get_context(self) -> dict[str, list[str]]:
+    def get_context(self) -> dict[str, list[int]]:
         """
         Get the context of a code piece
 
         :return: A dictionary of types of context, containing lists of code ids
-        :return type: dict[str, list[str]]
+        :return type: dict[str, list[int]]
         """
         return {
             "called_methods": self.called_methods,
@@ -265,7 +282,7 @@ class ModuleObject(CodeObject):
             "method_ids": self.method_ids,
         }
 
-    def get_gpt_input(self, code_representer):
+    def get_gpt_input(self, code_representer) -> GptInputModuleObject:
         """
         Create a gpt input object
 
@@ -295,10 +312,12 @@ class MethodObject(CodeObject):
     :type filename: str
     :param ast: Ast representation of the code
     :type ast: ast.AST
+    :param outer_method_id: id of the outer method, if exists. Optional
+    :type outer_method_id: int|None
     :param outer_class_id: id of the outer class, if exists. Optional
-    :type outer_class_id: str|None
+    :type outer_class_id: int|None
     :param module_id: id of the module which this class is part of, if exists. Optional
-    :type module_id: str|None
+    :type module_id: int|None
     :param docstring: Docstring of the code piece. Optional
     :type docstring: str
     :param code: Code of the code piece
@@ -314,26 +333,17 @@ class MethodObject(CodeObject):
     arguments: list | None = field(default_factory=list, compare=False, hash=False)
     return_type: str | None = field(default=None, compare=False, hash=False)
     exceptions: set[str] | None = field(default_factory=set, compare=False, hash=False)
-    outer_class_id: str | None = field(default=None, compare=True, hash=True)
-    module_id: str | None = field(default=None, compare=True, hash=True)
+    outer_method_id: int | None = field(default=None, compare=True, hash=True)
+    outer_class_id: int | None = field(default=None, compare=True, hash=True)
+    module_id: int | None = field(default=None, compare=True, hash=True)
 
     def __post_init__(self):
         super().__post_init__()
         self.missing_arg_types = set()
         self.missing_return_type = False
         self.code_type = "method"
-
-    def get_context(self) -> dict[str, list[str] | str]:
-        """
-        Get the ids of context code pieces
-
-        :return: A dictionary of types of context, containing lists of code ids or a code id
-        :return type: dict[str, list[str]|str]
-        """
-        result = super().get_context()
-        result["outer_class_id"] = self.outer_class_id
-        result["module_id"] = self.module_id
-        return result
+        self.class_ids = set()
+        self.method_ids = set()
 
     def add_argument(self, argument: dict[str, str]):
         """
@@ -362,6 +372,24 @@ class MethodObject(CodeObject):
         """
         self.exceptions.add(exception)
 
+    def add_class_id(self, class_id: int):
+        """
+        Add a class id
+
+        :param class_id: class id
+        :type class_id: int
+        """
+        self.class_ids.add(class_id)
+
+    def add_method_id(self, method_id: int):
+        """
+        Add a method id
+
+        :param method_id: method id
+        :type method_id: int
+        """
+        self.method_ids.add(method_id)
+
     def get_missing_arg_types(self) -> set[str]:
         """
         Get a set of arguments, for which the return type is missing
@@ -371,14 +399,29 @@ class MethodObject(CodeObject):
         """
         return self.missing_arg_types
 
-    def get_arguments(self):
+    def get_arguments(self) -> list[dict] | None:
         if hasattr(self, "arguments"):
             return [
                 argument for argument in self.arguments if argument["name"] != "self"
             ]  # ignore self
         return None
 
-    def get_gpt_input(self, code_representer):
+    def get_context(self) -> dict[str, list[int] | int]:
+        """
+        Get the ids of context code pieces
+
+        :return: A dictionary of types of context, containing lists of code ids or a code id
+        :return type: dict[str, list[int]|int]
+        """
+        result = super().get_context()
+        result["outer_class_id"] = self.outer_class_id
+        result["outer_method_id"] = self.outer_method_id
+        result["module_id"] = self.module_id
+        result["class_ids"] = self.class_ids
+        result["method_ids"] = self.method_ids
+        return result
+
+    def get_gpt_input(self, code_representer) -> GptInputMethodObject:
         return GptInputMethodObject(
             id=self.id,
             code_type=self.code_type,
@@ -388,6 +431,7 @@ class MethodObject(CodeObject):
             context=self.get_context(),
             context_docstrings=code_representer.get_context_docstrings(self.id),
             exceptions=self.exceptions,
+            parent_method_id=self.outer_method_id,
             parent_class_id=self.outer_class_id,
             parent_module_id=self.module_id,
             parameters=code_representer.get_arguments(self.id),
@@ -407,19 +451,24 @@ class ClassObject(CodeObject):
     :type filename: str
     :param ast: Ast representation of the code
     :type ast: ast.AST
+    :param outer_method_id: id of the outer method, if exists. Optional
+    :type outer_method_id: int|None
     :param outer_class_id: id of the outer class, if exists. Optional
-    :type outer_class_id: str|None
+    :type outer_class_id: int|None
     :param module_id: id of the module which this class is part of, if exists. Optional
-    :type module_id: str|None
+    :type module_id: int|None
+    :param inherited_from: id of the class this class inherits from. Optional
+    :type inherited_from: int|None
     :param docstring: Docstring of the code piece. Optional
     :type docstring: str
     :param code: Code of the code piece
     :type code: str
     """
 
-    outer_class_id: str = field(default=None, compare=True, hash=True)
-    module_id: str = field(default=None, compare=True, hash=True)
-    inherited_from: str = field(default=None, compare=True, hash=True)
+    outer_method_id: int | None = field(default=None, compare=True, hash=True)
+    outer_class_id: int = field(default=None, compare=True, hash=True)
+    module_id: int = field(default=None, compare=True, hash=True)
+    inherited_from: int = field(default=None, compare=True, hash=True)
     exceptions: set[str] | None = field(default_factory=set, compare=False, hash=False)
 
     def __post_init__(self):
@@ -476,27 +525,28 @@ class ClassObject(CodeObject):
         if attribute["name"] not in [attr["name"] for attr in self.class_attributes]:
             self.instance_attributes.append(attribute)
 
-    def get_context(self) -> dict[str, list[str] | str]:
+    def get_context(self) -> dict[str, list[int] | int]:
         """
         Get the ids of context code pieces
 
         :return: A dictionary of types of context, containing lists of code ids or a code id
-        :return type: dict[str, list[str]|str]
+        :return type: dict[str, list[int]|int]
         """
         result = super().get_context()
         result["outer_class_id"] = self.outer_class_id
+        result["outer_method_id"] = self.outer_method_id
         result["module_id"] = self.module_id
         result["inherited_from"] = self.inherited_from
         result["class_ids"] = self.class_ids
         result["method_ids"] = self.method_ids
         return result
 
-    def get_gpt_input(self, code_representer):
+    def get_gpt_input(self, code_representer) -> GptInputClassObject:
         """
         Create a gpt input object
 
         :return: GptInput object
-        :return type: GptInputCodeObject
+        :return type: GptInputClassObject
         """
         return GptInputClassObject(
             id=self.id,
@@ -507,6 +557,7 @@ class ClassObject(CodeObject):
             context=self.get_context(),
             context_docstrings=code_representer.get_context_docstrings(self.id),
             exceptions=self.exceptions,
+            parent_method_id=self.outer_method_id,
             parent_class_id=self.outer_class_id,
             parent_module_id=self.module_id,
             inherited_from=self.inherited_from,
@@ -534,12 +585,12 @@ class CodeRepresenter:
         """Represent all code pieces like modules, classes and methods"""
         self.objects = {}
 
-    def get(self, id: str) -> CodeObject:
+    def get(self, id: int) -> CodeObject:
         """
         Get a CodeObject by id
 
         :param id: id of the targeted CodeObject
-        :type id: str
+        :type id: int
 
         :returns: CodeObject with the passed id
         :return type: CodeObject
@@ -555,15 +606,15 @@ class CodeRepresenter:
         :param code_obj: CodeObject to be added
         :type code_object: CodeObject
         """
-        if code_obj.id not in self.objects:
+        if code_obj.id not in self.objects.keys():
             self.objects[code_obj.id] = code_obj
 
-    def get_docstring(self, code_obj_id: str) -> str | None:
+    def get_docstring(self, code_obj_id: int) -> str | None:
         """
         Get the docstring of a CodeObject, if exists
 
         :param code_obj_id: CodeObject id
-        :type code_obj_id: str
+        :type code_obj_id: int
 
         :return: docstring of the CodeObject or None
         :return type: str|None
@@ -574,12 +625,12 @@ class CodeRepresenter:
             return self.objects[code_obj_id].docstring
         return None
 
-    def get_code(self, code_obj_id: str) -> str | None:
+    def get_code(self, code_obj_id: int) -> str | None:
         """
         Get the code of a CodeObject, if exists
 
         :param code_obj_id: CodeObject id
-        :type code_obj_id: str
+        :type code_obj_id: int
 
         :return: code of the CodeObject or None
         :return type: str|None
@@ -590,12 +641,12 @@ class CodeRepresenter:
             return self.objects[code_obj_id].code
         return None
 
-    def get_arguments(self, code_obj_id: str) -> list[str] | None:
+    def get_arguments(self, code_obj_id: int) -> list[str] | None:
         """
         Get the arguments of a CodeObject, if exists. Do not return self as an argument
 
         :param code_obj_id: CodeObject id
-        :type code_obj_id: str
+        :type code_obj_id: int
 
         :return: arguments of the CodeObject or None
         :return type: list[str]|None
@@ -610,12 +661,12 @@ class CodeRepresenter:
             ]  # ignore self
         return None
 
-    def get_return_type(self, code_obj_id: str) -> str | None:
+    def get_return_type(self, code_obj_id: int) -> str | None:
         """
         Get the return type of a CodeObject, if exists
 
         :param code_obj_id: CodeObject id
-        :type code_obj_id: str
+        :type code_obj_id: int
 
         :return: return type of the CodeObject or None
         :return type: str|None
@@ -626,12 +677,12 @@ class CodeRepresenter:
             return self.objects[code_obj_id].return_type
         return None
 
-    def get_exceptions(self, code_obj_id: str) -> list[str] | None:
+    def get_exceptions(self, code_obj_id: int) -> list[str] | None:
         """
         Get the exceptions of a CodeObject, if exists
 
         :param code_obj_id: CodeObject id
-        :type code_obj_id: str
+        :type code_obj_id: int
 
         :return: exceptions raised by the CodeObject or None
         :return type: list[str]|None
@@ -642,12 +693,12 @@ class CodeRepresenter:
             return self.objects[code_obj_id].exceptions
         return None
 
-    def get_missing_arg_types(self, code_obj_id: str) -> list[str] | bool:
+    def get_missing_arg_types(self, code_obj_id: int) -> list[str] | bool:
         """
         Get the names of arguments where type information is missing of a CodeObject, if exists
 
         :param code_obj_id: CodeObject id
-        :type code_obj_id: str
+        :type code_obj_id: int
 
         :return: names of arguments where type information is missing or False
         :return type: list[str]|bool
@@ -657,12 +708,12 @@ class CodeRepresenter:
             return False
         return code_obj.get_missing_arg_types()
 
-    def return_type_missing(self, code_obj_id: str) -> bool:
+    def return_type_missing(self, code_obj_id: int) -> bool:
         """
         Return if the return type of the CodeObject is missing
 
         :param code_obj_id: CodeObject id
-        :type code_obj_id: str
+        :type code_obj_id: int
 
         :return: True if return type is missing, else False
         :return type: bool
@@ -673,13 +724,13 @@ class CodeRepresenter:
         return code_obj.missing_return_type
 
     def get_args_types_exceptions(
-        self, code_obj_id: str
+        self, code_obj_id: int
     ) -> dict[str, list[str] | str | bool]:
         """
         Get information about arguments, return and exceptions of a CodeObject
 
         :param code_obj_id: id of the CodeObject
-        :type code_obj_id: str
+        :type code_obj_id: int
 
         :return: information about arguments, return and exceptions
         :return type: dict[str, list[str]|str|bool]
@@ -741,15 +792,40 @@ class CodeRepresenter:
             raise Exception("No matches")
         return matches[0]
 
-    def get_context_docstrings(self, code_obj_id: str) -> dict[str, str]:
+    def get_by_filename_and_name(self, filename: str, name: str) -> CodeObject:
+        """
+        Get CodeObjects by filename
+
+        :param filename: filename for which CodeObjects should be returned
+        :type filename: str
+        :param name: name of the class, module, or method
+        :type name: str
+
+        :return: list of matching CodeObjecs
+        :return type: list[CodeObject]
+        """
+        candidates = self.get_by_filename(filename=filename)
+        matches = []
+        for candidate in candidates:
+            if (
+                candidate.name == name  # TODO ambiguous
+            ):
+                matches.append(candidate)
+        if len(matches) > 1:
+            raise Exception("More than one match")
+        if len(matches) == 0:
+            raise Exception("No matches")
+        return matches[0]
+
+    def get_context_docstrings(self, code_obj_id: int) -> dict[int, str]:
         """
         Get the docstrings of context CodeObjects as a dict of CodeObject id to docstring
 
         :param code_obj_id: CodeObject id
-        :type code_obj_id: str
+        :type code_obj_id: int
 
-        :return: dictionary of CodeObject to docstrings
-        :return type: dict[str, str]
+        :return: dictionary of CodeObject ids to docstrings
+        :return type: dict[int, str]
         """
         code_obj = self.get(code_obj_id)
         code_obj_context = code_obj.get_context()
@@ -773,15 +849,16 @@ class CodeRepresenter:
                 result[key] = code_obj_2.code
         return result
 
-    def depends_on_outdated_code(self, code_obj_id: str) -> bool:
+    def depends_on_outdated_code(self, code_obj_id: int) -> bool:
         """
         Return if the CodeObject depends on other CodeObjects. Relevant for the order of docstring generation
 
         :param code_obj_id: CodeObject id
-        :type code_obj_id: str
+        :type code_obj_id: int
 
         :return: True if the CodeObject depends on other CodeObjects
-        :return type: bool"""
+        :return type: bool
+        """
         code_obj = self.get(code_obj_id)
         for code_id in code_obj.called_classes:
             if self.get(code_id).outdated:
@@ -799,12 +876,12 @@ class CodeRepresenter:
                     return True
         return False
 
-    def update_docstring(self, code_obj_id: str, new_docstring: str):
+    def update_docstring(self, code_obj_id: int, new_docstring: str):
         """
         Update the docstring of a CodeObject
 
         :param code_obj_id: CodeObject id
-        :type code_obj_id: str
+        :type code_obj_id: int
         :param new_docstring: the new docstring
         :type new_docstring: str
         """
@@ -813,3 +890,74 @@ class CodeRepresenter:
         code_obj.docstring = new_docstring
         code_obj.is_updated = True
         code_obj.outdated = False
+
+    def get_outdated_ids(self) -> list[int]:
+        return [code_obj.id for code_obj in self.objects.values() if code_obj.outdated]
+
+    def get_sent_to_gpt_ids(self) -> list[int]:
+        return [
+            code_obj.id
+            for code_obj in self.objects.values()
+            if code_obj.get_sent_to_gpt()
+        ]
+
+    def generate_next_batch(
+        self, ignore_dependencies=False
+    ) -> list[GptInputCodeObject]:
+        ids = [
+            id
+            for id in self.get_outdated_ids()
+            if (ignore_dependencies)
+            or not self.depends_on_outdated_code(id)
+            and not self.get(id).send_to_gpt
+        ]
+        batch: List[GptInputCodeObject] = []
+        for id in ids:
+            code_obj = self.get(id)
+            code_obj.send_to_gpt = True
+            batch.append(code_obj.get_gpt_input(code_representer=self))
+        return batch
+
+    def get_code_objects(self) -> list[CodeObject]:
+        return list(self.objects.values())
+
+    def get_modules(self) -> list[ModuleObject]:
+        return [
+            code_obj
+            for code_obj in list(self.objects.values())
+            if isinstance(code_obj, ModuleObject)
+        ]
+
+    def get_classes(self) -> list[ClassObject]:
+        return [
+            code_obj
+            for code_obj in list(self.objects.values())
+            if isinstance(code_obj, ClassObject)
+        ]
+
+    def get_methods(self) -> list[MethodObject]:
+        return [
+            code_obj
+            for code_obj in list(self.objects.values())
+            if isinstance(code_obj, MethodObject)
+        ]
+
+    def get_changed_files(self) -> list[str]:
+        changed_files = set()
+        for filename in [
+            code_obj.filename
+            for code_obj in self.objects.values()
+            if code_obj.is_updated
+        ]:
+            changed_files.add(filename)
+        return list(changed_files)
+
+    def set_outdated(self, code_obj_id: int):
+        code_obj = self.get(code_obj_id)
+        code_obj.outdated = True
+        if isinstance(code_obj, MethodObject) or isinstance(code_obj, ClassObject):
+            if code_obj.outer_class_id is not None:
+                self.set_outdated(code_obj.outer_class_id)
+            if code_obj.module_id is not None:
+                module_obj = self.get(code_obj.module_id)
+                module_obj.outdated = True

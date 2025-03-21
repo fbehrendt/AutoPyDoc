@@ -12,9 +12,16 @@ if __name__ == "__main__":
         "pull_request_token",
         help="Pull Request Token",
     )
+    parser.add_argument(
+        "branch",
+        help="Branch",
+    )
     args = parser.parse_args()
 
     auto_py_doc = AutoPyDoc()
     auto_py_doc.main(
-        repo_path=args.repo_path, pull_request_token=args.pull_request_token, debug=True
+        repo_path=args.repo_path,
+        pull_request_token=args.pull_request_token,
+        branch=args.branch,
+        debug=True,
     )
