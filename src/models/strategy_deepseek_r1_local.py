@@ -1,6 +1,6 @@
-import json
 import re
 
+import json5
 from gpt4all import GPT4All
 
 from gpt_input import (
@@ -180,7 +180,7 @@ Please reason step by step to find out if the existing docstring matches the cod
             raise ValueError("No JSON match found")
 
         analysis_json_str = match.group(1)
-        analysis_json = json.loads(analysis_json_str)
+        analysis_json = json5.loads(analysis_json_str)
 
         return "matches" in analysis_json and analysis_json["matches"]
 
@@ -230,6 +230,6 @@ Please reason step by step, and put your final answer within the following json 
             raise ValueError("No JSON match found")
 
         analysis_json_str = match.group(0)
-        analysis_json = json.loads(analysis_json_str)
+        analysis_json = json5.loads(analysis_json_str)
 
         return analysis_json
