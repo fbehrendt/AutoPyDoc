@@ -115,6 +115,12 @@ class AutoPyDoc:
                 )
             )
 
+            # merge new docstring with developer comments
+            developer_docstring_changes = self.extract_dev_comments(code_obj)
+            # TODO Docstring dismantler
+            if not self.debug:
+                raise NotImplementedError
+
             # build docstring
             new_docstring, new_pr_notes = create_docstring(
                 code_obj,
@@ -124,10 +130,6 @@ class AutoPyDoc:
                 debug=True,
             )
             self.repo.pr_notes.extend(new_pr_notes)
-
-            # merge new docstring with developer comments
-            if not self.debug:
-                raise NotImplementedError
 
             # validate docstring syntax
             errors = validate_docstring(new_docstring)
@@ -153,56 +155,77 @@ class AutoPyDoc:
             self.gpt_interface.process_batch(
                 next_batch, callback=self.process_gpt_result
             )
-    
+
     @staticmethod
     def print_diff(a, b):
         if a == b:
             return
         import difflib
-        print('{} => {}'.format(a,b))
-        for i,s in enumerate(difflib.unified_diff([a], [b])):
+
+        print("{} => {}".format(a, b))
+        for i, s in enumerate(difflib.unified_diff([a], [b])):
             print("DIFF:\n", s)
 
-    def extract_dev_comments(self):
+    def extract_dev_comments(self, code_obj):
         import ast
         import sys
         import os
         import pathlib
         from code_representation import MethodObject, ClassObject, ModuleObject
+        from docstring_dismantler import DocstringDismantler
+
         self.repo.repo.git.checkout(self.repo.latest_commit_hash)
-        for code_obj_id in self.code_parser.code_representer.get_outdated_ids():
-            code_obj = self.code_parser.code_representer.get(code_obj_id)
-            sys.stderr = open(os.devnull, "w")
-            code_ast = ast.parse(open(code_obj.filename).read())
-            sys.stderr = sys.__stderr__
-            for node in ast.walk(code_ast):
-                if isinstance(code_obj, MethodObject) and (isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef)):
-                    if code_obj.name == node.name:
-                        # print(node.name, code_obj.name)
-                        self.print_diff(code_obj.docstring or "", ast.get_docstring(node, clean=True) or "")
-                elif isinstance(code_obj, ClassObject) and isinstance(node, ast.ClassDef):
-                    if code_obj.name == node.name:
-                        # print(node.name, code_obj.name)
-                        self.print_diff(code_obj.docstring or "", ast.get_docstring(node, clean=True) or "")
-                elif isinstance(code_obj, ModuleObject) and isinstance(node, ast.Module):
-                    # print("Module", pathlib.Path(code_obj.filename).stem)
-                    self.print_diff(code_obj.docstring or "", ast.get_docstring(node, clean=True) or "")
+        sys.stderr = open(os.devnull, "w")
+        code_ast = ast.parse(open(code_obj.filename).read())
+        sys.stderr = sys.__stderr__
+        for node in ast.walk(code_ast):
+            if isinstance(code_obj, MethodObject) and (
+                isinstance(node, ast.FunctionDef)
+                or isinstance(node, ast.AsyncFunctionDef)
+            ):
+                if code_obj.name == node.name:
+                    old_docstring = ast.get_docstring(node, clean=True) or ""
+            elif isinstance(code_obj, ClassObject) and isinstance(node, ast.ClassDef):
+                if code_obj.name == node.name:
+                    old_docstring = ast.get_docstring(node, clean=True) or ""
+            elif isinstance(code_obj, ModuleObject) and isinstance(node, ast.Module):
+                old_docstring = ast.get_docstring(node, clean=True) or ""
+        if old_docstring == code_obj.old_docstring:
+            print("+++docstrings are equal+++")
+            return
+        else:
+            print("---docstrings are different---")
+            new_docstring_dismantler = DocstringDismantler(
+                docstring=code_obj.old_docstring or ""
+            )
+            old_docstring_dismantler = DocstringDismantler(
+                docstring=old_docstring or ""
+            )
+            developer_changes = new_docstring_dismantler.compare_docstrings(
+                old_docstring_dismantler
+            )
+            if len(developer_changes) > 0:
+                print(
+                    f"=============\n{code_obj.name} in {pathlib.Path(code_obj.filename).stem}\n============="
+                )
+            for developer_change in developer_changes:
+                print(developer_change)
         self.repo.repo.git.checkout("HEAD")
-        #tree = self.repo.repo.head.commit.tree
-        #self.repo.latest_commit_hash
-        #print("Latest commit hash:", self.repo.latest_commit_hash)
-        #self.repo.repo.head.commit
-        #steps_in_the_past = 1
-        #while self.repo.repo.commit(f"HEAD~{steps_in_the_past}").hexsha != self.repo.latest_commit_hash:
+        return developer_changes
+        # tree = self.repo.repo.head.commit.tree
+        # self.repo.latest_commit_hash
+        # print("Latest commit hash:", self.repo.latest_commit_hash)
+        # self.repo.repo.head.commit
+        # steps_in_the_past = 1
+        # while self.repo.repo.commit(f"HEAD~{steps_in_the_past}").hexsha != self.repo.latest_commit_hash:
         #    commit = self.repo.repo.commit(f"HEAD~{steps_in_the_past}")
         #    print(steps_in_the_past, "    " + commit.message, "    " + commit.hexsha)
         #    steps_in_the_past += 1
-        #steps_in_the_past -= 1 # The commit after the AutoPyDoc commit is a merge commit
-        quit()
+        # steps_in_the_past -= 1 # The commit after the AutoPyDoc commit is a merge commit
         # search in between for commit message starting with "Automatically generated docstrings using AutoPyDoc"
         # if such a commit exists, compare to that commit, if not, compare to latest commit, if not exists compare to empty file
         # get docstrings of codeobj using ast.parse() and ast.docstring()
-        #for code_obj_id in self.code_parser.code_representer.get_outdated_ids():
+        # for code_obj_id in self.code_parser.code_representer.get_outdated_ids():
         #    code_obj = self.code_parser.code_representer.get(code_obj_id)
         #    filename = code_obj.filename
         #    commits = list(
@@ -212,10 +235,10 @@ class AutoPyDoc:
         #    for commit in commits:
         #        print("    " + commit.message, "    " + commit.hexsha)
         #    print()
-            # TODO get version before and after
-            # TODO ast parse visit code ast.docstring() on both files
-            # diff
-        #print()
+        # TODO get version before and after
+        # TODO ast parse visit code ast.docstring() on both files
+        # diff
+        # print()
 
 
 if __name__ == "__main__":

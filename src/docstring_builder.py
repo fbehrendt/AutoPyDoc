@@ -463,7 +463,7 @@ def create_docstring(
                 )
                 return_description = "<failed to generate>"
             else:
-                return_description = result.return_type
+                return_description = result.return_description
             if not code_obj.missing_return_type:
                 return_type = code_obj.return_type
             else:
