@@ -86,6 +86,7 @@ class CodeObject:
         self.outdated = False
         self.is_updated = False
         self.send_to_gpt = False
+        self.old_docstring = self.docstring
 
     def __set_fields_frozen(self):
         flds = fields(self)
