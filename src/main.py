@@ -1,12 +1,18 @@
 import logging
 
-from code_representation import CodeRepresenter
 from docstring_builder import create_docstring
-from get_context import CodeParser
+from docstring_input_selector import (
+    DocstringInputSelectorClass,
+    DocstringInputSelectorMethod,
+    DocstringInputSelectorModule,
+)
+from validate_docstring_input import validate_docstring_input
 from gpt_input import GptOutput
 from gpt_interface import GptInterface
 from repo_controller import RepoController
 from validate_docstring import validate_docstring
+from get_context import CodeParser
+from code_representation import CodeRepresenter, MethodObject, ClassObject, ModuleObject
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -117,19 +123,40 @@ class AutoPyDoc:
 
             # merge new docstring with developer comments
             developer_docstring_changes = self.extract_dev_comments(code_obj)
-            # TODO Docstring dismantler
-            if not self.debug:
-                raise NotImplementedError
+            if isinstance(code_obj, MethodObject):
+                docstring_input = DocstringInputSelectorMethod(
+                    code_obj=code_obj,
+                    gpt_result=result,
+                    developer_docstring_changes=developer_docstring_changes,
+                ).get_result()
+            if isinstance(code_obj, ClassObject):
+                docstring_input = DocstringInputSelectorClass(
+                    code_obj=code_obj,
+                    gpt_result=result,
+                    developer_docstring_changes=developer_docstring_changes,
+                ).get_result()
+            if isinstance(code_obj, ModuleObject):
+                docstring_input = DocstringInputSelectorModule(
+                    code_obj=code_obj,
+                    gpt_result=result,
+                    developer_docstring_changes=developer_docstring_changes,
+                ).get_result()
+
+            # validate if docstring input was generated successfully
+            docstring_input, new_pr_notes = validate_docstring_input(
+                docstring_input=docstring_input,
+                code_representer=self.code_parser.code_representer,
+            )
+            self.repo.pr_notes.extend(new_pr_notes)
 
             # build docstring
-            new_docstring, new_pr_notes = create_docstring(
-                code_obj,
+            new_docstring = create_docstring(
+                docstring_input,
                 result,
                 indentation_level,
                 code_representer=self.code_parser.code_representer,
                 debug=True,
             )
-            self.repo.pr_notes.extend(new_pr_notes)
 
             # validate docstring syntax
             errors = validate_docstring(new_docstring)
