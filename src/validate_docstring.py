@@ -18,12 +18,9 @@ def validate_docstring(docstring: str, syntax: str = "reStructuredText") -> list
     if syntax != "reStructuredText":
         raise NotImplementedError
     errors = restructuredtext_lint.lint(docstring)
-    for error in errors:
-        if (
-            error.message
-            == "Unexpected possible title overline or transition.\nTreating it as ordinary text because it's so short."
-        ):
-            errors.remove(error)
+    # filter out INFO level errors such as
+    # "Unexpected possible title overline or transition.\nTreating it as ordinary text because it's so short."
+    errors = [error for error in errors if error.type != "Info"]
     return errors
 
 
