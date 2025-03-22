@@ -1,16 +1,17 @@
+from random import randint
+
 from gpt_input import (
     GptInputClassObject,
     GptInputCodeObject,
     GptInputMethodObject,
     GptInputModuleObject,
     GptOutput,
-    GptOutputMethod,
     GptOutputClass,
+    GptOutputMethod,
     GptOutputModule,
 )
 
 from .model_strategy import DocstringModelStrategy
-from random import randint
 
 
 class MockStrategy(DocstringModelStrategy):
@@ -47,7 +48,7 @@ class MockStrategy(DocstringModelStrategy):
                     return_type = "MOCK return type"
 
             param_types = {}
-            for param_name in code_object.missing_parameters:
+            for param_name in code_object.parameters:
                 if randint(0, 6) == 0:
                     param_types[param_name] = False
                 else:
@@ -75,7 +76,6 @@ class MockStrategy(DocstringModelStrategy):
                 parameter_descriptions=param_descriptions,
                 exception_descriptions=exception_descriptions,
                 return_description=return_description,
-                return_missing=code_object.return_missing,
                 return_type=return_type,
             )
         elif isinstance(code_object, GptInputClassObject):

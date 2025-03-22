@@ -16,7 +16,7 @@ class GptInputCodeObject:
 @dataclass(frozen=True)
 class GptInputMethodObject(GptInputCodeObject):
     parameters: list[str] | None = field(default=None, compare=True, hash=True)
-    missing_parameters: list | None = field(default=None, hash=False)
+    missing_parameters: list[str] | None = field(default=None, hash=False)
     return_missing: bool = field(default=False, hash=False)
     parent_class_id: int | None = field(default=None, compare=True, hash=True)
     parent_module_id: int | None = field(default=None, compare=True, hash=True)
