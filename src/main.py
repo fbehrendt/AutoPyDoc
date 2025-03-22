@@ -27,7 +27,8 @@ class AutoPyDoc:
 
     def main(
         self,
-        repo_path: str = None,
+        repo_path: str,
+        username: str,
         pull_request_token=None,
         branch: str = "main",
         debug=False,
@@ -50,6 +51,7 @@ class AutoPyDoc:
         self.repo = RepoController(
             repo_path=repo_path,
             pull_request_token=pull_request_token,
+            username=username,
             branch=branch,
             logger=self.logger,
             debug=debug,
@@ -94,6 +96,7 @@ class AutoPyDoc:
 
         # if every docstring is updated
         if not self.repo.validate_code_integrity():
+            self.logger.critical("Code integrity no longer given!!! aborting")
             raise Exception("Code integrity no longer given!!! aborting")
             quit()  # saveguard in case someone tries to catch the exception and continue anyways
         self.logger.info("Code integrity validated")
@@ -101,8 +104,6 @@ class AutoPyDoc:
         self.repo.apply_changes(
             changed_files=self.code_parser.code_representer.get_changed_files()
         )
-        if not self.debug:
-            raise NotImplementedError
         self.logger.info("Finished successfully")
 
     def process_gpt_result(self, result: GptOutput) -> None:
@@ -161,8 +162,18 @@ class AutoPyDoc:
             errors = validate_docstring(new_docstring)
             if len(errors) > 0:
                 # TODO resent to GPT, with note. If this is the second time, don't update this docstring and put note in pull request description
-                if not self.debug:
-                    raise NotImplementedError
+                self.logger.warning("Docstring is not valid. Retry")
+                if hasattr(code_obj, "retry") and code_obj.retry > 0:
+                    code_obj.retry += 1
+                    if code_obj.retry > 2:
+                        self.logger.error(
+                            "Docstring is not still invalid after 3 attempts"
+                        )
+                        if not self.debug:
+                            raise NotImplementedError
+                else:
+                    code_obj.retry = 1
+                return  # this prevents code_obj.outdate from being set to False and code_obj.is_updated from being set to True, causing it to be included in the next batch again.
 
             # insert new docstring in the file
             self.repo.insert_docstring(
@@ -182,6 +193,7 @@ class AutoPyDoc:
                 next_batch, callback=self.process_gpt_result
             )
 
+    # TODO move elsewhere
     @staticmethod
     def print_diff(a, b):
         if a == b:
@@ -192,6 +204,7 @@ class AutoPyDoc:
         for i, s in enumerate(difflib.unified_diff([a], [b])):
             print("DIFF:\n", s)
 
+    # TODO move elsewhere
     def extract_dev_comments(self, code_obj):
         import ast
         import sys
@@ -277,6 +290,8 @@ class AutoPyDoc:
 if __name__ == "__main__":
     auto_py_doc = AutoPyDoc()
     auto_py_doc.main(
-        repo_path="https://github.com/fbehrendt/bachelor_testing_repo", debug=True
+        repo_path="https://github.com/fbehrendt/bachelor_testing_repo",
+        username="fbehrendt",
+        debug=True,
     )
     # auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)
