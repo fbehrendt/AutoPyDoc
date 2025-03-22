@@ -394,7 +394,7 @@ def create_docstring(
                 continue
             docstring_builder.add_param(
                 param_name=param,
-                param_type=docstring_input.argument_types[param["name"]],
+                param_type=docstring_input.argument_types[param],
                 param_description=docstring_input.arguments[param],
             )
         # exceptions

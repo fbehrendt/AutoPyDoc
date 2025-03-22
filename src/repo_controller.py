@@ -404,8 +404,8 @@ class RepoController:
                     new_branch = self.branch + "_AutoPyDoc_" + str(i)
                 current = self.repo.create_head(new_branch)
                 current.checkout()
-            main = self.repo.heads.main
-            self.repo.git.pull("origin", main)
+            # main = self.repo.heads.main # TODO are those two lines necessary?
+            # self.repo.git.pull("origin", main)
 
             # committing changed files and commit tracking file to new branch
             self.update_latest_commit()

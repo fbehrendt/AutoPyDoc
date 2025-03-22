@@ -71,7 +71,6 @@ class AutoPyDoc:
         # get changes between last commit the tool ran for and now
         self.changes = self.repo.get_changes()
         self.code_parser.set_code_affected_by_changes_to_outdated(changes=self.changes)
-        self.extract_dev_comments()
 
         first_batch = self.code_parser.code_representer.generate_next_batch()
         if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
@@ -107,20 +106,14 @@ class AutoPyDoc:
         self.logger.info("Finished successfully")
 
     def process_gpt_result(self, result: GptOutput) -> None:
-        self.logger.info("Received" + str(result.id))
-        self.logger.info(
+        self.logger.debug("Received" + str(result.id))
+        self.logger.debug(
             "Waiting for"
             + str(len(self.code_parser.code_representer.get_sent_to_gpt_ids()))
             + "more results"
         )
         code_obj = self.code_parser.code_representer.get(result.id)
         if not result.no_change_necessary:
-            start_pos, indentation_level, end_pos = (
-                self.repo.identify_docstring_location(
-                    code_obj.id, code_representer=self.code_parser.code_representer
-                )
-            )
-
             # merge new docstring with developer comments
             developer_docstring_changes = self.extract_dev_comments(code_obj)
             if isinstance(code_obj, MethodObject):
@@ -149,11 +142,17 @@ class AutoPyDoc:
             )
             self.repo.pr_notes.extend(new_pr_notes)
 
+            start_pos, indentation_level, end_pos = (
+                self.repo.identify_docstring_location(
+                    code_obj.id, code_representer=self.code_parser.code_representer
+                )
+            )
+
             # build docstring
             new_docstring = create_docstring(
-                docstring_input,
-                result,
-                indentation_level,
+                code_obj=code_obj,
+                docstring_input=docstring_input,
+                indentation_level=indentation_level,
                 code_representer=self.code_parser.code_representer,
                 debug=True,
             )
@@ -201,6 +200,8 @@ class AutoPyDoc:
         from code_representation import MethodObject, ClassObject, ModuleObject
         from docstring_dismantler import DocstringDismantler
 
+        developer_changes = []
+
         self.repo.repo.git.checkout(self.repo.latest_commit_hash)
         sys.stderr = open(os.devnull, "w")
         code_ast = ast.parse(open(code_obj.filename).read())
@@ -212,14 +213,17 @@ class AutoPyDoc:
             ):
                 if code_obj.name == node.name:
                     old_docstring = ast.get_docstring(node, clean=True) or ""
+                    break
             elif isinstance(code_obj, ClassObject) and isinstance(node, ast.ClassDef):
                 if code_obj.name == node.name:
                     old_docstring = ast.get_docstring(node, clean=True) or ""
+                    break
             elif isinstance(code_obj, ModuleObject) and isinstance(node, ast.Module):
                 old_docstring = ast.get_docstring(node, clean=True) or ""
+                break
         if old_docstring == code_obj.old_docstring:
             print("+++docstrings are equal+++")
-            return
+            return developer_changes
         else:
             print("---docstrings are different---")
             new_docstring_dismantler = DocstringDismantler(
@@ -238,6 +242,8 @@ class AutoPyDoc:
             for developer_change in developer_changes:
                 print(developer_change)
         self.repo.repo.git.checkout("HEAD")
+        if developer_changes is None:
+            print()
         return developer_changes
         # tree = self.repo.repo.head.commit.tree
         # self.repo.latest_commit_hash

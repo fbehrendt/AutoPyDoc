@@ -49,11 +49,11 @@ def validate_docstring_input(
                 )
                 docstring_input.arguments[param] = "<failed to generate>"
             if (
-                isinstance(docstring_input.argument_types[param["name"]], bool)
-                and not docstring_input.argument_types[param["name"]]
+                isinstance(docstring_input.argument_types[param], bool)
+                and not docstring_input.argument_types[param]
             ):
                 pr_notes.append(
-                    f"Unknown type for param {param['name']} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Unknown type for param {param} in {get_rel_filename(code_obj.filename)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 docstring_input.argument_types[param] = "<unknown>"
         # return
@@ -98,7 +98,7 @@ def validate_docstring_input(
         for class_attribute_name in docstring_input.class_attributes.keys():
             if (
                 isinstance(
-                    docstring_input.class_attribute_s[class_attribute_name],
+                    docstring_input.class_attributes[class_attribute_name],
                     bool,
                 )
                 and not docstring_input.class_attributes[class_attribute_name]

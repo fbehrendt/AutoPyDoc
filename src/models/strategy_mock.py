@@ -55,11 +55,11 @@ class MockStrategy(DocstringModelStrategy):
                     param_types[param_name] = "MOCK type"
 
             param_descriptions = {}
-            for param_name in code_object.parameters:
+            for param in code_object.parameters:
                 if randint(0, 6) == 0:
-                    param_descriptions[param_name] = False
+                    param_descriptions[param["name"]] = False
                 else:
-                    param_descriptions[param_name] = (
+                    param_descriptions[param["name"]] = (
                         "MOCK description for this parameter"
                     )
 
