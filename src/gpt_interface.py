@@ -11,9 +11,9 @@ from models import ModelStrategyFactory
 class GptInterface:
     def __init__(self, model_name: str):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.model = ModelStrategyFactory.create_strategy(model_name, device="cuda")
-
-        self.debug_abort = False
+        self.model = ModelStrategyFactory.create_strategy(
+            model_name, device="cuda", context_size=2**13
+        )
 
     def process_batch(
         self, batch: list[GptInputCodeObject], callback: Callable[[GptOutput], None]
@@ -38,10 +38,6 @@ class GptInterface:
         # generate exception descriptions (?)
 
         for current_code_object in batch:
-            # if self.debug_abort:
-            #     self.logger.info("Debugging, aborting!")
-            #     break
-
             try:
                 change_necessary = (
                     current_code_object.docstring is None
@@ -59,7 +55,9 @@ class GptInterface:
                     )
 
                     callback(generated_output)
-
+            except KeyboardInterrupt as e:
+                self.logger.fatal("User abborted execution", exc_info=e)
+                raise e
             except Exception as e:
-                self.logger.exception("Error while processing batch", exc_info=e)
-                self.debug_abort = True
+                self.logger.error("Error while processing batch", exc_info=e)
+                raise e
