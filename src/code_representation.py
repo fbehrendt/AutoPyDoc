@@ -435,7 +435,9 @@ class MethodObject(CodeObject):
             parent_method_id=self.outer_method_id,
             parent_class_id=self.outer_class_id,
             parent_module_id=self.module_id,
-            parameters=code_representer.get_arguments(self.id),
+            parameters=[
+                param["name"] for param in code_representer.get_arguments(self.id)
+            ],
             missing_parameters=self.get_missing_arg_types(),
             return_missing=self.missing_return_type,
         )
@@ -642,7 +644,7 @@ class CodeRepresenter:
             return self.objects[code_obj_id].code
         return None
 
-    def get_arguments(self, code_obj_id: int) -> list[str] | None:
+    def get_arguments(self, code_obj_id: int) -> list[dict[str, str]] | None:
         """
         Get the arguments of a CodeObject, if exists. Do not return self as an argument
 
@@ -650,7 +652,7 @@ class CodeRepresenter:
         :type code_obj_id: int
 
         :return: arguments of the CodeObject or None
-        :return type: list[str]|None
+        :return type: list[dict[str, str]] | None
         """
         if code_obj_id in self.objects.keys() and hasattr(
             self.objects[code_obj_id], "arguments"
