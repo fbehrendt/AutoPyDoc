@@ -107,11 +107,9 @@ class AutoPyDoc:
         self.logger.info("Finished successfully")
 
     def process_gpt_result(self, result: GptOutput) -> None:
-        self.logger.debug("Received" + str(result.id))
+        self.logger.debug(f"Received {str(result.id)}")
         self.logger.debug(
-            "Waiting for"
-            + str(len(self.code_parser.code_representer.get_sent_to_gpt_ids()))
-            + "more results"
+            f"Waiting for {str(len(self.code_parser.code_representer.get_sent_to_gpt_ids()))} more results"
         )
         code_obj = self.code_parser.code_representer.get(result.id)
         if not result.no_change_necessary:

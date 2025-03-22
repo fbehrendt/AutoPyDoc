@@ -20,7 +20,7 @@ def validate_docstring(docstring: str, syntax: str = "reStructuredText") -> list
     errors = restructuredtext_lint.lint(docstring)
     # filter out INFO level errors such as
     # "Unexpected possible title overline or transition.\nTreating it as ordinary text because it's so short."
-    errors = [error for error in errors if error.type != "Info"]
+    errors = [error for error in errors if error.type.upper() != "INFO"]
     return errors
 
 

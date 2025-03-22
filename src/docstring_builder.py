@@ -148,7 +148,8 @@ class DocstringBuilderMethod(DocstringBuilder):
             or len(self.exceptions)
         ):
             docstring += "\n"
-        docstring += " " * self.indentation_level + self.description
+            docstring += " " * self.indentation_level
+        docstring += self.description
         if (
             len(self.params) == 0
             and not hasattr(self, "return_description")
@@ -170,25 +171,24 @@ class DocstringBuilderMethod(DocstringBuilder):
                 " " * self.indentation_level
                 + f":type {param['name']}: {param['type']}\n"
             )
-        if len(self.params) > 0 and (
-            hasattr(self, "return_description") or len(self.exceptions) > 0
-        ):
+        if len(self.params) > 0 and hasattr(self, "return_type"):
             docstring += "\n"
         if hasattr(self, "return_type") and hasattr(self, "return_description"):
             docstring += (
                 " " * self.indentation_level + f":return: {self.return_description}\n"
             )
-            docstring += (
-                " " * self.indentation_level + f":rtype: {self.return_type}\n\n"
-            )
-            if len(self.exceptions) > 0:
-                docstring += "\n"
+            docstring += " " * self.indentation_level + f":rtype: {self.return_type}\n"
 
+        if (len(self.params) > 0 or hasattr(self, "return_type")) and len(
+            self.exceptions
+        ) > 0:
+            docstring += "\n"
         for exception in self.exceptions:
             docstring += (
                 " " * self.indentation_level
                 + f":raises {exception['name']}: {exception['description']}\n"
             )
+        docstring += "\n"  # according to restructuredtext_lint, this is necessary
         docstring += " " * self.indentation_level + '"""'
         return docstring
 
@@ -274,7 +274,8 @@ class DocstringBuilderClass(DocstringBuilder):
         docstring = " " * self.indentation_level + '"""'
         if len(self.class_attributes) > 0 or len(self.instance_attributes) > 0:
             docstring += "\n"
-        docstring += " " * self.indentation_level + self.description
+            docstring += " " * self.indentation_level
+        docstring += self.description
         if len(self.class_attributes) == 0 and len(self.instance_attributes) == 0:
             if "\n" in self.description:
                 docstring += "\n"
@@ -304,6 +305,7 @@ class DocstringBuilderClass(DocstringBuilder):
                 + f":type {instance_attribute['name']}: {instance_attribute['type']}\n"
             )
 
+        docstring += "\n"  # according to restructuredtext_lint, this is necessary
         docstring += " " * self.indentation_level + '"""'
         return docstring
 
@@ -353,7 +355,8 @@ class DocstringBuilderModule(DocstringBuilder):
         docstring = " " * self.indentation_level + '"""'
         if len(self.exceptions) > 0:
             docstring += "\n"
-        docstring += " " * self.indentation_level + self.description
+            docstring += " " * self.indentation_level
+        docstring += self.description
         if len(self.exceptions) == 0:
             if "\n" in self.description:
                 docstring += "\n"
@@ -366,6 +369,7 @@ class DocstringBuilderModule(DocstringBuilder):
                 " " * self.indentation_level
                 + f":raises {exception['name']}: {exception['description']}\n"
             )
+        docstring += "\n"
         docstring += " " * self.indentation_level + '"""'
         return docstring
 
