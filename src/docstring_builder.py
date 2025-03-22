@@ -141,7 +141,13 @@ class DocstringBuilderMethod(DocstringBuilder):
         :return: docstring
         :return type: str
         """
-        docstring = " " * self.indentation_level + '"""\n'
+        docstring = " " * self.indentation_level + '"""'
+        if (
+            len(self.params) > 0
+            or hasattr(self, "return_description")
+            or len(self.exceptions)
+        ):
+            docstring += "\n"
         docstring += " " * self.indentation_level + self.description
         if (
             len(self.params) == 0
@@ -164,7 +170,9 @@ class DocstringBuilderMethod(DocstringBuilder):
                 " " * self.indentation_level
                 + f":type {param['name']}: {param['type']}\n"
             )
-        if len(self.params) > 0:
+        if len(self.params) > 0 and (
+            hasattr(self, "return_description") or len(self.exceptions) > 0
+        ):
             docstring += "\n"
         if hasattr(self, "return_type") and hasattr(self, "return_description"):
             docstring += (
@@ -173,15 +181,14 @@ class DocstringBuilderMethod(DocstringBuilder):
             docstring += (
                 " " * self.indentation_level + f":rtype: {self.return_type}\n\n"
             )
-            docstring += "\n"
+            if len(self.exceptions) > 0:
+                docstring += "\n"
 
         for exception in self.exceptions:
             docstring += (
                 " " * self.indentation_level
                 + f":raises {exception['name']}: {exception['description']}\n"
             )
-        if len(self.exceptions) == 0:
-            docstring = docstring[:-1]
         docstring += " " * self.indentation_level + '"""'
         return docstring
 
@@ -264,7 +271,9 @@ class DocstringBuilderClass(DocstringBuilder):
         :return: docstring
         :return type: str
         """
-        docstring = " " * self.indentation_level + '"""\n'
+        docstring = " " * self.indentation_level + '"""'
+        if len(self.class_attributes) > 0 or len(self.instance_attributes) > 0:
+            docstring += "\n"
         docstring += " " * self.indentation_level + self.description
         if len(self.class_attributes) == 0 and len(self.instance_attributes) == 0:
             if "\n" in self.description:
@@ -341,7 +350,9 @@ class DocstringBuilderModule(DocstringBuilder):
         :return: docstring
         :return type: str
         """
-        docstring = " " * self.indentation_level + '"""\n'
+        docstring = " " * self.indentation_level + '"""'
+        if len(self.exceptions) > 0:
+            docstring += "\n"
         docstring += " " * self.indentation_level + self.description
         if len(self.exceptions) == 0:
             if "\n" in self.description:
