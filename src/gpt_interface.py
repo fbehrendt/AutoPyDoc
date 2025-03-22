@@ -48,7 +48,7 @@ class GptInterface:
                     or self.model.check_outdated(current_code_object)
                 )
             except Exception as e:
-                self.logger.exception(
+                self.logger.error(
                     "Error while determining if change is necessary", exc_info=e
                 )
                 self.debug_abort = True
@@ -65,9 +65,7 @@ class GptInterface:
                         current_code_object
                     )
                 except Exception as e:
-                    self.logger.exception(
-                        "Error while generating gpt response", exc_info=e
-                    )
+                    self.logger.error("Error while generating gpt response", exc_info=e)
                     self.debug_abort = True
                     raise e
                 callback(generated_output)
