@@ -25,8 +25,8 @@ class GptInterface:
         :param callback: the method that should be called with the result of one item of the batch. Has to be called once for every item in the batch
         :type callback: (GptOutput) -> None
         """
-        self.logger.info(
-            "Now working on:\n" + "\n".join([str(item.id) for item in batch])
+        self.logger.debug(
+            "Now working on:" + " ".join([str(item.id) for item in batch])
         )
         # TODO parallelize
         # flag developer comments
@@ -47,19 +47,27 @@ class GptInterface:
                     current_code_object.docstring is None
                     or self.model.check_outdated(current_code_object)
                 )
+            except Exception as e:
+                self.logger.exception(
+                    "Error while determining if change is necessary", exc_info=e
+                )
+                self.debug_abort = True
+                raise e
 
-                if not change_necessary:
-                    no_change_necessary_output = GptOutput(
-                        current_code_object.id, no_change_necessary=True, description=""
-                    )
-                    callback(no_change_necessary_output)
-                else:
+            if not change_necessary:
+                no_change_necessary_output = GptOutput(
+                    current_code_object.id, no_change_necessary=True, description=""
+                )
+                callback(no_change_necessary_output)
+            else:
+                try:
                     generated_output = self.model.generate_docstring(
                         current_code_object
                     )
-
-                    callback(generated_output)
-
-            except Exception as e:
-                self.logger.exception("Error while processing batch", exc_info=e)
-                self.debug_abort = True
+                except Exception as e:
+                    self.logger.exception(
+                        "Error while generating gpt response", exc_info=e
+                    )
+                    self.debug_abort = True
+                    raise e
+                callback(generated_output)
