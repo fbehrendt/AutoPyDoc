@@ -39,7 +39,7 @@ def frozen_field_support(cls):
             current_value = getattr(this, name)
             if value != current_value:
                 raise Exception(f"Field '{name}' already has value= {current_value}")
-        except AttributeError:  # NOQA
+        except AttributeError:  # NOQA TODO
             # dataclass not initialized yet...
             pass
 
