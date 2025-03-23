@@ -1,13 +1,12 @@
 import logging
 
+from code_representation import CodeRepresenter
 from docstring_builder import create_docstring
-
+from get_context import CodeParser
 from gpt_input import GptOutput
 from gpt_interface import GptInterface
 from repo_controller import RepoController
 from validate_docstring import validate_docstring
-from get_context import CodeParser
-from code_representation import CodeRepresenter
 
 logging.basicConfig(
     level=logging.DEBUG,

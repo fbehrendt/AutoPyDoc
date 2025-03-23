@@ -39,25 +39,31 @@ class GptInterface:
 
         for current_code_object in batch:
             try:
-                change_necessary = (
-                    current_code_object.docstring is None
-                    or self.model.check_outdated(current_code_object)
-                )
+                try:
+                    change_necessary = (
+                        current_code_object.docstring is None
+                        or self.model.check_outdated(current_code_object)
+                    )
+                except Exception as e:
+                    self.logger.fatal(
+                        "Error while determining if change is necessary", exc_info=e
+                    )
+                    raise e
 
                 if not change_necessary:
-                    no_change_necessary_output = GptOutput(
-                        current_code_object.id, no_change_necessary=True, description=""
+                    output = GptOutput(
+                        current_code_object.id,
+                        no_change_necessary=True,
+                        description=False,
                     )
-                    callback(no_change_necessary_output)
+                    callback(output)
                 else:
-                    generated_output = self.model.generate_docstring(
-                        current_code_object
-                    )
+                    try:
+                        output = self.model.generate_docstring(current_code_object)
+                    except Exception as e:
+                        self.logger.fatal("Error while processing batch", exc_info=e)
+                        raise e
 
-                    callback(generated_output)
+                    callback(output)
             except KeyboardInterrupt as e:
-                self.logger.fatal("User abborted execution", exc_info=e)
-                raise e
-            except Exception as e:
-                self.logger.error("Error while processing batch", exc_info=e)
                 raise e
