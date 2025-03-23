@@ -222,7 +222,7 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
         ]
 
         return f"""
-You are an AI documentation assistant, and your task is to evaluate if an existing function docstring correctly descibes the given code of the function.
+You are an AI documentation assistant, and your task is to evaluate if an existing function docstring correctly describes the given code of the function.
 The purpose of the documentation is to help developers and beginners understand the function and specific usage of the code.
 
 The existing docstring is as follows:
