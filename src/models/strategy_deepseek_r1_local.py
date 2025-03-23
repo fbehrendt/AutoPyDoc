@@ -320,7 +320,6 @@ Here is an example of the expected output format:
 
 <think>
 """
-        print("Generated Prompt", len(prompt))
         return prompt
 
     # TODO: add exception description output
