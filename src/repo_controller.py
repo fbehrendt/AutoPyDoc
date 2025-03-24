@@ -132,6 +132,11 @@ class RepoController:
             os.makedirs(self.working_dir)
         dir = os.listdir(self.working_dir)
         if len(dir) == 0:
+            # convert ssh link to https link if necessary
+            if self.repo_url.startswith("git@github.com") and self.repo_url.endswith(
+                ".git"
+            ):
+                self.repo_url = "https://" + self.repo_url[4:-4]
             self.repo = Repo.clone_from(self.repo_url, self.working_dir)
             self.repo.git.checkout(self.branch)
             assert not self.repo.bare
