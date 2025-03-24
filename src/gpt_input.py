@@ -10,7 +10,6 @@ class GptInputCodeObject:
     docstring: str | None = field(default=None, hash=False)
     context: dict[str, list[int] | int] | None = field(default=None, hash=False)
     context_docstrings: dict[int, str] | None = field(default=None, hash=False)
-    exceptions: list[str] | None = field(default=None, hash=False)
 
 
 @dataclass(frozen=True)

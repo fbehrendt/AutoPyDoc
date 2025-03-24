@@ -1,8 +1,14 @@
 from ast import AST
 from dataclasses import dataclass, field, fields
 from typing import List
+import pathlib
+import sys
+import os
 
-from gpt_input import (
+file_path = os.path.dirname(os.path.realpath(__file__))
+project_dir = str(pathlib.Path(file_path).parent.parent.absolute())
+sys.path.append(project_dir)
+from src.gpt_input import (
     GptInputCodeObject,
     GptInputMethodObject,
     GptInputClassObject,
@@ -203,7 +209,6 @@ class CodeObject:
             code=self.code,
             context=self.get_context(),
             context_docstrings=code_representer.get_context_docstrings(self.id),
-            exceptions=self.exceptions,
         )
 
     def get_sent_to_gpt(self) -> bool:
