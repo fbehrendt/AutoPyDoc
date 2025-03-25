@@ -20,6 +20,7 @@ class GptInputMethodObject(GptInputCodeObject):
     parent_class_id: int | None = field(default=None, compare=True, hash=True)
     parent_module_id: int | None = field(default=None, compare=True, hash=True)
     parent_method_id: int | None = field(default=None, compare=True, hash=True)
+    exceptions: set | None = field(default=None, compare=True, hash=True)
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,7 @@ class GptInputClassObject(GptInputCodeObject):
 class GptInputModuleObject(GptInputCodeObject):
     class_ids: set = field(default_factory=set, compare=True, hash=True)
     method_ids: set = field(default_factory=set, compare=True, hash=True)
+    exceptions: set | None = field(default=None, compare=True, hash=True)
 
 
 @dataclass(frozen=True)

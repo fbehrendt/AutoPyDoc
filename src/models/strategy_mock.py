@@ -32,12 +32,15 @@ class MockStrategy(DocstringModelStrategy):
         else:
             description = "MOCK This is a docstring description."
 
-        exception_descriptions = {}
-        for exception in code_object.exceptions:
-            if randint(0, 6) == 0:
-                exception_descriptions[exception] = False
-            else:
-                exception_descriptions[exception] = "MOCK exception description"
+        if isinstance(code_object, GptInputMethodObject) or isinstance(
+            code_object, GptInputModuleObject
+        ):
+            exception_descriptions = {}
+            for exception in code_object.exceptions:
+                if randint(0, 6) == 0:
+                    exception_descriptions[exception] = False
+                else:
+                    exception_descriptions[exception] = "MOCK exception description"
 
         if isinstance(code_object, GptInputMethodObject):
             return_type = None

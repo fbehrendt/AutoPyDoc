@@ -8,7 +8,7 @@ import os
 file_path = os.path.dirname(os.path.realpath(__file__))
 project_dir = str(pathlib.Path(file_path).parent.parent.absolute())
 sys.path.append(project_dir)
-from src.gpt_input import (
+from gpt_input import (
     GptInputCodeObject,
     GptInputMethodObject,
     GptInputClassObject,
@@ -568,7 +568,6 @@ class ClassObject(CodeObject):
             code=self.code,
             context=self.get_context(),
             context_docstrings=code_representer.get_context_docstrings(self.id),
-            exceptions=self.exceptions,
             parent_method_id=self.outer_method_id,
             parent_class_id=self.outer_class_id,
             parent_module_id=self.module_id,
