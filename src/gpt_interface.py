@@ -25,8 +25,8 @@ class GptInterface:
         :param callback: the method that should be called with the result of one item of the batch. Has to be called once for every item in the batch
         :type callback: (GptOutput) -> None
         """
-        self.logger.info(
-            "Now working on:\n" + "\n".join([str(item.id) for item in batch])
+        self.logger.debug(
+            "Now working on:" + " ".join([str(item.id) for item in batch])
         )
         # TODO parallelize
         # flag developer comments

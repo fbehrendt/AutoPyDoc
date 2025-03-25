@@ -1,8 +1,14 @@
 from ast import AST
 from dataclasses import dataclass, field, fields
 from typing import List
+import pathlib
+import sys
+import os
 
-from gpt_input import (
+file_path = os.path.dirname(os.path.realpath(__file__))
+project_dir = str(pathlib.Path(file_path).parent.parent.absolute())
+sys.path.append(project_dir)
+from src.gpt_input import (
     GptInputCodeObject,
     GptInputMethodObject,
     GptInputClassObject,
@@ -39,7 +45,7 @@ def frozen_field_support(cls):
             current_value = getattr(this, name)
             if value != current_value:
                 raise Exception(f"Field '{name}' already has value= {current_value}")
-        except AttributeError:  # NOQA
+        except AttributeError:  # NOQA TODO
             # dataclass not initialized yet...
             pass
 
@@ -86,6 +92,7 @@ class CodeObject:
         self.outdated = False
         self.is_updated = False
         self.send_to_gpt = False
+        self.old_docstring = self.docstring
 
     def __set_fields_frozen(self):
         flds = fields(self)
@@ -202,7 +209,6 @@ class CodeObject:
             code=self.code,
             context=self.get_context(),
             context_docstrings=code_representer.get_context_docstrings(self.id),
-            exceptions=self.exceptions,
         )
 
     def get_sent_to_gpt(self) -> bool:
@@ -339,6 +345,10 @@ class MethodObject(CodeObject):
 
     def __post_init__(self):
         super().__post_init__()
+        if self.arguments is None:
+            self.arguments = []
+        if self.exceptions is None:
+            self.exceptions = set()
         self.missing_arg_types = set()
         self.missing_return_type = False
         self.code_type = "method"

@@ -12,6 +12,7 @@ import shutil
 import ast
 import astunparse
 import filecmp
+import inspect
 
 from code_representation import (
     CodeRepresenter,
@@ -28,6 +29,7 @@ class RepoController:
         self,
         repo_path: str,
         logger,
+        username: str,
         pull_request_token: str = None,
         debug: bool = False,
         branch: str = "main",
@@ -52,25 +54,27 @@ class RepoController:
         self.debug = debug
         self.logger = logger
 
+        self.username = username
         self.pull_request_token = pull_request_token
 
-        self.is_local_repo = validators.url(repo_path)
-        if self.is_local_repo:
+        self.is_remote_repo = validators.url(repo_path)
+        if self.is_remote_repo:
             self.repo_url = repo_path
             self.pull_repo()
+            full_repo_name = self.repo.remotes.origin.url
+            self.repo_name = full_repo_name.split(".git")[0].split("/")[-1]
+            self.remote_name = full_repo_name.split(".git")[0].split("/")[-2]
         else:
             self.working_dir = repo_path
             self.repo = Repo(self.working_dir)
-            if not self.debug:
-                raise NotImplementedError
+            full_repo_name = self.repo.working_tree_dir
+            self.repo_name = full_repo_name.split("/")[-1]
+            self.remote_name = full_repo_name.split("/")[-2]
 
         if os.path.exists(os.path.join(parent_dir, "saved_files")):
             shutil.rmtree(os.path.join(parent_dir, "saved_files"))
 
-        # self.repo = {} # {file_name: 'filename', 'methods': {'name': 'method_name', 'content': 'method content'}, 'classes': {'name': 'classname', 'methods' = {'name': 'method_name', 'content': 'method content'}}}
         self.get_latest_commit()
-        if not self.debug:
-            raise NotImplementedError
 
     def get_files_in_repo(self) -> list[str]:
         """
@@ -128,6 +132,11 @@ class RepoController:
             os.makedirs(self.working_dir)
         dir = os.listdir(self.working_dir)
         if len(dir) == 0:
+            # convert ssh link to https link if necessary
+            if self.repo_url.startswith("git@github.com") and self.repo_url.endswith(
+                ".git"
+            ):
+                self.repo_url = "https://" + self.repo_url[4:-4]
             self.repo = Repo.clone_from(self.repo_url, self.working_dir)
             self.repo.git.checkout(self.branch)
             assert not self.repo.bare
@@ -255,6 +264,9 @@ class RepoController:
                 elif isinstance(code_obj, ClassObject):
                     prefix = "class "
                 else:
+                    self.logger.error(
+                        f"Unkown code_obj type {type(code_obj)} in {inspect.currentframe().f_code.co_name}"
+                    )
                     raise NotImplementedError
 
                 # get start of signature
@@ -305,7 +317,10 @@ class RepoController:
                             end_pos = j + 1
                             break
                         if j == len(lines) - 1:
-                            raise Exception("End of docstring not found")
+                            self.logger.warning(
+                                f"End of docstring not found in file {code_obj.filename} for {code_obj.code_type} {code_obj.name}"
+                            )
+                            end_pos = len(lines)
             else:
                 end_pos = start_pos
         return (start_pos, indentation_level, end_pos)
@@ -404,8 +419,8 @@ class RepoController:
                     new_branch = self.branch + "_AutoPyDoc_" + str(i)
                 current = self.repo.create_head(new_branch)
                 current.checkout()
-            main = self.repo.heads.main
-            self.repo.git.pull("origin", main)
+            # main = self.repo.heads.main # TODO are those two lines necessary?
+            # self.repo.git.pull("origin", main)
 
             # committing changed files and commit tracking file to new branch
             self.update_latest_commit()
@@ -449,6 +464,7 @@ class RepoController:
             # pushing to new branch
             self.repo.git.push("--set-upstream", "origin", current)
             return new_branch
+        self.logger.critical("Bare repository")
         raise Exception("Bare repository")
 
     def create_pull_request(
@@ -478,7 +494,7 @@ class RepoController:
         else:
             load_dotenv()
             auth_token = os.getenv("GitHubAuthToken")
-        github_object = Github("fbehrendt", auth_token)
+        github_object = Github(self.username, auth_token)
         repo = github_object.get_repo(repo_name)
 
         pull_request = repo.create_pull(
@@ -493,8 +509,6 @@ class RepoController:
 
         :param changed_files: list of changed_files
         :type changed_files: list[str]
-
-        :raises NotImplementedError: raised when not in debug mode, because the config file is not yet implemented
         """
         self.logger.info("###Applying changes###")
         config = configparser.ConfigParser()
@@ -511,7 +525,7 @@ class RepoController:
 
         # create pull request
         self.create_pull_request(
-            repo_name="fbehrendt/bachelor_testing_repo",  # TODO get programmatically
+            repo_name=f"{self.remote_name}/{self.repo_name}",
             title="Autogenerated Docstrings",
             description=description,
             head_branch=new_branch,
@@ -536,5 +550,4 @@ class RepoController:
         # push changes
         # else:
         # raise error
-        if not self.debug:
-            raise NotImplementedError
+        # TODO implement config
