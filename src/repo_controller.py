@@ -431,23 +431,17 @@ class RepoController:
             modified_files = self.repo.index.diff(None)
             count_modified_files = len(modified_files)
             self.logger.info(
-                "Modified files:",
-                count_modified_files,
-                "\n",
-                "\n".join([modified_file.b_path for modified_file in modified_files]),
+                f"Modified files: {count_modified_files}\n{'\n'.join([modified_file.b_path for modified_file in modified_files])}"
             )
 
             staged_files = self.repo.index.diff("HEAD")
             count_staged_files = len(staged_files)
             self.logger.info(
-                "Staged files:",
-                count_staged_files,
-                "\n",
-                "\n".join([staged_file.b_path for staged_file in staged_files]),
+                f"Staged files: {count_staged_files}\n {'\n'.join([staged_file.b_path for staged_file in staged_files])}"
             )
 
-            self.logger.info("Modified files:", count_modified_files)
-            self.logger.info("Staged files:", count_staged_files)
+            self.logger.info(f"Modified files: {count_modified_files}")
+            self.logger.info(f"Staged files: {count_staged_files}")
             if count_staged_files < 2:
                 self.logger.info("No files modified. Quitting")
                 quit()
@@ -515,7 +509,7 @@ class RepoController:
         config.read("src/config.ini")
 
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
-        self.logger.info("Commit before docstring update:", current_commit)
+        self.logger.info(f"Commit before docstring update: {current_commit}")
         new_branch = self.commit_to_new_branch(changed_files=changed_files)
 
         description = "Automatically created docstrings for recently changed code"
