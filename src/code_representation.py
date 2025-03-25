@@ -345,6 +345,10 @@ class MethodObject(CodeObject):
 
     def __post_init__(self):
         super().__post_init__()
+        if self.arguments is None:
+            self.arguments = []
+        if self.exceptions is None:
+            self.exceptions = set()
         self.missing_arg_types = set()
         self.missing_return_type = False
         self.code_type = "method"
