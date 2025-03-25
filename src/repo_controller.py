@@ -393,7 +393,7 @@ class RepoController:
         Update latest_commit file in target repo. Create if none exists
         """
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
-        self.logger.info("Commit of docstring update:", current_commit)
+        self.logger.info(f"Commit of docstring update: {current_commit}")
         with open(self.latest_commit_file_name, mode="w") as f:
             f.write(current_commit)
         self.repo.index.add([self.latest_commit_file_name])
