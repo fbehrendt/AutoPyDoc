@@ -224,6 +224,7 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
         return f"""
 You are an AI documentation assistant, and your task is to evaluate if an existing function docstring correctly describes the given code of the function.
 The purpose of the documentation is to help developers and beginners understand the function and specific usage of the code.
+If any part of the docstring is inadequate, consider the whole docstring to be inadequate. Any mocked docstring is to be considered inadequate.
 
 The existing docstring is as follows:
 '''
@@ -280,6 +281,7 @@ Please note:
 - Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know you're provided with code snippet and documents.
 - AVOID ANY SPECULATION and inaccurate descriptions!
 - DO NOT use markdown syntax in the output
+- Avoid mentioning the methods name
 
 Now, provide the documentation for the target object in {
             language
