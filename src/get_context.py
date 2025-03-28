@@ -18,7 +18,7 @@ from extract_affected_code_from_change_info import (
 )
 from import_finder import ImportFinder
 
-code = CodeRepresenter()
+code = CodeRepresenter()  # TODO what is this for?
 
 
 class CodeParser:

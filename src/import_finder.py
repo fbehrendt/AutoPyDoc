@@ -14,7 +14,7 @@ class ImportFinder:
         current_file_imports = []
         for node in ast.walk(ast.parse(open(file=filename, mode="r").read())):
             if isinstance(node, ast.Import):
-                for item in node.names:
+                for item in node.names:  # TODO ast.alias
                     current_file_imports.append(item.name)
             elif isinstance(node, ast.ImportFrom):
                 module = node.module
@@ -54,28 +54,20 @@ class ImportFinder:
             for (dirpath, dirnames, filenames) in os.walk(self.working_dir)
             for f in filenames
         ]
-        repo_files = [
-            file.split(".py")[0] for file in repo_files if file.endswith(".py")
-        ]
+        repo_files = [file.split(".py")[0] for file in repo_files if file.endswith(".py")]
         repo_files = [file.split(self.working_dir)[1] for file in repo_files]
         repo_files = [
-            [dir_part for dir_part in Path(file).parts if len(dir_part) > 0]
-            for file in repo_files
+            [dir_part for dir_part in Path(file).parts if len(dir_part) > 0] for file in repo_files
         ]
         source_file = source_file.split(self.working_dir)[1]
-        source_file = [
-            dir_part for dir_part in Path(source_file).parts if len(dir_part) > 0
-        ]
+        source_file = [dir_part for dir_part in Path(source_file).parts if len(dir_part) > 0]
 
         potential_matches = []
 
         for split_path in repo_files:
             # go to same depth in repo
             i = 0
-            while (
-                i < min(len(source_file), len(split_path))
-                and source_file[i] == split_path[i]
-            ):
+            while i < min(len(source_file), len(split_path)) and source_file[i] == split_path[i]:
                 i += 1
             if i == len(source_file):
                 raise Exception("Import from the file that is importing")
