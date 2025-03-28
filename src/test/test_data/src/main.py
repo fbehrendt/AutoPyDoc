@@ -77,3 +77,5 @@ if __name__ == "__main__":
         ],
         logger=logger,
     )
+    code_parser.extract_class_and_method_calls()
+    print()

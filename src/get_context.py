@@ -238,10 +238,13 @@ class CodeParser:
                                         variable_to_resolve = (
                                             value.value.id + "." + variable_to_resolve
                                         )
-                                    else:
+                                    elif hasattr(value.value, "attr"):
                                         variable_to_resolve = (
                                             value.value.attr + "." + variable_to_resolve
                                         )
+                                    else:
+                                        if not self.debug:
+                                            raise NotImplementedError
                                     value = value.value
                     if variable_to_resolve is not None:
                         # TODO resolve variable
