@@ -1,3 +1,4 @@
+import logging
 import re
 
 import json5
@@ -19,6 +20,133 @@ CHECK_OUTDATED_JSON_OUTPUT_REGEX = (
 DOCSTRING_GENERATION_JSON_OUTPUT_REGEX = r"{.*}"
 
 
+class DeepseekR1PromptBuilder:
+    def __init__(self, context_size: int):
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.context_size = context_size
+
+        self.check_outdated_prompt_template = """
+You are an AI documentation assistant, and your task is to evaluate if an existing function docstring correctly describes the given code of the function.
+The purpose of the documentation is to help developers and beginners understand the function and specific usage of the code.
+If any part of the docstring is inadequate, consider the whole docstring to be inadequate. Any mocked docstring is to be considered inadequate.
+
+The existing docstring is as follows:
+'''
+{existing_docstring}
+'''
+
+The content of the code is as follows:
+'''
+{context}
+'''
+
+Please reason step by step to find out if the existing docstring matches the code, and put your final answer within {{
+    "analysis": "your analysis goes here",
+    "matches": true or false
+}}
+<think>
+"""
+
+        self.generate_docstring_prompt_template = """
+You are an AI documentation assistant, and your task is to analyze the code of a Python function.
+The purpose of the analysis is to help developers and beginners understand the function and specific usage of the code.
+Use plain text (including all details), in language {language} in a deterministic tone.
+
+The content of the code is as follows:
+'''
+{context}
+'''
+
+Please note:
+- Write mainly in the {language} language. If necessary, you can write with some English words in the analysis and description to enhance the document's readability because you do not need to translate the function name or variable name into the target language.
+- Keep the text short and concise, and avoid unnecessary details.
+- Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know you're provided with code snippet and documents.
+- AVOID ANY SPECULATION and inaccurate descriptions!
+- DO NOT use markdown syntax in the output
+
+Now, provide the documentation for the target object in {language} in a professional way.
+Please reason step by step, and always summarize your final answer using the following json format {{
+    "description": "your docstring description goes here",
+    "parameters": [
+        {{"name": "parameter name", "type": "parameter type", "description": "description for this parameter"}},
+        for each parameter
+    ],
+    "returns": {{"type": "return type", "description": "description for this return value"}}
+}}. Stick to this format WITHOUT EXCEPTIONS.
+
+Here is an example of the expected output format:
+{{"description": "Extract start, end and content of methods affected by change information",
+    "parameters": [
+        {{
+            "name": "filename",
+            "type": "str",
+            "description": "File to extract mehod information from"
+        }},
+        {{
+            "name": "change_start",
+            "type": "int",
+            "description": "Line where the change begins"
+        }},
+        {{
+            "name": "change_length",
+            "type": "int",
+            "description": "Line length of the change"
+        }}
+    ],
+    "returns": {{
+        "type": "list[dict[str|int]]",
+        "description": "list of method information as dict with keys type, filename, start, end, content"
+    }}
+}}
+
+<think>
+"""
+
+    def build_context_from_code_object(
+        self, code_object: GptInputCodeObject, max_length: int
+    ) -> str:
+        context = code_object.code
+
+        self.logger.debug("Code Context length [%d/%d]", len(context), max_length)
+        return code_object.code[:max_length]
+
+    def build_check_outdated_prompt(self, code_object: GptInputCodeObject) -> str:
+        existing_docstring = code_object.docstring
+        context = code_object.code
+
+        prompt_length_without_context = len(
+            self.check_outdated_prompt_template.format(
+                existing_docstring=existing_docstring,
+                context="",
+            )
+        )
+        context = self.build_context_from_code_object(
+            code_object, self.context_size - prompt_length_without_context
+        )
+
+        return self.check_outdated_prompt_template.format(
+            existing_docstring=existing_docstring,
+            context=context,
+        )
+
+    def build_generate_docstring_prompt(
+        self, code_object: GptInputCodeObject, language="english"
+    ) -> str:
+        prompt_length_without_context = len(
+            self.generate_docstring_prompt_template.format(
+                context="", language=language
+            )
+        )
+
+        context = self.build_context_from_code_object(
+            code_object, self.context_size - prompt_length_without_context
+        )
+
+        return self.generate_docstring_prompt_template.format(
+            context=context, language=language
+        )
+
+
 class LocalDeepseekR1Strategy(DocstringModelStrategy):
     def __init__(self, device="cuda", context_size=2048):
         super().__init__()
@@ -29,9 +157,7 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
         self.device = device
         self.context_size = context_size
 
-        self.empty_prompt_length = 0
-        self.empty_prompt_length = len(self._build_generate_docstring_prompt(""))
-        self.logger.debug("Empty prompt length [%d]", self.empty_prompt_length)
+        self.prompt_builder = DeepseekR1PromptBuilder(context_size)
 
         model_name = "DeepSeek-R1-Distill-Llama-8B-Q4_0.gguf"
 
@@ -50,11 +176,11 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
             raise Exception("Unable to load gpt model")
 
     def check_outdated(self, code_object: GptInputCodeObject) -> bool:
+        # return True
+
         try:
             with self.gpt_model.chat_session():
-                prompt = self._build_check_outdated_prompt(
-                    code_object.docstring, code_object.code
-                )
+                prompt = self.prompt_builder.build_check_outdated_prompt(code_object)
 
                 self.logger.debug("Using prompt [%s]", prompt)
                 self.logger.info("Starting checking existing docstring")
@@ -88,7 +214,9 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
         if isinstance(code_object, GptInputMethodObject):
             try:
                 with self.gpt_model.chat_session():
-                    prompt = self._build_generate_docstring_prompt(code_object.code)
+                    prompt = self.prompt_builder.build_generate_docstring_prompt(
+                        code_object
+                    )
 
                     self.logger.debug("Using prompt [%s]", prompt)
                     self.logger.info("Starting docstring generation")
@@ -255,77 +383,6 @@ Please reason step by step to find out if the existing docstring matches the cod
         analysis_json = json5.loads(analysis_json_str)
 
         return "matches" in analysis_json and analysis_json["matches"]
-
-    def _build_generate_docstring_prompt(
-        self, code_content: str, language="english"
-    ) -> str:
-        max_code_length = self.context_size - self.empty_prompt_length
-        self.logger.debug("Code length [%d/%d]", len(code_content), max_code_length)
-        truncated_code_content = code_content[:max_code_length]
-
-        prompt = f"""
-You are an AI documentation assistant, and your task is to analyze the code of a Python function.
-The purpose of the analysis is to help developers and beginners understand the function and specific usage of the code.
-Use plain text (including all details), in language {language} in a deterministic tone.
-
-The content of the code is as follows:
-'''
-{truncated_code_content}
-'''
-
-Please note:
-- Write mainly in the {
-            language
-        } language. If necessary, you can write with some English words in the analysis and description to enhance the document's readability because you do not need to translate the function name or variable name into the target language.
-- Keep the text short and concise, and avoid unnecessary details.
-- Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know you're provided with code snippet and documents.
-- AVOID ANY SPECULATION and inaccurate descriptions!
-- DO NOT use markdown syntax in the output
-- Avoid mentioning the methods name
-
-Now, provide the documentation for the target object in {
-            language
-        } in a professional way.
-Please reason step by step, and always summarize your final answer using the following json format {{
-    "description": "your docstring description goes here",
-    "parameters": [
-        {{"name": "parameter name", "type": "parameter type", "description": "description for this parameter"}},
-        for each parameter
-    ],
-    "returns": {{"type": "return type", "description": "description for this return value"}}
-}}. Stick to this format WITHOUT EXCEPTIONS.
-
-Here is an example of the expected output format:
-{{"description": "Extract start, end and content of methods affected by change information",
-    "parameters": [
-        {{
-            "name": "filename",
-            "type": "str",
-            "description": "File to extract mehod information from"
-        }},
-        {{
-            "name": "change_start",
-            "type": "int",
-            "description": "Line where the change begins"
-        }},
-        {{
-            "name": "change_length",
-            "type": "int",
-            "description": "Line length of the change"
-        }}
-    ],
-    "returns": {{
-        "type": "list[dict[str|int]]",
-        "description": "list of method information as dict with keys type, filename, start, end, content"
-    }}
-}}
-
-<think>
-"""
-        return prompt
-
-    # TODO: add exception description output
-    # TODO: try explicit unkown type
 
     def _extract_generate_docstring_output(self, result: str) -> dict:
         match = re.search(
