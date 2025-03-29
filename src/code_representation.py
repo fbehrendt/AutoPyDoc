@@ -770,6 +770,14 @@ class CodeRepresenter:
         for object in self.objects.values():
             if object.filename == filename:
                 matches.append(object)
+            else:
+                # TODO case different separators
+                from pathlib import Path
+
+                if str(os.path.join(*Path(object.filename).parts)) == str(
+                    os.path.join(*Path(filename).parts)
+                ):
+                    matches.append(object)
         return matches
 
     def get_by_type_filename_and_code(
@@ -822,11 +830,12 @@ class CodeRepresenter:
                 candidate.name == name  # TODO ambiguous
             ):
                 matches.append(candidate)
-        if len(matches) > 1:
-            raise Exception("More than one match")
-        if len(matches) == 0:
-            raise Exception("No matches")
-        return matches[0]
+        # if len(matches) > 1:
+        #    raise Exception("More than one match")
+        # if len(matches) == 0:
+        #    raise Exception("No matches")
+        # return matches[0]
+        return matches
 
     def get_context_docstrings(self, code_obj_id: int) -> dict[int, str]:
         """

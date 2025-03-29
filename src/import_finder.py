@@ -37,10 +37,12 @@ class ImportFinder:
         ]
         matching_code_objects = []
         for match in matches:
-            matching_code_objects = self.resolve_import_to_file(
-                import_statement=match,
-                source_file=filename,
-                code_representer=code_representer,
+            matching_code_objects.extend(
+                self.resolve_import_to_file(
+                    import_statement=match,
+                    source_file=filename,
+                    code_representer=code_representer,
+                )
             )
         if matching_code_objects is None or len(matching_code_objects) == 0:
             return None
@@ -57,10 +59,19 @@ class ImportFinder:
         repo_files = [file.split(".py")[0] for file in repo_files if file.endswith(".py")]
         repo_files = [file.split(self.working_dir)[1] for file in repo_files]
         repo_files = [
-            [dir_part for dir_part in Path(file).parts if len(dir_part) > 0] for file in repo_files
+            [
+                dir_part
+                for dir_part in Path(file).parts
+                if len(dir_part) > 0 and dir_part != "\\"
+            ]
+            for file in repo_files
         ]
         source_file = source_file.split(self.working_dir)[1]
-        source_file = [dir_part for dir_part in Path(source_file).parts if len(dir_part) > 0]
+        source_file = [
+            dir_part
+            for dir_part in Path(source_file).parts
+            if len(dir_part) > 0 and dir_part != "\\"
+        ]
 
         potential_matches = []
 
@@ -80,6 +91,7 @@ class ImportFinder:
                 j += 1
             if j > 0:
                 filename = os.path.join(self.working_dir, *split_path)
+                filename = filename + ".py"
                 potential_matches.extend(code_representer.get_by_filename(filename))
         if len(potential_matches) > 0:
             return potential_matches
