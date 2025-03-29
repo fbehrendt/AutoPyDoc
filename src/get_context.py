@@ -18,7 +18,7 @@ from extract_affected_code_from_change_info import (
 )
 from import_finder import ImportFinder
 
-code = CodeRepresenter()
+code = CodeRepresenter()  # TODO what is this for?
 
 
 class CodeParser:
@@ -248,74 +248,141 @@ class CodeParser:
                                     value = value.value
                     if variable_to_resolve is not None:
                         # TODO resolve variable
-                        if not self.debug:
-                            raise NotImplementedError
-
-                    try:
-                        code_obj = self.code_representer.get_by_filename_and_name(
-                            filename=parent_obj.filename, name=called_func_name
-                        )  # TODO could be ambiguous
-                        if isinstance(code_obj, MethodObject):
-                            parent_obj.add_called_method(code_obj.id)
-                        elif isinstance(code_obj, ClassObject):
-                            parent_obj.add_called_class(code_obj.id)
+                        outer_code_obj = self.resolve_variable(
+                            variable_to_resolve=variable_to_resolve,
+                            called_func_name=called_func_name,
+                            filename=parent_obj.filename,
+                        )
+                        matches = [
+                            code_obj
+                            for code_obj in self.code_representer.objects.values()
+                            if code_obj.filename == outer_code_obj.filename
+                            and code_obj.parent_id == outer_code_obj.id
+                            and code_obj.name == called_func_name
+                        ]
+                        if len(matches) == 1:
+                            called_func = matches[0]
                         else:
                             raise NotImplementedError
-                        if isinstance(parent_obj, MethodObject):
-                            self.code_representer.objects[
-                                code_obj.id
-                            ].add_caller_method(parent_obj.id)
-                        elif isinstance(parent_obj, ClassObject):
-                            self.code_representer.objects[code_obj.id].add_caller_class(
-                                parent_obj.id
+                    else:
+                        # check this file
+                        matches = [
+                            code_obj
+                            for code_obj in self.code_representer.objects.values()
+                            if code_obj.name == called_func_name
+                            and code_obj.filename == parent_obj.filename
+                            and code_obj.parent_id == parent_obj.id
+                        ]
+                        if len(matches) == 1:
+                            called_func = matches[0]
+                        elif len(matches) > 1:
+                            raise NotImplementedError
+                        elif len(matches) == 0:
+                            # check imports
+                            matches = self.import_finder.resolve_external_call(
+                                called_func_name,
+                                parent_obj.filename,
+                                code_representer=self.code_representer,
                             )
-                        elif isinstance(parent_obj, ModuleObject):
-                            self.code_representer.objects[
-                                code_obj.id
-                            ].add_caller_module(parent_obj.id)
-                        else:
-                            raise NotImplementedError
-                    except Exception as e:
-                        if hasattr(e, "args"):
-                            if e.args[0] == "No matches":
-                                # print("Call from external file. Trying to resolve")
-                                matching_imports = (
-                                    self.import_finder.resolve_external_call(
-                                        call=called_func_name,
-                                        filename=parent_obj.filename,
-                                        code_representer=self.code_representer,
-                                    )
-                                )
-                                if matching_imports is None or matching_imports == []:
-                                    # print("Called code not found. (Happens when calling a class or method not defined in the file)")
-                                    continue
-                                else:
-                                    if len(matching_imports) == 1:
-                                        called_func_id = matching_imports[0].id
-                                        if matching_imports[0].code_type == "class":
-                                            parent_obj.add_called_class(called_func_id)
-                                        elif matching_imports[0].code_type == "method":
-                                            parent_obj.add_called_method(called_func_id)
-                                        else:
-                                            raise NotImplementedError
-                                    else:
-                                        raise NotImplementedError
-                                    if isinstance(parent_obj, MethodObject):
-                                        self.code_representer.objects[
-                                            called_func_id
-                                        ].add_caller_method(parent_obj.id)
-                                    elif isinstance(parent_obj, ClassObject):
-                                        self.code_representer.objects[
-                                            called_func_id
-                                        ].add_caller_class(parent_obj.id)
-                                    elif isinstance(parent_obj, ModuleObject):
-                                        self.code_representer.objects[
-                                            called_func_id
-                                        ].add_caller_module(parent_obj.id)
-                                    else:
-                                        raise NotImplementedError
-                            elif e.args[0] == "More than one match":
+                            if len(matches) == 1:
+                                called_func = matches[0]
+                            elif len(matches) > 1:
                                 raise NotImplementedError
+                            elif len(matches) == 0:
+                                raise NotImplementedError
+                    # add called method/class
+                    if called_func.code_type == "class":
+                        parent_obj.add_called_class(called_func.id)
+                    elif called_func.code_type == "method":
+                        parent_obj.add_called_method(called_func.id)
+                    else:
+                        raise NotImplementedError
+                    # add caller module/class/method
+                    if isinstance(parent_obj, MethodObject):
+                        self.code_representer.objects[called_func.id].add_caller_method(
+                            parent_obj.id
+                        )
+                    elif isinstance(parent_obj, ClassObject):
+                        self.code_representer.objects[called_func.id].add_caller_class(
+                            parent_obj.id
+                        )
+                    elif isinstance(parent_obj, ModuleObject):
+                        self.code_representer.objects[called_func.id].add_caller_module(
+                            parent_obj.id
+                        )
+                    else:
+                        raise NotImplementedError
+
+    def resolve_variable(self, variable_to_resolve, called_func_name, filename):
+        # check in this file
+        # check in imports
+        # if in neither, skip
+
+        # TODO how to handle parameters?
+        # def func_a(some_class):
+        #   some_class.func_b()
+        # => resolve from where func_a is called and what is some_class
+
+        # import import3 as import1
+        # var0 = import1.Class1() # get imports of this file, find import1, resolve to import3, get classes and methods in file corresponding to import3, match class1, return code_obj_id , map var0 to code_obj_id
+        # var1 = Class2 # resolve to this file Class2, return code_obj_id, map var1 to code_obj_id
+        # var1.attr1 = var0.func_a() # resolve var0 by finding its assignment, resolve func_a, return code_obj_id, map var1.attr1 to code_obj_id
+        variable_chain = variable_to_resolve.split(".")
+        current_var = variable_chain[0]
+        # check imports
+        matches = self.import_finder.resolve_external_call(
+            call=variable_to_resolve + "." + called_func_name,
+            filename=filename,
+            code_representer=self.code_representer,
+        )
+        if matches is None:
+            result = self.resolve_variable_chain(
+                variable_to_resolve=variable_to_resolve, filename=filename
+            )
+            if isinstance(result, CodeObject):
+                return result
+            raise NotImplementedError
+        elif len(matches) == 1:
+            raise NotImplementedError
+        elif len(matches) > 1:
+            matches = [
+                code_obj for code_obj in matches if code_obj.name == called_func_name
+            ]
+            if len(matches) == 1:
+                return matches[0]
+            else:
+                raise NotImplementedError
+
+    def resolve_variable_chain(self, variable_to_resolve, filename):
+        tree = ast.parse(open(filename).read())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) or isinstance(node, ast.AnnAssign):
+                if variable_to_resolve in [target.id for target in node.targets]:
+                    if isinstance(node.value, ast.Call):
+                        matches = self.code_representer.get_by_filename_and_name(
+                            filename=filename, name=node.value.func.id
+                        )
+                        if len(matches) == 1:
+                            return matches[0]
+                        elif len(matches) > 1:
+                            raise NotImplementedError
+                        elif len(matches) == 0:
+                            # resolve imports
+                            matches = self.import_finder.resolve_external_call(
+                                call=node.value.func.id,
+                                filename=filename,
+                                code_representer=self.code_representer,
+                            )
+                            if matches is None:
+                                raise NotImplementedError
+                            elif len(matches) > 0:
+                                raise NotImplementedError
+                            elif len(matches) == 1:
+                                return matches[0]
+                                raise NotImplementedError
+                    else:
+                        raise NotImplementedError
+                print()
 
     def extract_exceptions(self):
         """

@@ -15,7 +15,6 @@ class ClassX:
 def func_c():
     pass
 
-
 this_file_class_x = ClassX()
 this_file_class_x_func_a = this_file_class_x.func_a()
 this_file_func_c = func_c()
@@ -81,3 +80,4 @@ if __name__ == "__main__":
     )
     code_parser.extract_class_and_method_calls()
     print()
+

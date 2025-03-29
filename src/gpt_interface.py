@@ -15,6 +15,9 @@ class GptInterface:
             model_name, device="cuda", context_size=2**13
         )
 
+    def estimate(self, full_input: list[GptInputCodeObject]):
+        pass  # TODO fill this method
+
     def process_batch(
         self, batch: list[GptInputCodeObject], callback: Callable[[GptOutput], None]
     ):
