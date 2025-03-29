@@ -469,6 +469,7 @@ def test_sub_classes_and_methods(code_parser):
 
 def test_called_by_module_main(code_parser):
     code_parser.extract_class_and_method_calls()
+    # test main module
     main_module = [
         code_obj
         for code_obj in code_parser.code_representer.objects.values()
@@ -476,3 +477,78 @@ def test_called_by_module_main(code_parser):
     ][0]
     assert len(main_module.called_methods) > 0
     assert len(main_module.called_classes) > 0
+
+    main_module_called_methods = [
+        code_parser.code_representer.get(method_id)
+        for method_id in main_module.called_methods
+    ]
+    main_module_called_classes = [
+        code_parser.code_representer.get(class_id)
+        for class_id in main_module.called_classes
+    ]
+    # test call to main->ClassX
+    assert (
+        len(
+            [
+                class_obj
+                for class_obj in main_module_called_classes
+                if class_obj.name == "ClassX"
+                and "main.py" in class_obj.filename
+                and class_obj.code_type == "class"
+            ]
+        )
+        == 1
+    )
+    # test call to main->ClassX->func_a
+    assert (
+        len(
+            [
+                method_obj
+                for method_obj in main_module_called_methods
+                if method_obj.name == "func_a"
+                and "main.py" in method_obj.filename
+                and method_obj.code_type == "method"
+                and method_obj.parent_id is not None
+                and code_parser.code_representer.get(method_obj.parent_id).name
+                == "ClassX"
+            ]
+        )
+        == 1
+    )
+    # test call to main->func_c
+    assert (
+        len(
+            [
+                method_obj
+                for method_obj in main_module_called_methods
+                if method_obj.name == "func_c"
+                and "main.py" in method_obj.filename
+                and method_obj.code_type == "method"
+            ]
+        )
+        == 1
+    )
+
+    # test call to second_file->func_a
+    assert (
+        len(
+            [
+                method_obj
+                for method_obj in main_module_called_methods
+                if method_obj.name == "func_a"
+                and "second_file.py" in method_obj.filename
+                and method_obj.code_type == "method"
+            ]
+        )
+        == 1
+    )
+
+    # test call to third_file->ClassA
+    # test call to third_file->ClassA->func_a
+    # test call to third_file->ClassB
+    # test call to third_file->ClassB->func_a
+    # test call to third_file->func_a
+    # test call to third_file->func_b
+
+    # test call to fourth_file->ClassA with alias ClassAFourthFile
+    # test call to fourth_file->func_b with alias func_b_fourth_file

@@ -32,6 +32,8 @@ third_file_func_b = func_b()
 fourth_file_class_a = ClassAFourthFile()
 fourth_file_func_b = func_b_fourth_file()
 
+print()
+
 
 if __name__ == "__main__":
     pass  # TODO calls in here
