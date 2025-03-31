@@ -96,14 +96,10 @@ class CodeParser:
             self.code_representer.objects[module_obj.id] = module_obj
             self.extract_sub_classes_and_methods(code_obj_id=module_id)
         for node in tree.body:
-            if isinstance(node, ast.FunctionDef) or isinstance(
-                node, ast.AsyncFunctionDef
-            ):
+            if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
-                source_code = ast.get_source_segment(
-                    open(file_path).read(), node, padded=False
-                )
+                source_code = ast.get_source_segment(open(file_path).read(), node, padded=False)
                 method_obj = MethodObject(
                     name=func_def_name,
                     filename=file_path,
@@ -123,9 +119,7 @@ class CodeParser:
             elif isinstance(node, ast.ClassDef):
                 class_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
-                source_code = ast.get_source_segment(
-                    open(file_path).read(), node, padded=False
-                )
+                source_code = ast.get_source_segment(open(file_path).read(), node, padded=False)
                 class_obj = ClassObject(
                     name=class_def_name,
                     filename=file_path,
@@ -165,9 +159,7 @@ class CodeParser:
         else:
             method_id = None
         for node in outer_code_obj.ast.body:
-            if isinstance(node, ast.FunctionDef) or isinstance(
-                node, ast.AsyncFunctionDef
-            ):
+            if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
                 func_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
                 source_code = ast.get_source_segment(
@@ -248,22 +240,29 @@ class CodeParser:
                                     value = value.value
                     if variable_to_resolve is not None:
                         # TODO resolve variable
-                        outer_code_obj = self.resolve_variable(
+                        matches = self.resolve_variable(
                             variable_to_resolve=variable_to_resolve,
                             called_func_name=called_func_name,
                             filename=parent_obj.filename,
                         )
-                        matches = [
-                            code_obj
-                            for code_obj in self.code_representer.objects.values()
-                            if code_obj.filename == outer_code_obj.filename
-                            and code_obj.parent_id == outer_code_obj.id
-                            and code_obj.name == called_func_name
-                        ]
+                        if matches is None:
+                            continue  # call to python internal methods like print() or methods in imported modules that are not part of the source code
+                        matches = [match for match in matches if match.name == called_func_name]
                         if len(matches) == 1:
-                            called_func = matches[0]
+                            called_code_obj = matches[0]
                         else:
                             raise NotImplementedError
+                        # matches = [
+                        #    code_obj
+                        #    for code_obj in self.code_representer.objects.values()
+                        #    if code_obj.filename == outer_code_obj.filename
+                        #    and code_obj.parent_id == outer_code_obj.id
+                        #    and code_obj.name == called_func_name
+                        # ]
+                        # if len(matches) == 1:
+                        #    called_func = matches[0]
+                        # else:
+                        #    raise NotImplementedError
                     else:
                         # check this file
                         matches = [
@@ -274,7 +273,7 @@ class CodeParser:
                             and code_obj.parent_id == parent_obj.id
                         ]
                         if len(matches) == 1:
-                            called_func = matches[0]
+                            called_code_obj = matches[0]
                         elif len(matches) > 1:
                             raise NotImplementedError
                         elif len(matches) == 0:
@@ -284,30 +283,38 @@ class CodeParser:
                                 parent_obj.filename,
                                 code_representer=self.code_representer,
                             )
+                            if matches is None:
+                                continue  # call to python internal methods like print() or methods in imported modules that are not part of the source code
+                            matches = [
+                                match
+                                for match in matches
+                                if match.parent_id is None
+                                or self.code_representer.get(match.parent_id).code_type == "module"
+                            ]
                             if len(matches) == 1:
-                                called_func = matches[0]
+                                called_code_obj = matches[0]
                             elif len(matches) > 1:
                                 raise NotImplementedError
                             elif len(matches) == 0:
                                 raise NotImplementedError
                     # add called method/class
-                    if called_func.code_type == "class":
-                        parent_obj.add_called_class(called_func.id)
-                    elif called_func.code_type == "method":
-                        parent_obj.add_called_method(called_func.id)
+                    if called_code_obj.code_type == "class":
+                        parent_obj.add_called_class(called_code_obj.id)
+                    elif called_code_obj.code_type == "method":
+                        parent_obj.add_called_method(called_code_obj.id)
                     else:
                         raise NotImplementedError
                     # add caller module/class/method
                     if isinstance(parent_obj, MethodObject):
-                        self.code_representer.objects[called_func.id].add_caller_method(
+                        self.code_representer.objects[called_code_obj.id].add_caller_method(
                             parent_obj.id
                         )
                     elif isinstance(parent_obj, ClassObject):
-                        self.code_representer.objects[called_func.id].add_caller_class(
+                        self.code_representer.objects[called_code_obj.id].add_caller_class(
                             parent_obj.id
                         )
                     elif isinstance(parent_obj, ModuleObject):
-                        self.code_representer.objects[called_func.id].add_caller_module(
+                        self.code_representer.objects[called_code_obj.id].add_caller_module(
                             parent_obj.id
                         )
                     else:
@@ -340,16 +347,19 @@ class CodeParser:
                 variable_to_resolve=variable_to_resolve, filename=filename
             )
             if isinstance(result, CodeObject):
-                return result
-            raise NotImplementedError
+                candidates = [
+                    code_obj
+                    for code_obj in self.code_representer.objects.values()
+                    if code_obj.parent_id == result.id
+                ]
+                return candidates
+            return None
         elif len(matches) == 1:
-            raise NotImplementedError
+            return matches
         elif len(matches) > 1:
-            matches = [
-                code_obj for code_obj in matches if code_obj.name == called_func_name
-            ]
+            matches = [code_obj for code_obj in matches if code_obj.name == called_func_name]
             if len(matches) == 1:
-                return matches[0]
+                return matches
             else:
                 raise NotImplementedError
 
@@ -374,12 +384,11 @@ class CodeParser:
                                 code_representer=self.code_representer,
                             )
                             if matches is None:
-                                raise NotImplementedError
-                            elif len(matches) > 0:
+                                return None
+                            elif len(matches) > 1:
                                 raise NotImplementedError
                             elif len(matches) == 1:
                                 return matches[0]
-                                raise NotImplementedError
                     else:
                         raise NotImplementedError
                 print()
@@ -408,9 +417,7 @@ class CodeParser:
         """
         for method_obj in self.code_representer.get_methods():
             node = method_obj.ast
-            if isinstance(node, ast.FunctionDef) or isinstance(
-                node, ast.AsyncFunctionDef
-            ):
+            if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
                 for i in range(len(node.args.args)):
                     arg = node.args.args[i]
                     new_arg = {"name": arg.arg}
@@ -425,9 +432,7 @@ class CodeParser:
                             new_arg["type"] = arg.type_comment
                     else:
                         if i == 0 and arg.arg == "self":
-                            new_arg["type"] = (
-                                Self  # see https://peps.python.org/pep-0673/
-                            )
+                            new_arg["type"] = Self  # see https://peps.python.org/pep-0673/
                         else:
                             method_obj.add_missing_arg_type(arg.arg)
                     if i < len(node.args.defaults):
@@ -490,9 +495,7 @@ class CodeParser:
                                     attr = {"name": target.attr}
                                     class_obj.add_instance_attribute(attribute=attr)
                 elif isinstance(node, ast.AnnAssign):
-                    if hasattr(node.target, "value") and hasattr(
-                        node.target.value, "id"
-                    ):
+                    if hasattr(node.target, "value") and hasattr(node.target.value, "id"):
                         if node.target.value.id == "self":
                             if hasattr(node.annotation, "id"):
                                 attr_type = node.annotation.id
@@ -519,9 +522,7 @@ class CodeParser:
             )
             if not self.debug:
                 raise NotImplementedError
-            changed_module = extract_module_from_change_info(
-                filename=change["filename"]
-            )
+            changed_module = extract_module_from_change_info(filename=change["filename"])
             for changed_method in changed_methods:
                 method_obj = self.code_representer.get_by_type_filename_and_code(
                     code_type="method",
