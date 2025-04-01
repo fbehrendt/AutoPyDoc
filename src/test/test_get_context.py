@@ -76,8 +76,7 @@ def test_extracted_code_objects(code_parser):
                 if code_obj.code_type == "class"
                 and "main.py" in code_obj.filename
                 and code_obj.name == "ClassX"
-                and code_parser.code_representer.get(code_obj.parent_id).code_type
-                == "module"
+                and code_parser.code_representer.get(code_obj.parent_id).code_type == "module"
             ]
         )
         > 0
@@ -92,8 +91,7 @@ def test_extracted_code_objects(code_parser):
                 and "main.py" in code_obj.filename
                 and code_obj.name == "__init__"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).name
-                == "ClassX"
+                and code_parser.code_representer.get(code_obj.parent_id).name == "ClassX"
                 and code_parser.code_representer.get(
                     code_parser.code_representer.get(code_obj.parent_id).parent_id
                 ).code_type
@@ -112,8 +110,7 @@ def test_extracted_code_objects(code_parser):
                 and "main.py" in code_obj.filename
                 and code_obj.name == "func_a"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).name
-                == "ClassX"
+                and code_parser.code_representer.get(code_obj.parent_id).name == "ClassX"
                 and code_parser.code_representer.get(
                     code_parser.code_representer.get(code_obj.parent_id).parent_id
                 ).code_type
@@ -132,8 +129,7 @@ def test_extracted_code_objects(code_parser):
                 and "main.py" in code_obj.filename
                 and code_obj.name == "func_c"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).code_type
-                == "module"
+                and code_parser.code_representer.get(code_obj.parent_id).code_type == "module"
             ]
         )
         > 0
@@ -149,8 +145,7 @@ def test_extracted_code_objects(code_parser):
                 and "second_file.py" in code_obj.filename
                 and code_obj.name == "func_a"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).code_type
-                == "module"
+                and code_parser.code_representer.get(code_obj.parent_id).code_type == "module"
             ]
         )
         > 0
@@ -165,8 +160,7 @@ def test_extracted_code_objects(code_parser):
                 if code_obj.code_type == "class"
                 and "third_file.py" in code_obj.filename
                 and code_obj.name == "ClassA"
-                and code_parser.code_representer.get(code_obj.parent_id).code_type
-                == "module"
+                and code_parser.code_representer.get(code_obj.parent_id).code_type == "module"
             ]
         )
         > 0
@@ -181,8 +175,7 @@ def test_extracted_code_objects(code_parser):
                 and "third_file.py" in code_obj.filename
                 and code_obj.name == "__init__"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).name
-                == "ClassA"
+                and code_parser.code_representer.get(code_obj.parent_id).name == "ClassA"
                 and code_parser.code_representer.get(
                     code_parser.code_representer.get(code_obj.parent_id).parent_id
                 ).code_type
@@ -201,8 +194,7 @@ def test_extracted_code_objects(code_parser):
                 and "third_file.py" in code_obj.filename
                 and code_obj.name == "func_a"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).name
-                == "ClassA"
+                and code_parser.code_representer.get(code_obj.parent_id).name == "ClassA"
                 and code_parser.code_representer.get(
                     code_parser.code_representer.get(code_obj.parent_id).parent_id
                 ).code_type
@@ -220,8 +212,7 @@ def test_extracted_code_objects(code_parser):
                 if code_obj.code_type == "class"
                 and "third_file.py" in code_obj.filename
                 and code_obj.name == "ClassB"
-                and code_parser.code_representer.get(code_obj.parent_id).code_type
-                == "module"
+                and code_parser.code_representer.get(code_obj.parent_id).code_type == "module"
             ]
         )
         > 0
@@ -236,8 +227,7 @@ def test_extracted_code_objects(code_parser):
                 and "third_file.py" in code_obj.filename
                 and code_obj.name == "__init__"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).name
-                == "ClassB"
+                and code_parser.code_representer.get(code_obj.parent_id).name == "ClassB"
                 and code_parser.code_representer.get(
                     code_parser.code_representer.get(code_obj.parent_id).parent_id
                 ).code_type
@@ -256,8 +246,7 @@ def test_extracted_code_objects(code_parser):
                 and "third_file.py" in code_obj.filename
                 and code_obj.name == "func_a"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).name
-                == "ClassB"
+                and code_parser.code_representer.get(code_obj.parent_id).name == "ClassB"
                 and code_parser.code_representer.get(
                     code_parser.code_representer.get(code_obj.parent_id).parent_id
                 ).code_type
@@ -276,8 +265,7 @@ def test_extracted_code_objects(code_parser):
                 and "third_file.py" in code_obj.filename
                 and code_obj.name == "func_a"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).code_type
-                == "module"
+                and code_parser.code_representer.get(code_obj.parent_id).code_type == "module"
             ]
         )
         > 0
@@ -292,8 +280,7 @@ def test_extracted_code_objects(code_parser):
                 and "third_file.py" in code_obj.filename
                 and code_obj.name == "func_b"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).code_type
-                == "module"
+                and code_parser.code_representer.get(code_obj.parent_id).code_type == "module"
             ]
         )
         > 0
@@ -309,8 +296,7 @@ def test_extracted_code_objects(code_parser):
                 and "fourth_file.py" in code_obj.filename
                 and code_obj.name == "func_b"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).code_type
-                == "module"
+                and code_parser.code_representer.get(code_obj.parent_id).code_type == "module"
             ]
         )
         > 0
@@ -325,8 +311,7 @@ def test_extracted_code_objects(code_parser):
                 and "fourth_file.py" in code_obj.filename
                 and code_obj.name == "ClassA"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).code_type
-                == "module"
+                and code_parser.code_representer.get(code_obj.parent_id).code_type == "module"
             ]
         )
         > 0
@@ -341,8 +326,7 @@ def test_extracted_code_objects(code_parser):
                 and "fourth_file.py" in code_obj.filename
                 and code_obj.name == "__init__"
                 and code_obj.parent_id is not None
-                and code_parser.code_representer.get(code_obj.parent_id).name
-                == "ClassA"
+                and code_parser.code_representer.get(code_obj.parent_id).name == "ClassA"
                 and code_parser.code_representer.get(
                     code_parser.code_representer.get(code_obj.parent_id).parent_id
                 ).code_type
@@ -370,26 +354,17 @@ def test_sub_classes_and_methods(code_parser):
         if code_obj.code_type == "method"
     ]
     # test main module
-    main_module = [
-        module_obj for module_obj in modules if "main.py" in module_obj.filename
-    ][0]
+    main_module = [module_obj for module_obj in modules if "main.py" in module_obj.filename][0]
     assert len(main_module.class_ids) == 1
-    assert (
-        code_parser.code_representer.get(list(main_module.class_ids)[0]).name
-        == "ClassX"
-    )
+    assert code_parser.code_representer.get(list(main_module.class_ids)[0]).name == "ClassX"
     assert len(main_module.method_ids) == 1
-    assert (
-        code_parser.code_representer.get(list(main_module.method_ids)[0]).name
-        == "func_c"
-    )
+    assert code_parser.code_representer.get(list(main_module.method_ids)[0]).name == "func_c"
     # test main->ClassX
     class_x_class = code_parser.code_representer.get(list(main_module.class_ids)[0])
     assert len(class_x_class.class_ids) == 0
     assert len(class_x_class.method_ids) == 2
     class_x_methods = [
-        code_parser.code_representer.get(method_id).name
-        for method_id in class_x_class.method_ids
+        code_parser.code_representer.get(method_id).name for method_id in class_x_class.method_ids
     ]
     assert "__init__" in class_x_methods
     assert "func_a" in class_x_methods
@@ -399,18 +374,14 @@ def test_sub_classes_and_methods(code_parser):
     ][0]
     assert len(second_file_module.class_ids) == 0
     assert len(second_file_module.method_ids) == 1
-    assert (
-        code_parser.code_representer.get(list(second_file_module.method_ids)[0]).name
-        == "func_a"
-    )
+    assert code_parser.code_representer.get(list(second_file_module.method_ids)[0]).name == "func_a"
     # test third_file module
     third_file_module = [
         module_obj for module_obj in modules if "third_file.py" in module_obj.filename
     ][0]
     assert len(third_file_module.class_ids) == 2
     module_third_file_classes = [
-        code_parser.code_representer.get(class_id).name
-        for class_id in third_file_module.class_ids
+        code_parser.code_representer.get(class_id).name for class_id in third_file_module.class_ids
     ]
     assert "ClassA" in module_third_file_classes
     assert "ClassB" in module_third_file_classes
@@ -450,20 +421,14 @@ def test_sub_classes_and_methods(code_parser):
         module_obj for module_obj in modules if "fourth_file.py" in module_obj.filename
     ][0]
     assert len(fourth_file_module.class_ids) == 1
-    fourth_file_class_a = code_parser.code_representer.get(
-        list(fourth_file_module.class_ids)[0]
-    )
+    fourth_file_class_a = code_parser.code_representer.get(list(fourth_file_module.class_ids)[0])
     assert fourth_file_class_a.name == "ClassA"
-    assert (
-        code_parser.code_representer.get(list(fourth_file_module.method_ids)[0]).name
-        == "func_b"
-    )
+    assert code_parser.code_representer.get(list(fourth_file_module.method_ids)[0]).name == "func_b"
     # test fourth_file->ClassA
     assert len(fourth_file_class_a.class_ids) == 0
     assert len(fourth_file_class_a.method_ids) == 1
     assert (
-        code_parser.code_representer.get(list(fourth_file_class_a.method_ids)[0]).name
-        == "__init__"
+        code_parser.code_representer.get(list(fourth_file_class_a.method_ids)[0]).name == "__init__"
     )
 
 
@@ -479,12 +444,10 @@ def test_called_by_module_main(code_parser):
     assert len(main_module.called_classes) > 0
 
     main_module_called_methods = [
-        code_parser.code_representer.get(method_id)
-        for method_id in main_module.called_methods
+        code_parser.code_representer.get(method_id) for method_id in main_module.called_methods
     ]
     main_module_called_classes = [
-        code_parser.code_representer.get(class_id)
-        for class_id in main_module.called_classes
+        code_parser.code_representer.get(class_id) for class_id in main_module.called_classes
     ]
     # test call to main->ClassX
     assert (
@@ -509,8 +472,7 @@ def test_called_by_module_main(code_parser):
                 and "main.py" in method_obj.filename
                 and method_obj.code_type == "method"
                 and method_obj.parent_id is not None
-                and code_parser.code_representer.get(method_obj.parent_id).name
-                == "ClassX"
+                and code_parser.code_representer.get(method_obj.parent_id).name == "ClassX"
             ]
         )
         == 1
@@ -544,11 +506,119 @@ def test_called_by_module_main(code_parser):
     )
 
     # test call to third_file->ClassA
+    assert (
+        len(
+            [
+                class_obj
+                for class_obj in main_module_called_classes
+                if class_obj.name == "ClassA"
+                and "third_file.py" in class_obj.filename
+                and class_obj.code_type == "class"
+            ]
+        )
+        == 1
+    )
     # test call to third_file->ClassA->func_a
+    assert (
+        len(
+            [
+                method_obj
+                for method_obj in main_module_called_methods
+                if method_obj.name == "func_a"
+                and "third_file.py" in method_obj.filename
+                and method_obj.code_type == "method"
+                and method_obj.parent_id is not None
+                and code_parser.code_representer.get(method_obj.parent_id).name == "ClassA"
+            ]
+        )
+        == 1
+    )
     # test call to third_file->ClassB
+    assert (
+        len(
+            [
+                class_obj
+                for class_obj in main_module_called_classes
+                if class_obj.name == "ClassB"
+                and "third_file.py" in class_obj.filename
+                and class_obj.code_type == "class"
+            ]
+        )
+        == 1
+    )
     # test call to third_file->ClassB->func_a
+    assert (
+        len(
+            [
+                method_obj
+                for method_obj in main_module_called_methods
+                if method_obj.name == "func_a"
+                and "third_file.py" in method_obj.filename
+                and method_obj.code_type == "method"
+                and method_obj.parent_id is not None
+                and code_parser.code_representer.get(method_obj.parent_id).name == "ClassB"
+            ]
+        )
+        == 1
+    )
     # test call to third_file->func_a
+    assert (
+        len(
+            [
+                method_obj
+                for method_obj in main_module_called_methods
+                if method_obj.name == "func_a"
+                and "third_file.py" in method_obj.filename
+                and method_obj.code_type == "method"
+                and method_obj.parent_id is not None
+                and code_parser.code_representer.get(method_obj.parent_id).code_type == "module"
+            ]
+        )
+        == 1
+    )
     # test call to third_file->func_b
+    assert (
+        len(
+            [
+                method_obj
+                for method_obj in main_module_called_methods
+                if method_obj.name == "func_b"
+                and "third_file.py" in method_obj.filename
+                and method_obj.code_type == "method"
+                and method_obj.parent_id is not None
+                and code_parser.code_representer.get(method_obj.parent_id).code_type == "module"
+            ]
+        )
+        == 1
+    )
 
     # test call to fourth_file->ClassA with alias ClassAFourthFile
+    assert (
+        len(
+            [
+                class_obj
+                for class_obj in main_module_called_classes
+                if class_obj.name == "ClassA"
+                and "fourth_file.py" in class_obj.filename
+                and class_obj.code_type == "class"
+                and class_obj.parent_id is not None
+                and code_parser.code_representer.get(class_obj.parent_id).code_type == "module"
+            ]
+        )
+        == 1
+    )
     # test call to fourth_file->func_b with alias func_b_fourth_file
+    assert (
+        len(
+            [
+                method_obj
+                for method_obj in main_module_called_methods
+                if method_obj.name == "func_b"
+                and "fourth_file.py" in method_obj.filename
+                and method_obj.code_type == "method"
+                and method_obj.parent_id is not None
+                and code_parser.code_representer.get(method_obj.parent_id).code_type == "module"
+            ]
+        )
+        == 1
+    )
