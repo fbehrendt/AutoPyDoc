@@ -102,9 +102,7 @@ class RepoController:
 
     def get_latest_commit(self):
         """Get the latest commit the tool sucessfully ran for. Sets the result internally"""
-        self.latest_commit_file_name = os.path.join(
-            self.working_dir, "latest_commit.autopydoc"
-        )
+        self.latest_commit_file_name = os.path.join(self.working_dir, "latest_commit.autopydoc")
         file_obj = Path(self.latest_commit_file_name)
         if file_obj.is_file():
             with open(self.latest_commit_file_name, mode="r") as f:
@@ -136,9 +134,7 @@ class RepoController:
         dir = os.listdir(self.working_dir)
         if len(dir) == 0:
             # convert ssh link to https link if necessary
-            if self.repo_url.startswith("git@github.com") and self.repo_url.endswith(
-                ".git"
-            ):
+            if self.repo_url.startswith("git@github.com") and self.repo_url.endswith(".git"):
                 self.repo_url = "https://" + self.repo_url[4:-4]
             self.repo = Repo.clone_from(self.repo_url, self.working_dir)
             self.repo.git.checkout(self.branch)
@@ -176,9 +172,7 @@ class RepoController:
             latest_commit = self.repo.commit(self.latest_commit_hash)
             diff = self.repo.git.diff(latest_commit, current_commit)
 
-            pattern = re.compile(
-                r"\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@"
-            )
+            pattern = re.compile(r"\+\+\+ b\/([\w.\/]+)\n@@ -(\d+),(\d+) \+(\d+),(\d+) @@")
             changes = re.findall(pattern, diff)
             result = []
             for change in changes:
@@ -187,31 +181,12 @@ class RepoController:
                     continue
                 result.append(
                     {
-                        "filename": os.path.normpath(
-                            os.path.join(self.working_dir, change[0])
-                        ),
+                        "filename": os.path.normpath(os.path.join(self.working_dir, change[0])),
                         "start": int(change[3]),
                         "lines_changed": int(change[4]),
                     }
                 )
         return result
-
-    @staticmethod
-    def get_class_id(changed_class: dict[str, str]) -> str:
-        """
-        Get a classes id based on change information. Static method
-
-        :param changed_class: change information of the class. Must contain keys filename, type, content
-        :type changed_class: dict[str, str]
-
-        :return: class id
-        :return type: str
-        """
-        pattern = re.compile(r"class ([^\(:]+)")
-        class_name = re.findall(pattern, changed_class["content"])[0]
-        return (
-            changed_class["filename"] + "_" + changed_class["type"] + "_" + class_name
-        )
 
     def identify_docstring_location(
         self, code_obj_id: str, code_representer: CodeRepresenter
@@ -274,12 +249,7 @@ class RepoController:
 
                 # get start of signature
                 for i in range(start_pos, len(lines)):
-                    if (
-                        lines[i]
-                        .lstrip()
-                        .lower()
-                        .startswith(prefix + code_obj.name.lower())
-                    ):
+                    if lines[i].lstrip().lower().startswith(prefix + code_obj.name.lower()):
                         start_pos = i
                         start_line = lines[start_pos]
                         break
@@ -297,8 +267,7 @@ class RepoController:
                 # get indentation level
                 indentation_level = (
                     sum(
-                        4 if char == "\t" else 1
-                        for char in start_line[: -len(start_line.lstrip())]
+                        4 if char == "\t" else 1 for char in start_line[: -len(start_line.lstrip())]
                     )
                     + 4
                 )
@@ -310,8 +279,7 @@ class RepoController:
                         break
             if lines[i].strip().startswith('"""'):
                 if (
-                    lines[i].strip().rstrip("\n").endswith('"""')
-                    and len(lines[i].strip()) >= 6
+                    lines[i].strip().rstrip("\n").endswith('"""') and len(lines[i].strip()) >= 6
                 ):  # inline docstring
                     end_pos = i
                 else:
@@ -329,9 +297,7 @@ class RepoController:
         return (start_pos, indentation_level, end_pos)
 
     def save_file_for_comparison(self, filename: str):
-        new_partial_filename = (
-            filename.split("working_repo")[-1].lstrip("/").lstrip("\\\\")
-        )
+        new_partial_filename = filename.split("working_repo")[-1].lstrip("/").lstrip("\\\\")
         parent_dir = pathlib.Path().resolve()
         dir = "saved_files"
         dir = os.path.join(parent_dir, dir)
