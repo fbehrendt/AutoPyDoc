@@ -367,10 +367,25 @@ class CodeParser:
         tree = ast.parse(open(filename).read())
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign) or isinstance(node, ast.AnnAssign):
-                if variable_to_resolve in [target.id for target in node.targets]:
+                if isinstance(node, ast.AnnAssign):
+                    targets = [node.target]
+                else:  # ast.Assign
+                    targets = node.targets
+                for target in targets:
+                    if not hasattr(target, "id"):
+                        if not self.debug:
+                            raise NotImplementedError
+                        return None
+                if variable_to_resolve in [target.id for target in targets]:
                     if isinstance(node.value, ast.Call):
+                        if hasattr(node.value.func, "id"):
+                            name = node.value.func.id
+                        elif hasattr(node.value.func, "attr"):
+                            name = node.value.func.attr
+                        else:
+                            raise NotImplementedError
                         matches = self.code_representer.get_by_filename_and_name(
-                            filename=filename, name=node.value.func.id
+                            filename=filename, name=name
                         )
                         if len(matches) == 1:
                             return matches[0]
@@ -379,7 +394,7 @@ class CodeParser:
                         elif len(matches) == 0:
                             # resolve imports
                             matches = self.import_finder.resolve_external_call(
-                                call=node.value.func.id,
+                                call=name,
                                 filename=filename,
                                 code_representer=self.code_representer,
                             )
