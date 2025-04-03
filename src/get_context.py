@@ -371,13 +371,11 @@ class CodeParser:
                     targets = [node.target]
                 else:  # ast.Assign
                     targets = node.targets
-
                 for target in targets:
                     if not hasattr(target, "id"):
                         if not self.debug:
                             raise NotImplementedError
                         return None
-
                 if variable_to_resolve in [target.id for target in targets]:
                     if isinstance(node.value, ast.Call):
                         if hasattr(node.value.func, "id"):
