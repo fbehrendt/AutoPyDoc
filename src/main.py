@@ -74,6 +74,13 @@ class AutoPyDoc:
         self.changes = self.repo.get_changes()
         self.code_parser.set_code_affected_by_changes_to_outdated(changes=self.changes)
 
+        full_input_for_estimation = (
+            self.code_parser.code_representer.generate_next_batch(
+                ignore_dependencies=True
+            )
+        )
+        self.gpt_interface.estimate(full_input=full_input_for_estimation)
+
         first_batch = self.code_parser.code_representer.generate_next_batch()
         if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
             self.logger.info("No need to do anything")
