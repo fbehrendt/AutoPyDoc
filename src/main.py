@@ -34,6 +34,7 @@ class AutoPyDoc:
         branch: str = "main",
         ollama_host: str = None,
         debug=False,
+        repo_owner=None,
     ) -> None:  # repo_path will be required later
         """Generates new docstrings for modified parts of the code
 
@@ -59,6 +60,7 @@ class AutoPyDoc:
             branch=branch,
             logger=self.logger,
             debug=debug,
+            repo_owner=repo_owner,
         )
         self.code_parser = CodeParser(
             code_representer=CodeRepresenter(),

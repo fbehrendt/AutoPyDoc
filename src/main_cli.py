@@ -20,6 +20,10 @@ if __name__ == "__main__":
         "branch",
         help="Branch",
     )
+    parser.add_argument(
+        "repo_owner",
+        help="Owner of the target repository",
+    )
     args = parser.parse_args()
 
     auto_py_doc = AutoPyDoc()
@@ -29,4 +33,5 @@ if __name__ == "__main__":
         pull_request_token=args.pull_request_token,
         branch=args.branch,
         debug=True,
+        repo_owner=None,
     )
