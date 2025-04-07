@@ -458,6 +458,7 @@ class RepoController:
             load_dotenv()
             auth_token = os.getenv("GitHubAuthToken")
         github_object = Github(self.username, auth_token)
+        self.logger.info(f"Username: {self.username}\nRepository: {repo_name}")
         repo = github_object.get_repo(repo_name)
 
         pull_request = repo.create_pull(
