@@ -301,7 +301,7 @@ Please reason step by step, and always summarize your final answer using the fol
 
 
 class LocalDeepseekR1Strategy(DocstringModelStrategy):
-    def __init__(self, device="cpu", context_size=2048):
+    def __init__(self, device=None, context_size=2048):
         super().__init__()
 
         # TODO: remove temp workaround
