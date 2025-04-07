@@ -145,6 +145,7 @@ class AutoPyDoc:
             docstring_input, new_pr_notes = validate_docstring_input(
                 docstring_input=docstring_input,
                 code_representer=self.code_parser.code_representer,
+                repo_path=self.repo.working_dir,
             )
             self.repo.pr_notes.extend(new_pr_notes)
 
