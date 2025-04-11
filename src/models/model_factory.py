@@ -14,6 +14,10 @@ class ModelStrategyFactory:
             from .strategy_deepseek_r1_local import LocalDeepseekR1Strategy
 
             return LocalDeepseekR1Strategy(**kwargs)
+        if model_type == "ollama":
+            from .strategy_deepseek_olama import LocalDeepseekR1Strategy
+
+            return LocalDeepseekR1Strategy(**kwargs)
         if model_type == "mock":
             from .strategy_mock import MockStrategy
 

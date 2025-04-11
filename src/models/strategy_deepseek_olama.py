@@ -3,7 +3,7 @@ import re
 from collections.abc import Iterable
 
 import json5
-from gpt4all import GPT4All
+from ollama import Client
 
 import gpt_input
 from gpt_input import (
@@ -23,6 +23,7 @@ from .model_strategy import DocstringModelStrategy
 CHECK_OUTDATED_JSON_OUTPUT_REGEX = (
     r'({\s*"analysis":\s*"(.*)"\s*,\s*"matches"\s*:\s*(true|false)\s*})'
 )
+# DOCSTRING_GENERATION_JSON_OUTPUT_REGEX = r"({.*})|```\s*json(.*)\s*```"
 DOCSTRING_GENERATION_JSON_OUTPUT_REGEX = r"{.*}"
 
 
@@ -322,40 +323,42 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
             model_name,
             self.context_size,
         )
-        self.gpt_model = GPT4All(model_name=model_name, device=self.device)
 
-        self.logger.info("Using device [%s], requested [%s]", self.gpt_model.device, self.device)
+        self.client = Client(
+            host="http://localhost:11434",
+        )
 
-        if self.gpt_model.device is None:
-            raise Exception("Unable to load gpt model")
+        # self.logger.info("Using device [%s], requested [%s]", self.device)
+
+        # if self.gpt_model.device is None:
+        #     raise Exception("Unable to load gpt model")
 
     def check_outdated(self, code_object: GptInputCodeObject) -> bool:
-        return True
-
         try:
-            with self.gpt_model.chat_session():
-                prompt = self.prompt_builder.build_check_outdated_prompt(code_object)
+            prompt = self.prompt_builder.build_check_outdated_prompt(code_object)
 
-                self.logger.debug("Using prompt [%s]", prompt)
-                self.logger.info("Starting checking existing docstring")
+            self.logger.debug("Using prompt [%s]", prompt)
+            self.logger.info("Starting checking existing docstring")
 
-                def generation_callback(token_id, token):
-                    print(token, end="")
+            stream = self.client.generate(
+                model="deepseek-r1:7b",
+                prompt=prompt,
+                # format="json",
+                stream=True,
+                options={"num_ctx": self.context_size, "temperature": 0.6},
+            )
 
-                    return True
+            generated_text = ""
 
-                generated_text = self.gpt_model.generate(
-                    prompt=prompt,
-                    temp=0.6,
-                    max_tokens=2000,
-                    callback=generation_callback,
-                )
+            for chunk in stream:
+                print(chunk["response"], end="", flush=True)
+                generated_text += chunk["response"]
 
-                self.logger.info("Finished checking existing docstring [%s]", generated_text)
+            self.logger.info("Finished checking existing docstring [%s]", generated_text)
 
-                docstring_matches = self._extract_check_outdated_output(generated_text)
+            docstring_matches = self._extract_check_outdated_output(generated_text)
 
-                return not docstring_matches
+            return not docstring_matches
         except Exception as e:
             self.logger.exception("An error occurred while checking existing docstring", exc_info=e)
             raise e
@@ -363,132 +366,129 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
     def generate_docstring(self, code_object: GptInputCodeObject) -> GptOutput:
         if isinstance(code_object, gpt_input.GptInputMethodObject):
             try:
-                with self.gpt_model.chat_session():
-                    prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
+                prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
 
-                    self.logger.debug("Using prompt [%s]", prompt)
-                    self.logger.info("Starting docstring generation")
+                self.logger.debug("Using prompt [%s]", prompt)
+                self.logger.info("Starting docstring generation")
 
-                    def generation_callback(token_id, token):
-                        print(token, end="")
+                stream = self.client.generate(
+                    model="deepseek-r1:7b",
+                    prompt=prompt,
+                    # format="json",
+                    stream=True,
+                    options={"num_ctx": self.context_size, "temperature": 0.6},
+                )
 
-                        return True
+                generated_text = ""
 
-                    generated_text = self.gpt_model.generate(
-                        prompt=prompt,
-                        temp=0.6,
-                        max_tokens=5000,
-                        callback=generation_callback,
-                    )
+                for chunk in stream:
+                    print(chunk["response"], end="", flush=True)
+                    generated_text += chunk["response"]
 
-                    self.logger.info("Finished docstring generation [%s]", generated_text)
+                self.logger.info("Finished docstring generation [%s]", generated_text)
 
-                    generated_output = self._extract_generate_docstring_json_output(generated_text)
+                generated_output = self._extract_generate_docstring_json_output(generated_text)
 
-                    # use generated_output to build gpt output object
+                # use generated_output to build gpt output object
 
+                try:
+                    method_description = generated_output["description"]
+                except KeyError:
+                    method_description = False
+
+                parameter_types: dict[str, str | bool] = {}
+                for parameter_name in code_object.parameters:
                     try:
-                        method_description = generated_output["description"]
+                        generated_parameters = generated_output["parameters"]
+                        matching_exception = next(
+                            filter(
+                                lambda x: "name" in x and x["name"] == parameter_name,
+                                generated_parameters,
+                            )
+                        )
+
+                        parameter_types[parameter_name] = matching_exception["type"]
+                    except StopIteration:
+                        parameter_types[parameter_name] = False
                     except KeyError:
-                        method_description = False
+                        parameter_types[parameter_name] = False
+                    except Exception as e:
+                        self.logger.exception(
+                            f"An unkown error occurred while extracting generated type for parameter [{parameter_name}]",
+                            exc_info=e,
+                        )
+                        parameter_types[parameter_name] = False
 
-                    parameter_types: dict[str, str | bool] = {}
-                    for parameter_name in code_object.parameters:
-                        try:
-                            generated_parameters = generated_output["parameters"]
-                            matching_exception = next(
-                                filter(
-                                    lambda x: "name" in x and x["name"] == parameter_name,
-                                    generated_parameters,
-                                )
-                            )
-
-                            parameter_types[parameter_name] = matching_exception["type"]
-                        except StopIteration:
-                            parameter_types[parameter_name] = False
-                        except KeyError:
-                            parameter_types[parameter_name] = False
-                        except Exception as e:
-                            self.logger.exception(
-                                f"An unkown error occurred while extracting generated type for parameter [{parameter_name}]",
-                                exc_info=e,
-                            )
-                            parameter_types[parameter_name] = False
-
-                    parameter_descriptions: dict[str, str | bool] = {}
-                    for parameter_name in code_object.parameters:
-                        try:
-                            generated_parameters = generated_output[parameter_name] = (
-                                generated_output["parameters"]
-                            )
-                            matching_exception = next(
-                                filter(
-                                    lambda x: "name" in x and x["name"] == parameter_name,
-                                    generated_parameters,
-                                )
-                            )
-                            parameter_descriptions[parameter_name] = matching_exception[
-                                "description"
-                            ]
-                        except StopIteration:
-                            parameter_descriptions[parameter_name] = False
-                        except KeyError:
-                            parameter_descriptions[parameter_name] = False
-                        except Exception as e:
-                            self.logger.warning(
-                                f"An unkown error occurred while extracting generated description for parameter [{parameter_name}]",
-                                exc_info=e,
-                            )
-                            parameter_descriptions[parameter_name] = False
-
-                    exception_descriptions: dict[str, str | bool] = {}
-                    for exception in code_object.exceptions:
-                        try:
-                            generated_parameters = generated_output[exception] = generated_output[
-                                "parameters"
-                            ]
-                            matching_exception = next(
-                                filter(
-                                    lambda x: "name" in x and x["name"] == parameter_name,
-                                    generated_parameters,
-                                )
-                            )
-                            parameter_descriptions[parameter_name] = matching_exception[
-                                "description"
-                            ]
-                        except StopIteration:
-                            parameter_descriptions[parameter_name] = False
-                        except KeyError:
-                            parameter_descriptions[parameter_name] = False
-                        except Exception as e:
-                            self.logger.warning(
-                                f"An unkown error occurred while extracting generated description for parameter [{parameter_name}]",
-                                exc_info=e,
-                            )
-                            parameter_descriptions[parameter_name] = False
-
-                    return_type: str | bool = False
-                    if code_object.return_missing:
-                        try:
-                            return_type = generated_output["returns"]["type"]
-                        except KeyError:
-                            pass
-
+                parameter_descriptions: dict[str, str | bool] = {}
+                for parameter_name in code_object.parameters:
                     try:
-                        return_description = generated_output["returns"]["description"]
+                        generated_parameters = generated_output[parameter_name] = generated_output[
+                            "parameters"
+                        ]
+                        matching_exception = next(
+                            filter(
+                                lambda x: "name" in x and x["name"] == parameter_name,
+                                generated_parameters,
+                            )
+                        )
+                        parameter_descriptions[parameter_name] = matching_exception["description"]
+                    except StopIteration:
+                        parameter_descriptions[parameter_name] = False
                     except KeyError:
-                        return_description = False
+                        parameter_descriptions[parameter_name] = False
+                    except Exception as e:
+                        self.logger.warning(
+                            f"An unkown error occurred while extracting generated description for parameter [{parameter_name}]",
+                            exc_info=e,
+                        )
+                        parameter_descriptions[parameter_name] = False
 
-                    return GptOutputMethod(
-                        id=code_object.id,
-                        no_change_necessary=False,
-                        description=method_description,
-                        parameter_types=parameter_types,
-                        parameter_descriptions=parameter_descriptions,
-                        return_description=return_description,
-                        return_type=return_type,
-                        exception_descriptions=exception_descriptions,
-                    )
+                exception_descriptions: dict[str, str | bool] = {}
+                for exception in code_object.exceptions:
+                    try:
+                        generated_parameters = generated_output[exception] = generated_output[
+                            "parameters"
+                        ]
+                        matching_exception = next(
+                            filter(
+                                lambda x: "name" in x and x["name"] == parameter_name,
+                                generated_parameters,
+                            )
+                        )
+                        parameter_descriptions[parameter_name] = matching_exception["description"]
+                    except StopIteration:
+                        parameter_descriptions[parameter_name] = False
+                    except KeyError:
+                        parameter_descriptions[parameter_name] = False
+                    except Exception as e:
+                        self.logger.warning(
+                            f"An unkown error occurred while extracting generated description for parameter [{parameter_name}]",
+                            exc_info=e,
+                        )
+                        parameter_descriptions[parameter_name] = False
+
+                return_type: str | bool = False
+                if code_object.return_missing:
+                    try:
+                        return_type = generated_output["returns"]["type"]
+                    except KeyError:
+                        pass
+
+                try:
+                    return_description = generated_output["returns"]["description"]
+                except KeyError:
+                    return_description = False
+
+                return GptOutputMethod(
+                    id=code_object.id,
+                    no_change_necessary=False,
+                    description=method_description,
+                    parameter_types=parameter_types,
+                    parameter_descriptions=parameter_descriptions,
+                    return_description=return_description,
+                    return_type=return_type,
+                    exception_descriptions=exception_descriptions,
+                )
             except KeyboardInterrupt as e:
                 # Let user abort execution
                 raise e
@@ -502,113 +502,113 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                 return self.fallback_stategy.generate_docstring(code_object)
         elif isinstance(code_object, gpt_input.GptInputClassObject):
             try:
-                with self.gpt_model.chat_session():
-                    prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
+                prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
 
-                    self.logger.debug("Using prompt [%s]", prompt)
-                    self.logger.info("Starting docstring generation")
+                self.logger.debug("Using prompt [%s]", prompt)
+                self.logger.info("Starting docstring generation")
 
-                    def generation_callback(token_id, token):
-                        print(token, end="")
+                stream = self.client.generate(
+                    model="deepseek-r1:7b",
+                    prompt=prompt,
+                    # format="json",
+                    stream=True,
+                    options={"num_ctx": self.context_size, "temperature": 0.6},
+                )
 
-                        return True
+                generated_text = ""
 
-                    generated_text = self.gpt_model.generate(
-                        prompt=prompt,
-                        temp=0.6,
-                        max_tokens=5000,
-                        callback=generation_callback,
-                    )
+                for chunk in stream:
+                    print("chunk", chunk)
+                    print(chunk["response"], end="", flush=True)
+                    generated_text += chunk["response"]
 
-                    self.logger.info("Finished docstring generation [%s]", generated_text)
+                self.logger.info("Finished docstring generation [%s]", generated_text)
 
-                    generated_output = self._extract_generate_docstring_json_output(generated_text)
+                generated_output = self._extract_generate_docstring_json_output(generated_text)
 
-                    # use generated_output to build gpt output object
+                # use generated_output to build gpt output object
 
+                try:
+                    class_description = generated_output["description"]
+                except KeyError:
+                    class_description = False
+
+                # extract class attributes
+                class_attribute_descriptions: dict[str, str | bool] = {}
+                class_attribute_types: dict[str, str | bool] = {}
+
+                for instance_attribute_name in code_object.class_attributes:
                     try:
-                        class_description = generated_output["description"]
+                        generated_exceptions = generated_output[instance_attribute_name] = (
+                            generated_output["class_attributes"]
+                        )
+                        matching_exception = next(
+                            filter(
+                                lambda x: "name" in x and x["name"] == instance_attribute_name,
+                                generated_exceptions,
+                            )
+                        )
+                        class_attribute_descriptions[instance_attribute_name] = matching_exception[
+                            "description"
+                        ]
+                        class_attribute_types[instance_attribute_name] = matching_exception["type"]
+                    except StopIteration:
+                        class_attribute_descriptions[instance_attribute_name] = False
+                        class_attribute_types[instance_attribute_name] = False
                     except KeyError:
-                        class_description = False
+                        class_attribute_descriptions[instance_attribute_name] = False
+                        class_attribute_types[instance_attribute_name] = False
+                    except Exception as e:
+                        self.logger.warning(
+                            f"An unkown error occurred while extracting generated description for class attribute [{instance_attribute_name}]",
+                            exc_info=e,
+                        )
+                        class_attribute_descriptions[instance_attribute_name] = False
+                        class_attribute_types[instance_attribute_name] = False
 
-                    # extract class attributes
-                    class_attribute_descriptions: dict[str, str | bool] = {}
-                    class_attribute_types: dict[str, str | bool] = {}
+                # extract instance attributes
+                instance_attribute_descriptions: dict[str, str | bool] = {}
+                instance_attribute_types: dict[str, str | bool] = {}
 
-                    for instance_attribute_name in code_object.class_attributes:
-                        try:
-                            generated_exceptions = generated_output[instance_attribute_name] = (
-                                generated_output["class_attributes"]
+                for instance_attribute_name in code_object.instance_attributes:
+                    try:
+                        generated_exceptions = generated_output["instance_attributes"]
+                        matching_exception = next(
+                            filter(
+                                lambda x: "name" in x and x["name"] == instance_attribute_name,
+                                generated_exceptions,
                             )
-                            matching_exception = next(
-                                filter(
-                                    lambda x: "name" in x and x["name"] == instance_attribute_name,
-                                    generated_exceptions,
-                                )
-                            )
-                            class_attribute_descriptions[instance_attribute_name] = (
-                                matching_exception["description"]
-                            )
-                            class_attribute_types[instance_attribute_name] = matching_exception[
-                                "type"
-                            ]
-                        except StopIteration:
-                            class_attribute_descriptions[instance_attribute_name] = False
-                            class_attribute_types[instance_attribute_name] = False
-                        except KeyError:
-                            class_attribute_descriptions[instance_attribute_name] = False
-                            class_attribute_types[instance_attribute_name] = False
-                        except Exception as e:
-                            self.logger.warning(
-                                f"An unkown error occurred while extracting generated description for class attribute [{instance_attribute_name}]",
-                                exc_info=e,
-                            )
-                            class_attribute_descriptions[instance_attribute_name] = False
-                            class_attribute_types[instance_attribute_name] = False
+                        )
 
-                    # extract instance attributes
-                    instance_attribute_descriptions: dict[str, str | bool] = {}
-                    instance_attribute_types: dict[str, str | bool] = {}
+                        instance_attribute_descriptions[instance_attribute_name] = (
+                            matching_exception["description"]
+                        )
+                        instance_attribute_types[instance_attribute_name] = matching_exception[
+                            "type"
+                        ]
+                    except StopIteration:
+                        instance_attribute_descriptions[instance_attribute_name] = False
+                        instance_attribute_types[instance_attribute_name] = False
+                    except KeyError:
+                        instance_attribute_descriptions[instance_attribute_name] = False
+                        instance_attribute_types[instance_attribute_name] = False
+                    except Exception as e:
+                        self.logger.exception(
+                            f"An unkown error occurred while extracting generated type for class attribute [{instance_attribute_name}]",
+                            exc_info=e,
+                        )
+                        instance_attribute_descriptions[instance_attribute_name] = False
+                        instance_attribute_types[instance_attribute_name] = False
 
-                    for instance_attribute_name in code_object.instance_attributes:
-                        try:
-                            generated_exceptions = generated_output["instance_attributes"]
-                            matching_exception = next(
-                                filter(
-                                    lambda x: "name" in x and x["name"] == instance_attribute_name,
-                                    generated_exceptions,
-                                )
-                            )
-
-                            instance_attribute_descriptions[instance_attribute_name] = (
-                                matching_exception["description"]
-                            )
-                            instance_attribute_types[instance_attribute_name] = matching_exception[
-                                "type"
-                            ]
-                        except StopIteration:
-                            instance_attribute_descriptions[instance_attribute_name] = False
-                            instance_attribute_types[instance_attribute_name] = False
-                        except KeyError:
-                            instance_attribute_descriptions[instance_attribute_name] = False
-                            instance_attribute_types[instance_attribute_name] = False
-                        except Exception as e:
-                            self.logger.exception(
-                                f"An unkown error occurred while extracting generated type for class attribute [{instance_attribute_name}]",
-                                exc_info=e,
-                            )
-                            instance_attribute_descriptions[instance_attribute_name] = False
-                            instance_attribute_types[instance_attribute_name] = False
-
-                    return GptOutputClass(
-                        id=code_object.id,
-                        no_change_necessary=False,
-                        description=class_description,
-                        class_attribute_descriptions=class_attribute_descriptions,
-                        class_attribute_types=class_attribute_types,
-                        instance_attribute_descriptions=instance_attribute_descriptions,
-                        instance_attribute_types=instance_attribute_types,
-                    )
+                return GptOutputClass(
+                    id=code_object.id,
+                    no_change_necessary=False,
+                    description=class_description,
+                    class_attribute_descriptions=class_attribute_descriptions,
+                    class_attribute_types=class_attribute_types,
+                    instance_attribute_descriptions=instance_attribute_descriptions,
+                    instance_attribute_types=instance_attribute_types,
+                )
             except KeyboardInterrupt as e:
                 # Let user abort execution
                 raise e
@@ -622,69 +622,68 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                 return self.fallback_stategy.generate_docstring(code_object)
         elif isinstance(code_object, gpt_input.GptInputModuleObject):
             try:
-                with self.gpt_model.chat_session():
-                    prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
+                prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
 
-                    self.logger.debug("Using prompt [%s]", prompt)
-                    self.logger.info("Starting docstring generation")
+                self.logger.debug("Using prompt [%s]", prompt)
+                self.logger.info("Starting docstring generation")
 
-                    def generation_callback(token_id, token):
-                        print(token, end="")
+                stream = self.client.generate(
+                    model="deepseek-r1:7b",
+                    prompt=prompt,
+                    # format="json",
+                    stream=True,
+                    options={"num_ctx": self.context_size, "temperature": 0.6},
+                )
 
-                        return True
+                generated_text = ""
 
-                    generated_text = self.gpt_model.generate(
-                        prompt=prompt,
-                        temp=0.6,
-                        max_tokens=5000,
-                        callback=generation_callback,
-                    )
+                for chunk in stream:
+                    print(chunk["response"], end="", flush=True)
+                    generated_text += chunk["response"]
 
-                    self.logger.info("Finished docstring generation [%s]", generated_text)
+                self.logger.info("Finished docstring generation [%s]", generated_text)
 
-                    generated_output = self._extract_generate_docstring_json_output(generated_text)
+                generated_output = self._extract_generate_docstring_json_output(generated_text)
 
-                    # use generated_output to build gpt output object
+                # use generated_output to build gpt output object
 
+                try:
+                    module_description = generated_output["description"]
+                except KeyError:
+                    module_description = False
+
+                # extract module exceptions
+                exception_descriptions: dict[str, str | bool] = {}
+
+                for exception_class in code_object.exceptions:
                     try:
-                        module_description = generated_output["description"]
+                        generated_exceptions = generated_output["exceptions"]
+                        matching_exception = next(
+                            filter(
+                                lambda x: "exception_class" in x
+                                and x["exception_class"] == exception_class,
+                                generated_exceptions,
+                            )
+                        )
+
+                        exception_descriptions[exception_class] = matching_exception["description"]
+                    except StopIteration:
+                        exception_descriptions[exception_class] = False
                     except KeyError:
-                        module_description = False
+                        exception_descriptions[exception_class] = False
+                    except Exception as e:
+                        self.logger.exception(
+                            f"An unkown error occurred while extracting generated description for module exception [{exception_class}]",
+                            exc_info=e,
+                        )
+                        exception_descriptions[exception_class] = False
 
-                    # extract module exceptions
-                    exception_descriptions: dict[str, str | bool] = {}
-
-                    for exception_class in code_object.exceptions:
-                        try:
-                            generated_exceptions = generated_output["exceptions"]
-                            matching_exception = next(
-                                filter(
-                                    lambda x: "exception_class" in x
-                                    and x["exception_class"] == exception_class,
-                                    generated_exceptions,
-                                )
-                            )
-
-                            exception_descriptions[exception_class] = matching_exception[
-                                "description"
-                            ]
-                        except StopIteration:
-                            exception_descriptions[exception_class] = False
-                        except KeyError:
-                            exception_descriptions[exception_class] = False
-                        except Exception as e:
-                            self.logger.exception(
-                                f"An unkown error occurred while extracting generated description for module exception [{exception_class}]",
-                                exc_info=e,
-                            )
-                            exception_descriptions[exception_class] = False
-
-                    return GptOutputModule(
-                        id=code_object.id,
-                        no_change_necessary=False,
-                        description=module_description,
-                        exception_descriptions=exception_descriptions,
-                    )
+                return GptOutputModule(
+                    id=code_object.id,
+                    no_change_necessary=False,
+                    description=module_description,
+                    exception_descriptions=exception_descriptions,
+                )
             except KeyboardInterrupt as e:
                 # Let user abort execution
                 raise e
