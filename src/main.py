@@ -1,18 +1,18 @@
 import logging
 
+from code_representation import ClassObject, CodeRepresenter, MethodObject, ModuleObject
 from docstring_builder import create_docstring
 from docstring_input_selector import (
     DocstringInputSelectorClass,
     DocstringInputSelectorMethod,
     DocstringInputSelectorModule,
 )
-from validate_docstring_input import validate_docstring_input
+from get_context import CodeParser
 from gpt_input import GptOutput
 from gpt_interface import GptInterface
 from repo_controller import RepoController
 from validate_docstring import validate_docstring
-from get_context import CodeParser
-from code_representation import CodeRepresenter, MethodObject, ClassObject, ModuleObject
+from validate_docstring_input import validate_docstring_input
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -42,8 +42,9 @@ class AutoPyDoc:
         """
 
         # initialize gpt interface early to fail early if model is unavailable or unable to load
-        self.gpt_interface = GptInterface("mock")
-        # self.gpt_interface = GptInterface("local_deepseek")
+        # TODO: make name configurable (see factory for available model names)
+        # self.gpt_interface = GptInterface("mock")
+        self.gpt_interface = GptInterface("local_deepseek")
 
         # pull repo, create code representation, create dependencies
         self.debug = debug
@@ -74,10 +75,8 @@ class AutoPyDoc:
         self.changes = self.repo.get_changes()
         self.code_parser.set_code_affected_by_changes_to_outdated(changes=self.changes)
 
-        full_input_for_estimation = (
-            self.code_parser.code_representer.generate_next_batch(
-                ignore_dependencies=True
-            )
+        full_input_for_estimation = self.code_parser.code_representer.generate_next_batch(
+            ignore_dependencies=True
         )
         self.gpt_interface.estimate(full_input=full_input_for_estimation)
 
@@ -97,9 +96,7 @@ class AutoPyDoc:
                 ignore_dependencies=True
             )
             if len(next_batch) > 0:
-                self.gpt_interface.process_batch(
-                    next_batch, callback=self.process_gpt_result
-                )
+                self.gpt_interface.process_batch(next_batch, callback=self.process_gpt_result)
 
         # if every docstring is updated
         if not self.repo.validate_code_integrity():
@@ -108,9 +105,7 @@ class AutoPyDoc:
             quit()  # saveguard in case someone tries to catch the exception and continue anyways
         self.logger.info("Code integrity validated")
 
-        self.repo.apply_changes(
-            changed_files=self.code_parser.code_representer.get_changed_files()
-        )
+        self.repo.apply_changes(changed_files=self.code_parser.code_representer.get_changed_files())
         self.logger.info("Finished successfully")
 
     def process_gpt_result(self, result: GptOutput) -> None:
@@ -148,10 +143,8 @@ class AutoPyDoc:
             )
             self.repo.pr_notes.extend(new_pr_notes)
 
-            start_pos, indentation_level, end_pos = (
-                self.repo.identify_docstring_location(
-                    code_obj.id, code_representer=self.code_parser.code_representer
-                )
+            start_pos, indentation_level, end_pos = self.repo.identify_docstring_location(
+                code_obj.id, code_representer=self.code_parser.code_representer
             )
 
             # build docstring
@@ -171,9 +164,7 @@ class AutoPyDoc:
                 if hasattr(code_obj, "retry") and code_obj.retry > 0:
                     code_obj.retry += 1
                     if code_obj.retry > 2:
-                        self.logger.error(
-                            "Docstring is not still invalid after 3 attempts"
-                        )
+                        self.logger.error("Docstring is not still invalid after 3 attempts")
                         if not self.debug:
                             raise NotImplementedError
                 else:
@@ -194,9 +185,7 @@ class AutoPyDoc:
         # if parts are still outdated
         next_batch = self.code_parser.code_representer.generate_next_batch()
         if len(next_batch) > 0:
-            self.gpt_interface.process_batch(
-                next_batch, callback=self.process_gpt_result
-            )
+            self.gpt_interface.process_batch(next_batch, callback=self.process_gpt_result)
 
     # TODO move elsewhere
     @staticmethod
@@ -212,10 +201,11 @@ class AutoPyDoc:
     # TODO move elsewhere
     def extract_dev_comments(self, code_obj):
         import ast
-        import sys
         import os
         import pathlib
-        from code_representation import MethodObject, ClassObject, ModuleObject
+        import sys
+
+        from code_representation import ClassObject, MethodObject, ModuleObject
         from docstring_dismantler import DocstringDismantler
 
         developer_changes = []
@@ -226,8 +216,7 @@ class AutoPyDoc:
         sys.stderr = sys.__stderr__
         for node in ast.walk(code_ast):
             if isinstance(code_obj, MethodObject) and (
-                isinstance(node, ast.FunctionDef)
-                or isinstance(node, ast.AsyncFunctionDef)
+                isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef)
             ):
                 if code_obj.name == node.name:
                     old_docstring = ast.get_docstring(node, clean=True) or ""
@@ -244,12 +233,8 @@ class AutoPyDoc:
             return developer_changes
         else:
             print("---docstrings are different---")
-            new_docstring_dismantler = DocstringDismantler(
-                docstring=code_obj.old_docstring or ""
-            )
-            old_docstring_dismantler = DocstringDismantler(
-                docstring=old_docstring or ""
-            )
+            new_docstring_dismantler = DocstringDismantler(docstring=code_obj.old_docstring or "")
+            old_docstring_dismantler = DocstringDismantler(docstring=old_docstring or "")
             developer_changes = new_docstring_dismantler.compare_docstrings(
                 old_docstring_dismantler
             )

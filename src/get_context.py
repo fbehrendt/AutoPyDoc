@@ -409,7 +409,6 @@ class CodeParser:
                                 return matches[0]
                     else:
                         pass
-                print()
 
     def extract_exceptions(self):
         """
