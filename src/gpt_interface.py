@@ -32,16 +32,30 @@ class GptInterface:
 
         for current_code_object in batch:
             try:
+                # Only check docstring using gpt if a docstring is present
+                change_necessary = (
+                    current_code_object.docstring is None
+                    or len(current_code_object.docstring.strip()) == 0
+                )
+
                 try:
-                    # Only check docstring using gpt if a docstring is present
-                    change_necessary = (
-                        current_code_object.docstring is None
-                        or len(current_code_object.docstring.strip()) == 0
-                        or self.model.check_outdated(current_code_object)
+                    change_necessary = change_necessary or self.model.check_outdated(
+                        current_code_object
                     )
                 except Exception as e:
-                    self.logger.fatal("Error while determining if change is necessary", exc_info=e)
-                    raise e
+                    self.logger.error(
+                        "Error while determining if change is necessary. Retrying", exc_info=e
+                    )
+                    # retry
+                    try:
+                        change_necessary = change_necessary or self.model.check_outdated(
+                            current_code_object
+                        )
+                    except Exception as e:
+                        self.logger.fatal(
+                            "Error while determining if change is necessary", exc_info=e
+                        )
+                        raise e
 
                 if not change_necessary:
                     output = GptOutput(
