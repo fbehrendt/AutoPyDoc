@@ -7,6 +7,9 @@ class DocstringModelStrategy:
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
 
+    # def supports_multithreading(self) -> bool:
+    #     return False
+
     def check_outdated(self, code_object: GptInputCodeObject) -> bool:
         raise NotImplementedError()
 

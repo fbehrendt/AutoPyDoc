@@ -20,6 +20,13 @@ if __name__ == "__main__":
         "branch",
         help="Branch",
     )
+    parser.add_argument(
+        "repo_owner",
+        help="Owner of the target repository",
+    )
+    parser.add_argument(
+        "ollama_host", help="Full URL to Ollama host (supports basic auth)", required=False
+    )
     args = parser.parse_args()
 
     auto_py_doc = AutoPyDoc()
@@ -28,5 +35,7 @@ if __name__ == "__main__":
         username=args.username,
         pull_request_token=args.pull_request_token,
         branch=args.branch,
+        ollama_host=args.ollama_host,
+        repo_owner=args.repo_owner,
         debug=True,
     )
