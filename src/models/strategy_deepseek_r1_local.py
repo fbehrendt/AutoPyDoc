@@ -23,7 +23,7 @@ from .model_strategy import DocstringModelStrategy
 CHECK_OUTDATED_JSON_OUTPUT_REGEX = (
     r'({\s*"analysis":\s*"(.*)"\s*,\s*"matches"\s*:\s*(true|false)\s*})'
 )
-DOCSTRING_GENERATION_JSON_OUTPUT_REGEX = r"{.*}"
+DOCSTRING_GENERATION_JSON_OUTPUT_REGEX = r"{[^`]+}"
 
 
 class DeepseekR1PromptBuilder:
@@ -139,7 +139,6 @@ Please reason step by step, and always summarize your final answer using the fol
 
 <think>
 """
-        # TODO: add example back
 
         self.generate_module_docstring_prompt_template = """
 You are an AI documentation assistant, and your task is to analyze the code of a Python module.
@@ -167,8 +166,6 @@ Please reason step by step, and always summarize your final answer using the fol
 
 <think>
 """
-
-    # TODO: add example back
 
     def build_check_outdated_prompt(self, code_object: GptInputCodeObject) -> str:
         existing_docstring = code_object.docstring

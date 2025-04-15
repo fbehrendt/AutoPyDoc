@@ -1,6 +1,8 @@
 import logging
 import re
+from base64 import b64encode
 from collections.abc import Iterable
+from urllib.parse import urlparse, urlunparse
 
 import json5
 from ollama import Client
@@ -23,8 +25,7 @@ from .model_strategy import DocstringModelStrategy
 CHECK_OUTDATED_JSON_OUTPUT_REGEX = (
     r'({\s*"analysis":\s*"(.*)"\s*,\s*"matches"\s*:\s*(true|false)\s*})'
 )
-# DOCSTRING_GENERATION_JSON_OUTPUT_REGEX = r"({.*})|```\s*json(.*)\s*```"
-DOCSTRING_GENERATION_JSON_OUTPUT_REGEX = r"{.*}"
+DOCSTRING_GENERATION_JSON_OUTPUT_REGEX = r"{[^`]+}"
 
 
 class DeepseekR1PromptBuilder:
@@ -293,10 +294,12 @@ Please reason step by step, and always summarize your final answer using the fol
 
             return code_object.code
         elif isinstance(code_object, GptInputClassObject):
+            # TODO: build context from code object
             biggest_context = code_object.code
 
             return biggest_context
         elif isinstance(code_object, GptInputModuleObject):
+            # TODO: build context from code object
             biggest_context = code_object.code
 
             return biggest_context
@@ -304,34 +307,31 @@ Please reason step by step, and always summarize your final answer using the fol
             raise Exception("Unexpected code object type")
 
 
-class LocalDeepseekR1Strategy(DocstringModelStrategy):
-    def __init__(self, device="cuda", context_size=2048):
+class OllamaDeepseekR1Strategy(DocstringModelStrategy):
+    def __init__(self, context_size=2048, ollama_host=None):
         super().__init__()
 
         # TODO: remove temp workaround
         self.fallback_stategy = ModelStrategyFactory.create_strategy("mock")
 
-        self.device = device
         self.context_size = context_size
 
         self.prompt_builder = DeepseekR1PromptBuilder(context_size)
 
-        model_name = "DeepSeek-R1-Distill-Llama-8B-Q4_0.gguf"
+        self.model_name = "deepseek-r1:8b"
 
         self.logger.info(
             "Using GPT4All model [%s] with context size [%d]",
-            model_name,
+            self.model_name,
             self.context_size,
         )
 
+        (url, headers) = extract_authentication(ollama_host)
+
         self.client = Client(
-            host="http://localhost:11434",
+            host=url,
+            headers=headers,
         )
-
-        # self.logger.info("Using device [%s], requested [%s]", self.device)
-
-        # if self.gpt_model.device is None:
-        #     raise Exception("Unable to load gpt model")
 
     def check_outdated(self, code_object: GptInputCodeObject) -> bool:
         try:
@@ -341,9 +341,16 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
             self.logger.info("Starting checking existing docstring")
 
             stream = self.client.generate(
-                model="deepseek-r1:7b",
+                model=self.model_name,
                 prompt=prompt,
-                # format="json",
+                format={
+                    "type": "object",
+                    "properties": {
+                        "analysis": {"type": "string"},
+                        "matches": {"type": "boolean"},
+                    },
+                    "required": ["analysis", "matches"],
+                },
                 stream=True,
                 options={"num_ctx": self.context_size, "temperature": 0.6},
             )
@@ -372,9 +379,45 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                 self.logger.info("Starting docstring generation")
 
                 stream = self.client.generate(
-                    model="deepseek-r1:7b",
+                    model=self.model_name,
                     prompt=prompt,
-                    # format="json",
+                    format={
+                        "type": "object",
+                        "properties": {
+                            "description": {"type": "string"},
+                            "parameters": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {
+                                            "type": "string",
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                        },
+                                        "description": {
+                                            "type": "string",
+                                        },
+                                    },
+                                    "required": ["name", "type", "description"],
+                                },
+                            },
+                            "returns": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                    },
+                                },
+                                "required": ["type", "description"],
+                            },
+                        },
+                        "required": ["description", "parameters", "returns"],
+                    },
                     stream=True,
                     options={"num_ctx": self.context_size, "temperature": 0.6},
                 )
@@ -508,9 +551,51 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                 self.logger.info("Starting docstring generation")
 
                 stream = self.client.generate(
-                    model="deepseek-r1:7b",
+                    model=self.model_name,
                     prompt=prompt,
-                    # format="json",
+                    format={
+                        "type": "object",
+                        "properties": {
+                            "description": {"type": "string"},
+                            "class_attributes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {
+                                            "type": "string",
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                        },
+                                        "description": {
+                                            "type": "string",
+                                        },
+                                    },
+                                    "required": ["name", "type", "description"],
+                                },
+                            },
+                            "instance_attributes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {
+                                            "type": "string",
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                        },
+                                        "description": {
+                                            "type": "string",
+                                        },
+                                    },
+                                    "required": ["name", "type", "description"],
+                                },
+                            },
+                        },
+                        "required": ["description", "class_attributes", "instance_attributes"],
+                    },
                     stream=True,
                     options={"num_ctx": self.context_size, "temperature": 0.6},
                 )
@@ -518,7 +603,6 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                 generated_text = ""
 
                 for chunk in stream:
-                    print("chunk", chunk)
                     print(chunk["response"], end="", flush=True)
                     generated_text += chunk["response"]
 
@@ -628,9 +712,30 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                 self.logger.info("Starting docstring generation")
 
                 stream = self.client.generate(
-                    model="deepseek-r1:7b",
+                    model=self.model_name,
                     prompt=prompt,
-                    # format="json",
+                    format={
+                        "type": "object",
+                        "properties": {
+                            "description": {"type": "string"},
+                            "exceptions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "exception_class": {
+                                            "type": "string",
+                                        },
+                                        "description": {
+                                            "type": "string",
+                                        },
+                                    },
+                                    "required": ["exception_class", "description"],
+                                },
+                            },
+                        },
+                        "required": ["description", "parameters"],
+                    },
                     stream=True,
                     options={"num_ctx": self.context_size, "temperature": 0.6},
                 )
@@ -638,7 +743,6 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                 generated_text = ""
 
                 for chunk in stream:
-                    print(chunk["response"], end="", flush=True)
                     generated_text += chunk["response"]
 
                 self.logger.info("Finished docstring generation [%s]", generated_text)
@@ -696,8 +800,7 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                 # TODO: Error handling not implement yet
                 return self.fallback_stategy.generate_docstring(code_object)
         else:
-            # Not Implement Yet
-            return self.fallback_stategy.generate_docstring(code_object)
+            raise Exception("Unexpected code object type")
 
     def _extract_check_outdated_output(self, result: str) -> bool:
         match = re.search(CHECK_OUTDATED_JSON_OUTPUT_REGEX, result, re.DOTALL | re.IGNORECASE)
@@ -720,3 +823,27 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
         analysis_json = json5.loads(analysis_json_str)
 
         return analysis_json
+
+
+def extract_authentication(url: str) -> tuple[str, dict[str, str]]:
+    parsed_url = urlparse(url)
+    headers = {}
+    stripped_url_str = url
+
+    if parsed_url.username:
+        username = parsed_url.username
+        password = parsed_url.password or ""
+
+        auth_string = f"{username}:{password}"
+
+        encoded_bytes = b64encode(auth_string.encode("utf-8"))
+        headers = {"Authorization": f"Basic {encoded_bytes.decode('ascii')}"}
+
+        new_netloc = parsed_url.hostname
+        if parsed_url.port:
+            new_netloc += f":{parsed_url.port}"
+
+        stripped_url_parts = parsed_url._replace(netloc=new_netloc)
+        stripped_url_str = urlunparse(stripped_url_parts)
+
+    return stripped_url_str, headers

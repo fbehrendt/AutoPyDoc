@@ -55,9 +55,11 @@ class GptInterface:
                 else:
                     try:
                         output = self.model.generate_docstring(current_code_object)
+                    except KeyboardInterrupt as e:
+                        # Let user abort execution
+                        raise e
                     except Exception as e:
                         self.logger.fatal("Error while processing batch", exc_info=e)
-                        raise e
 
                     callback(output)
             except KeyboardInterrupt as e:

@@ -44,7 +44,7 @@ class AutoPyDoc:
         # initialize gpt interface early to fail early if model is unavailable or unable to load
         # TODO: make name configurable (see factory for available model names)
         # self.gpt_interface = GptInterface("mock")
-        self.gpt_interface = GptInterface("local_deepseek")
+        self.gpt_interface = GptInterface("ollama")
 
         # pull repo, create code representation, create dependencies
         self.debug = debug
