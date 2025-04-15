@@ -1,4 +1,5 @@
 import logging
+import os
 
 from code_representation import ClassObject, CodeRepresenter, MethodObject, ModuleObject
 from docstring_builder import create_docstring
@@ -31,6 +32,7 @@ class AutoPyDoc:
         username: str,
         pull_request_token=None,
         branch: str = "main",
+        ollama_host: str = None,
         debug=False,
     ) -> None:  # repo_path will be required later
         """Generates new docstrings for modified parts of the code
@@ -44,7 +46,8 @@ class AutoPyDoc:
         # initialize gpt interface early to fail early if model is unavailable or unable to load
         # TODO: make name configurable (see factory for available model names)
         # self.gpt_interface = GptInterface("mock")
-        self.gpt_interface = GptInterface("ollama")
+        # self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
+        self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
 
         # pull repo, create code representation, create dependencies
         self.debug = debug
@@ -282,6 +285,7 @@ if __name__ == "__main__":
     auto_py_doc.main(
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo",
         username="fbehrendt",
+        ollama_host=os.getenv("OLLAMA_HOST", default=None),
         debug=True,
     )
     # auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)

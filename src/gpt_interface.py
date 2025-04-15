@@ -9,11 +9,9 @@ from models import ModelStrategyFactory
 
 
 class GptInterface:
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, **kwargs):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.model = ModelStrategyFactory.create_strategy(
-            model_name, device="cuda", context_size=2**13
-        )
+        self.model = ModelStrategyFactory.create_strategy(model_name, **kwargs)
 
     def estimate(self, full_input: list[GptInputCodeObject]):
         pass  # TODO fill this method
@@ -55,12 +53,15 @@ class GptInterface:
                 else:
                     try:
                         output = self.model.generate_docstring(current_code_object)
-                    except KeyboardInterrupt as e:
-                        # Let user abort execution
-                        raise e
                     except Exception as e:
-                        self.logger.fatal("Error while processing batch", exc_info=e)
+                        self.logger.error("Error while processing batch. Retrying", exc_info=e)
+                        # retry
+                        try:
+                            output = self.model.generate_docstring(current_code_object)
+                        except Exception as e:
+                            self.logger.fatal("Error while processing batch", exc_info=e)
+                            raise e
 
-                    callback(output)
+                        callback(output)
             except KeyboardInterrupt as e:
                 raise e
