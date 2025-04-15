@@ -23,6 +23,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "repo_owner",
         help="Owner of the target repository",
+        "ollama_host", help="Full URL to Ollama host (supports basic auth)", required=False
     )
     args = parser.parse_args()
 
@@ -32,6 +33,7 @@ if __name__ == "__main__":
         username=args.username,
         pull_request_token=args.pull_request_token,
         branch=args.branch,
+        ollama_host=args.ollama_host,
         debug=True,
         repo_owner=None,
     )
