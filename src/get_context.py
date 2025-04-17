@@ -238,6 +238,9 @@ class CodeParser:
                                         if not self.debug:
                                             raise NotImplementedError
                                     value = value.value
+                    # Do not include recursive calls, to prevent unsolvable dependencies
+                    if called_func_name == parent_obj.name:
+                        continue
                     if variable_to_resolve is not None:
                         # TODO resolve variable
                         matches = self.resolve_variable(
