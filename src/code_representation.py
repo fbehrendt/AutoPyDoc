@@ -573,7 +573,10 @@ class ClassObject(CodeObject):
         :param attribute_name: attribute name
         :type attribute_name: str
         """
-        self.class_attributes.append(attribute)
+        if attribute["name"] not in [
+            attr["name"] for attr in [*self.class_attributes, *self.instance_attributes]
+        ]:
+            self.class_attributes.append(attribute)
 
     def add_instance_attribute(self, attribute: dict[str, str]):
         """
@@ -582,7 +585,9 @@ class ClassObject(CodeObject):
         :param attribute_name: attribute name
         :type attribute_name: str
         """
-        if attribute["name"] not in [attr["name"] for attr in self.class_attributes]:
+        if attribute["name"] not in [
+            attr["name"] for attr in [*self.class_attributes, *self.instance_attributes]
+        ]:
             self.instance_attributes.append(attribute)
 
     def get_context(self) -> dict[str, list[int] | int]:
