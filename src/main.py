@@ -70,6 +70,17 @@ class AutoPyDoc:
             logger=self.logger,
         )
 
+        def save_objects(objects):
+            content = ""
+            for object in objects.values():
+                print(str(object.__dict__))
+                content += str(object.__dict__)
+                content += "\n"
+            with open(file="saved_objects.txt", mode="w") as f:
+                f.write(content)
+
+        # save_objects(self.code_parser.code_representer.objects)
+
         self.code_parser.extract_class_and_method_calls()
         self.code_parser.extract_args_and_return_type()
         self.code_parser.extract_exceptions()
@@ -175,7 +186,7 @@ class AutoPyDoc:
                             raise NotImplementedError
                 else:
                     code_obj.retry = 1
-                return  # this prevents code_obj.outdate from being set to False and code_obj.is_updated from being set to True, causing it to be included in the next batch again.
+                return  # this prevents code_obj.outdated from being set to False and code_obj.is_updated from being set to True, causing it to be included in the next batch again.
 
             # insert new docstring in the file
             self.repo.insert_docstring(
@@ -234,7 +245,7 @@ class AutoPyDoc:
             elif isinstance(code_obj, ModuleObject) and isinstance(node, ast.Module):
                 old_docstring = ast.get_docstring(node, clean=True) or ""
                 break
-        if old_docstring == code_obj.old_docstring:
+        if code_obj.old_docstring is not None and old_docstring == code_obj.old_docstring:
             print("+++docstrings are equal+++")
             return developer_changes
         else:
@@ -286,7 +297,7 @@ class AutoPyDoc:
 if __name__ == "__main__":
     auto_py_doc = AutoPyDoc()
     auto_py_doc.main(
-        repo_path="https://github.com/fbehrendt/bachelor_testing_repo",
+        repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
         ollama_host=os.getenv("OLLAMA_HOST", default=None),
         debug=True,

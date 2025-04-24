@@ -208,11 +208,29 @@ class CodeObject:
             docstring=self.docstring,
             code=self.code,
             context=self.get_context(),
-            context_docstrings=code_representer.get_context_docstrings(self.id),
+            context_objects=code_representer.get_context_objects(self.id),
         )
 
     def get_sent_to_gpt(self) -> bool:
         return self.send_to_gpt
+
+    def get_context_object(self):
+        return ContextObject(
+            id=self.id,
+            name=self.name,
+            code_type=self.code_type,
+            docstring=self.docstring,
+            code=self.code,
+        )
+
+
+@dataclass
+class ContextObject:
+    id: int = field(compare=True, hash=True)
+    name: str = field(compare=True, hash=True)
+    code_type: str = field(compare=True, hash=True)
+    docstring: str = field(compare=True, hash=True)
+    code: str = field(compare=True, hash=True)
 
 
 @dataclass(unsafe_hash=True)
@@ -302,9 +320,24 @@ class ModuleObject(CodeObject):
             docstring=self.docstring,
             code=self.code,
             context=self.get_context(),
-            context_docstrings=code_representer.get_context_docstrings(self.id),
+            context_objects=code_representer.get_context_objects(self.id),
             exceptions=self.exceptions,
         )
+
+    def get_context_object(self):
+        return ModuleContextObject(
+            id=self.id,
+            name=self.name,
+            code_type=self.code_type,
+            docstring=self.docstring,
+            code=self.code,
+            exceptions=self.exceptions,
+        )
+
+
+@dataclass
+class ModuleContextObject(ContextObject):
+    exceptions: list[str] = field(compare=True, hash=True)
 
 
 @dataclass(unsafe_hash=True)
@@ -439,17 +472,32 @@ class MethodObject(CodeObject):
             docstring=self.docstring,
             code=self.code,
             context=self.get_context(),
-            context_docstrings=code_representer.get_context_docstrings(self.id),
+            context_objects=code_representer.get_context_objects(self.id),
             exceptions=self.exceptions,
             parent_method_id=self.outer_method_id,
             parent_class_id=self.outer_class_id,
             parent_module_id=self.module_id,
-            parameters=[
-                param["name"] for param in code_representer.get_arguments(self.id)
-            ],
+            parameters=[param["name"] for param in code_representer.get_arguments(self.id)],
             missing_parameters=self.get_missing_arg_types(),
             return_missing=self.missing_return_type,
         )
+
+    def get_context_object(self):
+        return MethodContextObject(
+            id=self.id,
+            name=self.name,
+            code_type=self.code_type,
+            docstring=self.docstring,
+            code=self.code,
+            exceptions=self.exceptions,
+            arguments=self.arguments,
+        )
+
+
+@dataclass
+class MethodContextObject(ContextObject):
+    exceptions: list[str] = field(compare=True, hash=True)
+    arguments: list | None = field(compare=True, hash=True)
 
 
 @dataclass(unsafe_hash=True)
@@ -567,7 +615,7 @@ class ClassObject(CodeObject):
             docstring=self.docstring,
             code=self.code,
             context=self.get_context(),
-            context_docstrings=code_representer.get_context_docstrings(self.id),
+            context_objects=code_representer.get_context_objects(self.id),
             parent_method_id=self.outer_method_id,
             parent_class_id=self.outer_class_id,
             parent_module_id=self.module_id,
@@ -577,16 +625,31 @@ class ClassObject(CodeObject):
             class_attributes=self.class_attributes,
             instance_attributes=self.instance_attributes,
             missing_class_attribute_types=[
-                attr["name"]
-                for attr in self.class_attributes
-                if "type" not in attr.keys()
+                attr["name"] for attr in self.class_attributes if "type" not in attr.keys()
             ],
             missing_instance_attributes_types=[
-                attr["name"]
-                for attr in self.instance_attributes
-                if "type" not in attr.keys()
+                attr["name"] for attr in self.instance_attributes if "type" not in attr.keys()
             ],
         )
+
+    def get_context_object(self):
+        return ClassContextObject(
+            id=self.id,
+            name=self.name,
+            code_type=self.code_type,
+            docstring=self.docstring,
+            code=self.code,
+            exceptions=self.exceptions,
+            class_attributes=self.class_attributes,
+            instance_attributes=self.instance_attributes,
+        )
+
+
+@dataclass
+class ClassContextObject(ContextObject):
+    exceptions: list[str] = field(compare=True, hash=True)
+    class_attributes: list[str] = field(compare=True, hash=True)
+    instance_attributes: list[str] = field(compare=True, hash=True)
 
 
 class CodeRepresenter:
@@ -630,9 +693,7 @@ class CodeRepresenter:
         :return: docstring of the CodeObject or None
         :return type: str|None
         """
-        if code_obj_id in self.objects.keys() and hasattr(
-            self.objects[code_obj_id], "docstring"
-        ):
+        if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "docstring"):
             return self.objects[code_obj_id].docstring
         return None
 
@@ -646,9 +707,7 @@ class CodeRepresenter:
         :return: code of the CodeObject or None
         :return type: str|None
         """
-        if code_obj_id in self.objects.keys() and hasattr(
-            self.objects[code_obj_id], "code"
-        ):
+        if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "code"):
             return self.objects[code_obj_id].code
         return None
 
@@ -662,9 +721,7 @@ class CodeRepresenter:
         :return: arguments of the CodeObject or None
         :return type: list[dict[str, str]] | None
         """
-        if code_obj_id in self.objects.keys() and hasattr(
-            self.objects[code_obj_id], "arguments"
-        ):
+        if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "arguments"):
             return [
                 argument
                 for argument in self.objects[code_obj_id].arguments
@@ -682,9 +739,7 @@ class CodeRepresenter:
         :return: return type of the CodeObject or None
         :return type: str|None
         """
-        if code_obj_id in self.objects.keys() and hasattr(
-            self.objects[code_obj_id], "return_type"
-        ):
+        if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "return_type"):
             return self.objects[code_obj_id].return_type
         return None
 
@@ -698,9 +753,7 @@ class CodeRepresenter:
         :return: exceptions raised by the CodeObject or None
         :return type: list[str]|None
         """
-        if code_obj_id in self.objects.keys() and hasattr(
-            self.objects[code_obj_id], "exceptions"
-        ):
+        if code_obj_id in self.objects.keys() and hasattr(self.objects[code_obj_id], "exceptions"):
             return self.objects[code_obj_id].exceptions
         return None
 
@@ -734,9 +787,7 @@ class CodeRepresenter:
             return False
         return code_obj.missing_return_type
 
-    def get_args_types_exceptions(
-        self, code_obj_id: int
-    ) -> dict[str, list[str] | str | bool]:
+    def get_args_types_exceptions(self, code_obj_id: int) -> dict[str, list[str] | str | bool]:
         """
         Get information about arguments, return and exceptions of a CodeObject
 
@@ -780,9 +831,7 @@ class CodeRepresenter:
                     matches.append(object)
         return matches
 
-    def get_by_type_filename_and_code(
-        self, code_type: str, filename: str, code: str
-    ) -> CodeObject:
+    def get_by_type_filename_and_code(self, code_type: str, filename: str, code: str) -> CodeObject:
         """
         Get CodeObjects by filename
 
@@ -869,6 +918,35 @@ class CodeRepresenter:
                 result[key] = code_obj_2.code
         return result
 
+    def get_context_objects(self, code_obj_id: int) -> ContextObject:
+        """
+        Get ContextObjects as a dict of CodeObject id to ContextObject
+
+        :param code_obj_id: CodeObject id
+        :type code_obj_id: int
+
+        :return: dictionary of CodeObject ids to ContextObject
+        :return type: dict[int, ContextObject]
+        """
+        code_obj = self.get(code_obj_id)
+        code_obj_context = code_obj.get_context()
+        keys = set()
+        for sub_list in code_obj_context.values():
+            if isinstance(sub_list, set):
+                keys.update(sub_list)
+        if isinstance(code_obj, MethodObject) or isinstance(code_obj, ClassObject):
+            keys.add(code_obj.outer_class_id)
+            keys.add(code_obj.module_id)
+        if isinstance(code_obj, ClassObject):
+            keys.add(code_obj.inherited_from)
+        result = {}
+        for key in keys:
+            if key is None:
+                continue
+            code_obj_2 = self.get(key)
+            result[key] = code_obj_2.get_context_object()
+        return result
+
     def depends_on_outdated_code(self, code_obj_id: int) -> bool:
         """
         Return if the CodeObject depends on other CodeObjects. Relevant for the order of docstring generation
@@ -915,15 +993,9 @@ class CodeRepresenter:
         return [code_obj.id for code_obj in self.objects.values() if code_obj.outdated]
 
     def get_sent_to_gpt_ids(self) -> list[int]:
-        return [
-            code_obj.id
-            for code_obj in self.objects.values()
-            if code_obj.get_sent_to_gpt()
-        ]
+        return [code_obj.id for code_obj in self.objects.values() if code_obj.get_sent_to_gpt()]
 
-    def generate_next_batch(
-        self, ignore_dependencies=False
-    ) -> list[GptInputCodeObject]:
+    def generate_next_batch(self, ignore_dependencies=False) -> list[GptInputCodeObject]:
         ids = [
             id
             for id in self.get_outdated_ids()
@@ -965,9 +1037,7 @@ class CodeRepresenter:
     def get_changed_files(self) -> list[str]:
         changed_files = set()
         for filename in [
-            code_obj.filename
-            for code_obj in self.objects.values()
-            if code_obj.is_updated
+            code_obj.filename for code_obj in self.objects.values() if code_obj.is_updated
         ]:
             changed_files.add(filename)
         return list(changed_files)
