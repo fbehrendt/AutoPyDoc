@@ -990,7 +990,7 @@ class CodeRepresenter:
         code_obj.outdated = False
 
     def get_outdated_ids(self) -> list[int]:
-        return [code_obj.id for code_obj in self.objects.values() if code_obj.outdated]
+        return [code_obj.id for code_obj in self.objects.values() if self.is_outdated(code_obj.id)]
 
     def get_sent_to_gpt_ids(self) -> list[int]:
         return [code_obj.id for code_obj in self.objects.values() if code_obj.get_sent_to_gpt()]
@@ -1051,3 +1051,26 @@ class CodeRepresenter:
             if code_obj.module_id is not None:
                 module_obj = self.get(code_obj.module_id)
                 module_obj.outdated = True
+
+    def is_outdated(self, code_obj_id):
+        code_obj = self.get(code_obj_id)
+        if code_obj.outdated:
+            return True
+        for dependency_id in [*code_obj.called_methods, *code_obj.called_classes]:
+            dependency_obj = self.get(dependency_id)
+            if dependency_obj.is_outdated() and not dependency_obj.is_updated:
+                return True
+        if isinstance(code_obj, ClassObject):
+            for dependency_id in [
+                *code_obj.class_ids,
+                *code_obj.method_ids,
+                code_obj.inherited_from,
+            ]:
+                dependency_obj = self.get(dependency_id)
+                if dependency_obj.is_outdated() and not dependency_obj.is_updated:
+                    return True
+        if isinstance(code_obj, ModuleObject):
+            for dependency_id in [*code_obj.class_ids, *code_obj.method_ids]:
+                dependency_obj = self.get(dependency_id)
+                if dependency_obj.is_outdated() and not dependency_obj.is_updated:
+                    return True
