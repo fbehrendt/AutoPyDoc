@@ -120,7 +120,8 @@ class CodeObject:
         :param called_method_id: id of the called method
         :type called_method_id: int
         """
-        self.called_methods.add(called_method_id)
+        if called_method_id != self.id:
+            self.called_methods.add(called_method_id)
 
     def add_called_class(self, called_class_id: int):
         """
@@ -129,7 +130,8 @@ class CodeObject:
         :param called_class_id: id of the called class
         :type called_class_id: int
         """
-        self.called_classes.add(called_class_id)
+        if called_class_id != self.id:
+            self.called_classes.add(called_class_id)
 
     def add_caller_method(self, caller_method_id: int):
         """
@@ -431,7 +433,8 @@ class MethodObject(CodeObject):
         :param method_id: method id
         :type method_id: int
         """
-        self.method_ids.add(method_id)
+        if method_id != self.id:
+            self.method_ids.add(method_id)
 
     def get_missing_arg_types(self) -> set[str]:
         """
@@ -555,7 +558,8 @@ class ClassObject(CodeObject):
         :param class_id: class id
         :type class_id: int
         """
-        self.class_ids.add(class_id)
+        if class_id != self.id:
+            self.class_ids.add(class_id)
 
     def add_method_id(self, method_id: int):
         """
