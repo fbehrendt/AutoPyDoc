@@ -77,7 +77,7 @@ class CodeObject:
     filename: str = field(compare=True, hash=True, metadata={"frozen": True})
     ast: AST = field(compare=False, hash=False, metadata={"frozen": True})
     docstring: str | None = field(compare=False, hash=False)
-    code: str | None = field(compare=True, hash=True, metadata={"frozen": True})
+    code: str | None = field(compare=True, hash=True, metadata={"frozen": False})
     parent_id: int | None = field(compare=True, hash=True, metadata={"frozen": True})
 
     def __post_init__(self):
