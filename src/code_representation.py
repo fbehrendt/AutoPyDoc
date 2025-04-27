@@ -1075,6 +1075,9 @@ class CodeRepresenter:
                 *code_obj.method_ids,
                 code_obj.inherited_from,
             ]:
+                if dependency_id is None:
+                    continue
+
                 dependency_obj = self.get(dependency_id)
                 if self.is_outdated(dependency_obj.id) and not dependency_obj.is_updated:
                     return True

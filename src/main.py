@@ -231,6 +231,8 @@ class AutoPyDoc:
         sys.stderr = open(os.devnull, "w")
         code_ast = ast.parse(open(code_obj.filename).read())
         sys.stderr = sys.__stderr__
+        old_docstring = -1
+
         for node in ast.walk(code_ast):
             if isinstance(code_obj, MethodObject) and (
                 isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef)
@@ -245,6 +247,10 @@ class AutoPyDoc:
             elif isinstance(code_obj, ModuleObject) and isinstance(node, ast.Module):
                 old_docstring = ast.get_docstring(node, clean=True) or ""
                 break
+
+        if old_docstring == -1:
+            # something new was added
+            return developer_changes
         if code_obj.old_docstring is not None and old_docstring == code_obj.old_docstring:
             print("+++docstrings are equal+++")
             return developer_changes
