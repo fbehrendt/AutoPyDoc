@@ -76,6 +76,6 @@ class GptInterface:
                             self.logger.fatal("Error while processing batch", exc_info=e)
                             raise e
 
-                        callback(output)
+                    callback(output)
             except KeyboardInterrupt as e:
                 raise e
