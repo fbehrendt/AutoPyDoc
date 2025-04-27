@@ -227,7 +227,9 @@ class AutoPyDoc:
 
         developer_changes = []
 
+        self.repo.repo.git.stash("save")
         self.repo.repo.git.checkout(self.repo.latest_commit_hash)
+
         sys.stderr = open(os.devnull, "w")
         code_ast = ast.parse(open(code_obj.filename).read())
         sys.stderr = sys.__stderr__
@@ -267,7 +269,13 @@ class AutoPyDoc:
                 )
             for developer_change in developer_changes:
                 print(developer_change)
-        self.repo.repo.git.checkout("HEAD")
+
+        self.repo.repo.git.checkout(self.repo.current_commit)
+        git_stash_list = self.repo.repo.git.stash("list")
+        if len(git_stash_list) > 0:
+            self.repo.repo.git.stash("pop")
+            self.repo.repo.git.stash("clear")
+
         if developer_changes is None:
             print()
         return developer_changes
