@@ -1,17 +1,17 @@
+import os
+import pathlib
+import sys
 from ast import AST
 from dataclasses import dataclass, field, fields
 from typing import List
-import pathlib
-import sys
-import os
 
 file_path = os.path.dirname(os.path.realpath(__file__))
 project_dir = str(pathlib.Path(file_path).parent.parent.absolute())
 sys.path.append(project_dir)
 from gpt_input import (
+    GptInputClassObject,
     GptInputCodeObject,
     GptInputMethodObject,
-    GptInputClassObject,
     GptInputModuleObject,
 )
 
@@ -1067,7 +1067,7 @@ class CodeRepresenter:
             return True
         for dependency_id in [*code_obj.called_methods, *code_obj.called_classes]:
             dependency_obj = self.get(dependency_id)
-            if dependency_obj.is_outdated() and not dependency_obj.is_updated:
+            if self.is_outdated(dependency_obj.id) and not dependency_obj.is_updated:
                 return True
         if isinstance(code_obj, ClassObject):
             for dependency_id in [
@@ -1076,10 +1076,10 @@ class CodeRepresenter:
                 code_obj.inherited_from,
             ]:
                 dependency_obj = self.get(dependency_id)
-                if dependency_obj.is_outdated() and not dependency_obj.is_updated:
+                if self.is_outdated(dependency_obj.id) and not dependency_obj.is_updated:
                     return True
         if isinstance(code_obj, ModuleObject):
             for dependency_id in [*code_obj.class_ids, *code_obj.method_ids]:
                 dependency_obj = self.get(dependency_id)
-                if dependency_obj.is_outdated() and not dependency_obj.is_updated:
+                if self.is_outdated(dependency_obj.id) and not dependency_obj.is_updated:
                     return True
