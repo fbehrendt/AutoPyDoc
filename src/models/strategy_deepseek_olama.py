@@ -2,7 +2,11 @@ import logging
 import re
 from base64 import b64encode
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse, urlunparse
+
+if TYPE_CHECKING:
+    from code_representation import ContextObject
 
 import json5
 from ollama import Client
@@ -19,7 +23,6 @@ from gpt_input import (
     GptOutputModule,
 )
 
-from .model_factory import ModelStrategyFactory
 from .model_strategy import DocstringModelStrategy
 
 CHECK_OUTDATED_JSON_OUTPUT_REGEX = (
@@ -215,36 +218,41 @@ Please reason step by step, and always summarize your final answer using the fol
         if isinstance(code_object, GptInputMethodObject):
             context_summary = ""
 
-            if code_object.context_docstrings is not None and code_object.context is not None:
-                mapped_context: dict[str, list[str]] = {}
+
+            if code_object.context_objects is not None and code_object.context is not None:
+                mapped_context: dict[str, list[ContextObject]] = {}
                 for key, value in code_object.context.items():
                     if value is None:
                         continue
                     elif isinstance(value, int):
-                        mapped_context[key] = [code_object.context_docstrings.get(value)]
+                        mapped_context[key] = [code_object.context_objects.get(value)]
                     elif isinstance(value, Iterable):
                         mapped_context[key] = [
-                            code_object.context_docstrings.get(item) for item in value
+                            code_object.context_objects.get(item) for item in value
                         ]
                     else:
                         raise Exception("Unexpected context type")
 
                 raw_context_summary = ""
                 for called_method in mapped_context["called_methods"]:
-                    raw_context_summary += f"<called-method>\n{called_method}\n</called-method>\n"
+                    raw_context_summary += (
+                        f"<called-method>\n{called_method.docstring}\n</called-method>\n"
+                    )
                 for called_class in mapped_context["called_classes"]:
-                    raw_context_summary += f"<called-class>\n{called_class}\n</called-class>\n"
+                    raw_context_summary += (
+                        f"<called-class>\n{called_class.docstring}\n</called-class>\n"
+                    )
                 for called_by_method in mapped_context["called_by_methods"]:
                     raw_context_summary += (
-                        f"<called-by-method>\n{called_by_method}\n</called-by-method>\n"
+                        f"<called-by-method>\n{called_by_method.docstring}\n</called-by-method>\n"
                     )
                 for called_by_class in mapped_context["called_by_classes"]:
                     raw_context_summary += (
-                        f"<called-by-class>\n{called_by_class}\n</called-by-class>\n"
+                        f"<called-by-class>\n{called_by_class.docstring}\n</called-by-class>\n"
                     )
                 for called_by_module in mapped_context["called_by_modules"]:
                     raw_context_summary += (
-                        f"<called-by-module>\n{called_by_module}\n</called-by-module>\n"
+                        f"<called-by-module>\n{called_by_module.docstring}\n</called-by-module>\n"
                     )
 
                 context_summary += f"<related-code>\n{raw_context_summary}</related-code>\n"
@@ -252,20 +260,29 @@ Please reason step by step, and always summarize your final answer using the fol
             parent_context_summary = ""
             if (
                 code_object.parent_method_id is not None
-                and code_object.parent_method_id in code_object.context_docstrings
+                and code_object.parent_method_id in code_object.context_objects
             ):
-                parent_context_summary += f"<parent-method>\n{code_object.context_docstrings.get(code_object.parent_method_id)}\n</parent-method>\n"
+                parent_method = code_object.context_objects.get(code_object.parent_method_id)
+                parent_context_summary += (
+                    f"<parent-method>\n{parent_method.docstring}\n</parent-method>\n"
+                )
             if (
                 code_object.parent_class_id is not None
-                and code_object.parent_class_id in code_object.context_docstrings
+                and code_object.parent_class_id in code_object.context_objects
             ):
-                parent_context_summary += f"<parent-class>\n{code_object.context_docstrings.get(code_object.parent_class_id)}\n</parent-class>\n"
+                parent_class = code_object.context_objects.get(code_object.parent_class_id)
+                parent_context_summary += (
+                    f"<parent-class>\n{parent_class.docstring}\n</parent-class>\n"
+                )
             if (
                 code_object.parent_module_id is not None
-                and code_object.parent_module_id in code_object.context_docstrings
-                and code_object.context_docstrings.get(code_object.parent_module_id) is not None
+                and code_object.parent_module_id in code_object.context_objects
+                and code_object.context_objects.get(code_object.parent_module_id) is not None
             ):
-                parent_context_summary += f"<parent-module>\n{code_object.context_docstrings.get(code_object.parent_module_id)}\n</parent-module>\n"
+                parent_module = code_object.context_objects.get(code_object.parent_module_id)
+                parent_context_summary += (
+                    f"<parent-module>\n{parent_module.docstring}\n</parent-module>\n"
+                )
 
             method_summary = f"""
 <method name="{code_object.name}">
@@ -312,7 +329,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
         super().__init__()
 
         # TODO: remove temp workaround
-        self.fallback_stategy = ModelStrategyFactory.create_strategy("mock")
+        # self.fallback_stategy = ModelStrategyFactory.create_strategy("mock")
 
         self.context_size = context_size
 
@@ -443,14 +460,14 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 for parameter_name in code_object.parameters:
                     try:
                         generated_parameters = generated_output["parameters"]
-                        matching_exception = next(
+                        matching_instance_attribute = next(
                             filter(
                                 lambda x: "name" in x and x["name"] == parameter_name,
                                 generated_parameters,
                             )
                         )
 
-                        parameter_types[parameter_name] = matching_exception["type"]
+                        parameter_types[parameter_name] = matching_instance_attribute["type"]
                     except StopIteration:
                         parameter_types[parameter_name] = False
                     except KeyError:
@@ -468,13 +485,15 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                         generated_parameters = generated_output[parameter_name] = generated_output[
                             "parameters"
                         ]
-                        matching_exception = next(
+                        matching_instance_attribute = next(
                             filter(
                                 lambda x: "name" in x and x["name"] == parameter_name,
                                 generated_parameters,
                             )
                         )
-                        parameter_descriptions[parameter_name] = matching_exception["description"]
+                        parameter_descriptions[parameter_name] = matching_instance_attribute[
+                            "description"
+                        ]
                     except StopIteration:
                         parameter_descriptions[parameter_name] = False
                     except KeyError:
@@ -492,13 +511,15 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                         generated_parameters = generated_output[exception] = generated_output[
                             "parameters"
                         ]
-                        matching_exception = next(
+                        matching_instance_attribute = next(
                             filter(
                                 lambda x: "name" in x and x["name"] == parameter_name,
                                 generated_parameters,
                             )
                         )
-                        parameter_descriptions[parameter_name] = matching_exception["description"]
+                        parameter_descriptions[parameter_name] = matching_instance_attribute[
+                            "description"
+                        ]
                     except StopIteration:
                         parameter_descriptions[parameter_name] = False
                     except KeyError:
@@ -542,7 +563,8 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 )
 
                 # TODO: Error handling not implement yet
-                return self.fallback_stategy.generate_docstring(code_object)
+                # return self.fallback_stategy.generate_docstring(code_object)
+                raise e
         elif isinstance(code_object, gpt_input.GptInputClassObject):
             try:
                 prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
@@ -626,16 +648,18 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                         generated_exceptions = generated_output[instance_attribute_name] = (
                             generated_output["class_attributes"]
                         )
-                        matching_exception = next(
+                        matching_instance_attribute = next(
                             filter(
                                 lambda x: "name" in x and x["name"] == instance_attribute_name,
                                 generated_exceptions,
                             )
                         )
-                        class_attribute_descriptions[instance_attribute_name] = matching_exception[
-                            "description"
-                        ]
-                        class_attribute_types[instance_attribute_name] = matching_exception["type"]
+                        class_attribute_descriptions[instance_attribute_name] = (
+                            matching_instance_attribute["description"]
+                        )
+                        class_attribute_types[instance_attribute_name] = (
+                            matching_instance_attribute["type"]
+                        )
                     except StopIteration:
                         class_attribute_descriptions[instance_attribute_name] = False
                         class_attribute_types[instance_attribute_name] = False
@@ -654,22 +678,24 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 instance_attribute_descriptions: dict[str, str | bool] = {}
                 instance_attribute_types: dict[str, str | bool] = {}
 
-                for instance_attribute_name in code_object.instance_attributes:
+                for instance_attribute in code_object.instance_attributes:
+                    instance_attribute_name = instance_attribute["name"]
+
                     try:
-                        generated_exceptions = generated_output["instance_attributes"]
-                        matching_exception = next(
+                        generated_instance_attributes = generated_output["instance_attributes"]
+                        matching_instance_attribute = next(
                             filter(
                                 lambda x: "name" in x and x["name"] == instance_attribute_name,
-                                generated_exceptions,
+                                generated_instance_attributes,
                             )
                         )
 
                         instance_attribute_descriptions[instance_attribute_name] = (
-                            matching_exception["description"]
+                            matching_instance_attribute["description"]
                         )
-                        instance_attribute_types[instance_attribute_name] = matching_exception[
-                            "type"
-                        ]
+                        instance_attribute_types[instance_attribute_name] = (
+                            matching_instance_attribute["type"]
+                        )
                     except StopIteration:
                         instance_attribute_descriptions[instance_attribute_name] = False
                         instance_attribute_types[instance_attribute_name] = False
@@ -703,7 +729,8 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 )
 
                 # TODO: Error handling not implement yet
-                return self.fallback_stategy.generate_docstring(code_object)
+                # return self.fallback_stategy.generate_docstring(code_object)
+                raise e
         elif isinstance(code_object, gpt_input.GptInputModuleObject):
             try:
                 prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
@@ -762,7 +789,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 for exception_class in code_object.exceptions:
                     try:
                         generated_exceptions = generated_output["exceptions"]
-                        matching_exception = next(
+                        matching_instance_attribute = next(
                             filter(
                                 lambda x: "exception_class" in x
                                 and x["exception_class"] == exception_class,
@@ -770,7 +797,9 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                             )
                         )
 
-                        exception_descriptions[exception_class] = matching_exception["description"]
+                        exception_descriptions[exception_class] = matching_instance_attribute[
+                            "description"
+                        ]
                     except StopIteration:
                         exception_descriptions[exception_class] = False
                     except KeyError:
@@ -798,7 +827,8 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 )
 
                 # TODO: Error handling not implement yet
-                return self.fallback_stategy.generate_docstring(code_object)
+                # return self.fallback_stategy.generate_docstring(code_object)
+                raise e
         else:
             raise Exception("Unexpected code object type")
 
