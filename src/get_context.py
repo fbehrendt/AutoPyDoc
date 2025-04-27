@@ -27,7 +27,7 @@ class CodeParser:
     def __init__(
         self,
         code_representer: CodeRepresenter,
-        working_dir: str,
+        working_dir: str | None,
         logger,
         debug: bool = False,
         files: list = [],
@@ -45,7 +45,8 @@ class CodeParser:
         self.working_dir = working_dir
         self.debug = debug
         self.logger = logger
-        self.import_finder = ImportFinder(working_dir=working_dir, debug=self.debug)
+        if self.working_dir is not None:
+            self.import_finder = ImportFinder(working_dir=working_dir, debug=self.debug)
         for file in files:
             self.add_file(file)
 
@@ -60,7 +61,8 @@ class CodeParser:
         try:
             sys.stderr = open(os.devnull, "w")
             tree = ast.parse(open(filename).read())
-            self.import_finder.add_file(filename)
+            if self.working_dir is not None:
+                self.import_finder.add_file(filename)
             self.extract_file_modules_classes_and_methods(
                 tree=tree, file_path=os.path.join(dir, filename)
             )
@@ -238,6 +240,9 @@ class CodeParser:
                                         if not self.debug:
                                             raise NotImplementedError
                                     value = value.value
+                    # Do not include recursive calls, to prevent unsolvable dependencies
+                    if called_func_name == parent_obj.name:
+                        continue
                     if variable_to_resolve is not None:
                         # TODO resolve variable
                         matches = self.resolve_variable(
@@ -371,13 +376,11 @@ class CodeParser:
                     targets = [node.target]
                 else:  # ast.Assign
                     targets = node.targets
-
                 for target in targets:
                     if not hasattr(target, "id"):
                         if not self.debug:
                             raise NotImplementedError
                         return None
-
                 if variable_to_resolve in [target.id for target in targets]:
                     if isinstance(node.value, ast.Call):
                         if hasattr(node.value.func, "id"):

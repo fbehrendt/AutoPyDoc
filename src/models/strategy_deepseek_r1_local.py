@@ -301,13 +301,14 @@ Please reason step by step, and always summarize your final answer using the fol
 
 
 class LocalDeepseekR1Strategy(DocstringModelStrategy):
-    def __init__(self, device="cuda", context_size=2048):
+    def __init__(self, device=None, context_size=2048):
+        print("-------------------------", GPT4All.list_gpus(), "----------------------")
         super().__init__()
 
         # TODO: remove temp workaround
         self.fallback_stategy = ModelStrategyFactory.create_strategy("mock")
 
-        self.device = device
+        self.device = GPT4All.list_gpus()[0]
         self.context_size = context_size
 
         self.prompt_builder = DeepseekR1PromptBuilder(context_size)

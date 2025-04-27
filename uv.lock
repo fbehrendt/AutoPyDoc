@@ -46,7 +46,7 @@ dependencies = [
     { name = "configparser" },
     { name = "coverage" },
     { name = "gitpython" },
-    { name = "gpt4all", extra = ["cuda"] },
+    { name = "gpt4all" },
     { name = "json5" },
     { name = "ollama" },
     { name = "pygithub" },
@@ -68,7 +68,7 @@ requires-dist = [
     { name = "configparser", specifier = ">=7.1.0" },
     { name = "coverage", specifier = ">=7.7.1" },
     { name = "gitpython", specifier = ">=3.1.44" },
-    { name = "gpt4all", extras = ["cuda"], specifier = ">=2.8.2" },
+    { name = "gpt4all", specifier = ">=2.8.2" },
     { name = "json5", specifier = ">=0.10.0" },
     { name = "ollama", specifier = ">=0.4.7" },
     { name = "pygithub", specifier = ">=2.6.1" },
@@ -308,12 +308,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/19/92/bad46a9bc5b993727045d09ce35e2dcc3939be02f47acfc99b2be0d33b33/gpt4all-2.8.2-py3-none-macosx_10_15_universal2.whl", hash = "sha256:41d6de60fe1f9c9a29bcbb585c5eb39083893cf00db0b836de1f2d88e2fbbb17", size = 6622150 },
     { url = "https://files.pythonhosted.org/packages/93/60/ef1efd83c5757a69e8ed842b8a12b091e94a9bb2ceacc8b6e1c2e6487a77/gpt4all-2.8.2-py3-none-manylinux1_x86_64.whl", hash = "sha256:c61e977afa72475c076211fd9b59a88334fc0062615be8c2f7716363a21fbafa", size = 121614072 },
     { url = "https://files.pythonhosted.org/packages/04/92/dd9dd077f0fc61218e4116a7154958eff36f06893506ad3290802218b1c9/gpt4all-2.8.2-py3-none-win_amd64.whl", hash = "sha256:a164674943df732808266e5bf63332fadef95eac802c201b47c7b378e5bd9f45", size = 119593619 },
-]
-
-[package.optional-dependencies]
-cuda = [
-    { name = "nvidia-cublas-cu11" },
-    { name = "nvidia-cuda-runtime-cu11" },
 ]
 
 [[package]]

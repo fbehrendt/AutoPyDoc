@@ -43,6 +43,66 @@ def code_parser():
     return code_parser
 
 
+def test_init():
+    pass
+    # TODO
+
+
+def test_add_file():
+    pass
+    # TODO
+
+
+def test_extract_file_modules_classes_and_methods():
+    pass
+    # TODO
+
+
+def test_extract_sub_classes_and_methods():
+    pass
+    # TODO
+
+
+def test_extract_class_and_method_calls():
+    pass
+    # TODO
+
+
+def test_resolve_variable():
+    pass
+    # TODO
+
+
+def test_extract_exceptions():
+    pass
+    # TODO
+
+
+def test_extract_args_and_return_type():
+    pass
+    # TODO
+
+
+def test_check_return_type():
+    pass
+    # TODO
+
+
+def test_extract_attributes():
+    pass
+    # TODO
+
+
+def test_set_code_affected_by_changes_to_outdated():
+    pass
+    # TODO
+
+
+def test_extract_dev_comments():
+    pass
+    # TODO
+
+
 def test_extracted_code_objects(code_parser):
     assert hasattr(code_parser, "code_representer")
     assert hasattr(code_parser.code_representer, "objects")

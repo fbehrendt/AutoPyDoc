@@ -9,7 +9,7 @@ class GptInputCodeObject:
     code: str = field(hash=False)
     docstring: str | None = field(default=None, hash=False)
     context: dict[str, list[int] | int] | None = field(default=None, hash=False)
-    context_docstrings: dict[int, str] | None = field(default=None, hash=False)
+    context_objects: dict | None = field(default=None, hash=False)
 
 
 @dataclass(frozen=True)
@@ -36,10 +36,8 @@ class GptInputClassObject(GptInputCodeObject):
     missing_class_attribute_types: dict[str, str] = field(  # TODO why is this a dict?
         default_factory=dict, compare=True, hash=True
     )
-    missing_instance_attributes_types: dict[str, str] = (
-        field(  # TODO why is this a dict?
-            default_factory=dict, compare=True, hash=True
-        )
+    missing_instance_attributes_types: dict[str, str] = field(  # TODO why is this a dict?
+        default_factory=dict, compare=True, hash=True
     )
 
 
@@ -68,13 +66,9 @@ class GptOutputMethod(GptOutput):
 
 @dataclass(frozen=True)
 class GptOutputClass(GptOutput):
-    class_attribute_descriptions: dict[str, str | bool] = field(
-        compare=False, hash=False
-    )
+    class_attribute_descriptions: dict[str, str | bool] = field(compare=False, hash=False)
     class_attribute_types: dict[str, str | bool] = field(compare=False, hash=False)
-    instance_attribute_descriptions: dict[str, str | bool] = field(
-        compare=False, hash=False
-    )
+    instance_attribute_descriptions: dict[str, str | bool] = field(compare=False, hash=False)
     instance_attribute_types: dict[str, str | bool] = field(compare=False, hash=False)
 
 
