@@ -84,6 +84,8 @@ class CodeObject:
         # self.__set_fields_frozen()
         self.id = hash(self)
         self.code_type = "code"
+        self.class_ids = set()
+        self.method_ids = set()
         self.called_methods = set()
         self.called_classes = set()
         self.called_by_methods = set()
@@ -112,6 +114,24 @@ class CodeObject:
                     return local_setter
 
                 setattr(self, field_name, property(local_getter, frozen(field_name)))
+
+    def add_class_id(self, class_id: int):
+        """
+        Add a class id
+
+        :param class_id: class id
+        :type class_id: int
+        """
+        self.class_ids.add(class_id)
+
+    def add_method_id(self, method_id: int):
+        """
+        Add a method id
+
+        :param method_id: method id
+        :type method_id: int
+        """
+        self.method_ids.add(method_id)
 
     def add_called_method(self, called_method_id: int):
         """
@@ -261,8 +281,6 @@ class ModuleObject(CodeObject):
     def __post_init__(self):
         super().__post_init__()
         self.code_type = "module"
-        self.class_ids = set()
-        self.method_ids = set()
 
     def add_exception(self, exception: str):
         """
@@ -272,24 +290,6 @@ class ModuleObject(CodeObject):
         :type exception: str
         """
         self.exceptions.add(exception)
-
-    def add_class_id(self, class_id: int):
-        """
-        Add a class id
-
-        :param class_id: class id
-        :type class_id: int
-        """
-        self.class_ids.add(class_id)
-
-    def add_method_id(self, method_id: int):
-        """
-        Add a method id
-
-        :param method_id: method id
-        :type method_id: int
-        """
-        self.method_ids.add(method_id)
 
     def get_context(self) -> dict[str, list[int]]:
         """
@@ -537,8 +537,6 @@ class ClassObject(CodeObject):
     def __post_init__(self):
         super().__post_init__()
         self.code_type = "class"
-        self.class_ids = set()
-        self.method_ids = set()
         self.class_attributes = list()
         self.instance_attributes = list()
 
@@ -550,25 +548,6 @@ class ClassObject(CodeObject):
         :type exception: str
         """
         self.exceptions.add(exception)
-
-    def add_class_id(self, class_id: int):
-        """
-        Add a class id
-
-        :param class_id: class id
-        :type class_id: int
-        """
-        if class_id != self.id:
-            self.class_ids.add(class_id)
-
-    def add_method_id(self, method_id: int):
-        """
-        Add a method id
-
-        :param method_id: method id
-        :type method_id: int
-        """
-        self.method_ids.add(method_id)
 
     def add_class_attribute(self, attribute: dict[str, str]):
         """
