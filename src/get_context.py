@@ -209,7 +209,19 @@ class CodeParser:
         Extract classes and methods called by the CodeObject
         """
         for parent_obj in self.code_representer.get_code_objects():
-            for node in ast.walk(parent_obj.ast):
+            parent_code_without_children = parent_obj.code
+            for child_obj in [
+                self.code_representer.get(child_id)
+                for child_id in [*parent_obj.class_ids, *parent_obj.method_ids]
+            ]:
+                parent_code_without_children = parent_code_without_children.replace(
+                    child_obj.code, ""
+                )
+            sys.stderr = open(os.devnull, "w")
+            parent_ast_without_children = ast.parse(parent_code_without_children)
+            sys.stderr = sys.__stderr__
+
+            for node in ast.walk(parent_ast_without_children):
                 # ast.get_source_segment(source, node.body[0])
                 if isinstance(node, ast.Call):
                     variable_to_resolve = None  # TODO resolve variable(?)
@@ -275,7 +287,6 @@ class CodeParser:
                             for code_obj in self.code_representer.objects.values()
                             if code_obj.name == called_func_name
                             and code_obj.filename == parent_obj.filename
-                            and code_obj.parent_id == parent_obj.id
                         ]
                         if len(matches) == 1:
                             called_code_obj = matches[0]
