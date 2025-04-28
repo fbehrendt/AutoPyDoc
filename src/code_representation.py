@@ -947,19 +947,17 @@ class CodeRepresenter:
         """
         code_obj = self.get(code_obj_id)
         for code_id in code_obj.called_classes:
-            if self.get(code_id).outdated:
+            if self.is_outdated(code_id):
                 return True
         for code_id in code_obj.called_methods:
-            if self.get(code_id).outdated:
+            if self.is_outdated(code_id):
                 return True
-        if isinstance(code_obj, ClassObject) or isinstance(code_obj, ModuleObject):
-            for class_id in code_obj.class_ids:
-                if self.get(class_id).outdated:
-                    return True
-        if isinstance(code_obj, ClassObject):
-            for method_id in code_obj.method_ids:
-                if self.get(method_id).outdated:
-                    return True
+        for class_id in code_obj.class_ids:
+            if self.is_outdated(class_id):
+                return True
+        for method_id in code_obj.method_ids:
+            if self.is_outdated(method_id):
+                return True
         return False
 
     def update_docstring(self, code_obj_id: int, new_docstring: str):
@@ -983,18 +981,18 @@ class CodeRepresenter:
     def get_sent_to_gpt_ids(self) -> list[int]:
         return [code_obj.id for code_obj in self.objects.values() if code_obj.get_sent_to_gpt()]
 
-    def generate_next_batch(self, ignore_dependencies=False) -> list[GptInputCodeObject]:
+    def generate_next_batch(self, ignore_dependencies=False, dry=False) -> list[GptInputCodeObject]:
         ids = [
             id
             for id in self.get_outdated_ids()
-            if (ignore_dependencies)
-            or not self.depends_on_outdated_code(id)
-            and not self.get(id).send_to_gpt
+            if ignore_dependencies
+            or (not self.depends_on_outdated_code(id) and not self.get(id).send_to_gpt)
         ]
         batch: List[GptInputCodeObject] = []
         for id in ids:
             code_obj = self.get(id)
-            code_obj.send_to_gpt = True
+            if not dry:
+                code_obj.send_to_gpt = True
             batch.append(code_obj.get_gpt_input(code_representer=self))
         return batch
 
@@ -1048,20 +1046,17 @@ class CodeRepresenter:
             dependency_obj = self.get(dependency_id)
             if self.is_outdated(dependency_obj.id) and not dependency_obj.is_updated:
                 return True
-        if isinstance(code_obj, ClassObject):
-            for dependency_id in [
-                *code_obj.class_ids,
-                *code_obj.method_ids,
-                code_obj.inherited_from,
-            ]:
-                if dependency_id is None:
-                    continue
 
-                dependency_obj = self.get(dependency_id)
-                if self.is_outdated(dependency_obj.id) and not dependency_obj.is_updated:
-                    return True
-        if isinstance(code_obj, ModuleObject):
-            for dependency_id in [*code_obj.class_ids, *code_obj.method_ids]:
-                dependency_obj = self.get(dependency_id)
-                if self.is_outdated(dependency_obj.id) and not dependency_obj.is_updated:
-                    return True
+        for dependency_id in [
+            *code_obj.class_ids,
+            *code_obj.method_ids,
+        ]:
+            if dependency_id is None:
+                continue
+            dependency_obj = self.get(dependency_id)
+            if self.is_outdated(dependency_obj.id) and not dependency_obj.is_updated:
+                return True
+        if isinstance(code_obj, ClassObject) and code_obj.inherited_from is not None:
+            dependency_obj = self.get(code_obj.inherited_from)
+            if self.is_outdated(dependency_id) and not dependency_obj.is_updated:
+                return True

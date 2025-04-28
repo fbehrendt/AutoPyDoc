@@ -47,8 +47,8 @@ class AutoPyDoc:
         # initialize gpt interface early to fail early if model is unavailable or unable to load
         # TODO: make name configurable (see factory for available model names)
         # self.gpt_interface = GptInterface("mock")
-        # self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
-        self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
+        self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
+        # self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
 
         # pull repo, create code representation, create dependencies
         self.debug = debug
@@ -92,7 +92,7 @@ class AutoPyDoc:
         self.code_parser.set_code_affected_by_changes_to_outdated(changes=self.changes)
 
         full_input_for_estimation = self.code_parser.code_representer.generate_next_batch(
-            ignore_dependencies=True
+            ignore_dependencies=True, dry=True
         )
         self.gpt_interface.estimate(full_input=full_input_for_estimation)
 
@@ -314,6 +314,7 @@ if __name__ == "__main__":
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
         ollama_host=os.getenv("OLLAMA_HOST", default=None),
+        branch="method_docstrings",
         debug=True,
     )
     # auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)
