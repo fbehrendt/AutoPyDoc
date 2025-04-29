@@ -1,6 +1,10 @@
 import logging
 import re
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from code_representation import ContextObject
 
 import json5
 from gpt4all import GPT4All
@@ -210,36 +214,38 @@ Please reason step by step, and always summarize your final answer using the fol
         if isinstance(code_object, GptInputMethodObject):
             context_summary = ""
 
-            if code_object.context_docstrings is not None and code_object.context is not None:
-                mapped_context: dict[str, list[str]] = {}
+            if code_object.context_objects is not None and code_object.context is not None:
+                mapped_context: dict[str, list[ContextObject]] = {}
                 for key, value in code_object.context.items():
                     if value is None:
                         continue
                     elif isinstance(value, int):
-                        mapped_context[key] = [code_object.context_docstrings.get(value)]
+                        mapped_context[key] = [code_object.context_objects.get(value)]
                     elif isinstance(value, Iterable):
                         mapped_context[key] = [
-                            code_object.context_docstrings.get(item) for item in value
+                            code_object.context_objects.get(item) for item in value
                         ]
                     else:
                         raise Exception("Unexpected context type")
 
                 raw_context_summary = ""
                 for called_method in mapped_context["called_methods"]:
-                    raw_context_summary += f"<called-method>\n{called_method}\n</called-method>\n"
+                    raw_context_summary += (
+                        f"<called-method>\n{called_method.code}\n</called-method>\n"
+                    )
                 for called_class in mapped_context["called_classes"]:
-                    raw_context_summary += f"<called-class>\n{called_class}\n</called-class>\n"
+                    raw_context_summary += f"<called-class>\n{called_class.code}\n</called-class>\n"
                 for called_by_method in mapped_context["called_by_methods"]:
                     raw_context_summary += (
-                        f"<called-by-method>\n{called_by_method}\n</called-by-method>\n"
+                        f"<called-by-method>\n{called_by_method.code}\n</called-by-method>\n"
                     )
                 for called_by_class in mapped_context["called_by_classes"]:
                     raw_context_summary += (
-                        f"<called-by-class>\n{called_by_class}\n</called-by-class>\n"
+                        f"<called-by-class>\n{called_by_class.code}\n</called-by-class>\n"
                     )
                 for called_by_module in mapped_context["called_by_modules"]:
                     raw_context_summary += (
-                        f"<called-by-module>\n{called_by_module}\n</called-by-module>\n"
+                        f"<called-by-module>\n{called_by_module.code}\n</called-by-module>\n"
                     )
 
                 context_summary += f"<related-code>\n{raw_context_summary}</related-code>\n"
@@ -247,20 +253,29 @@ Please reason step by step, and always summarize your final answer using the fol
             parent_context_summary = ""
             if (
                 code_object.parent_method_id is not None
-                and code_object.parent_method_id in code_object.context_docstrings
+                and code_object.parent_method_id in code_object.context_objects
             ):
-                parent_context_summary += f"<parent-method>\n{code_object.context_docstrings.get(code_object.parent_method_id)}\n</parent-method>\n"
+                parent_method = code_object.context_objects.get(code_object.parent_method_id)
+                parent_context_summary += (
+                    f"<parent-method>\n{parent_method.docstring}\n</parent-method>\n"
+                )
             if (
                 code_object.parent_class_id is not None
-                and code_object.parent_class_id in code_object.context_docstrings
+                and code_object.parent_class_id in code_object.context_objects
             ):
-                parent_context_summary += f"<parent-class>\n{code_object.context_docstrings.get(code_object.parent_class_id)}\n</parent-class>\n"
+                parent_class = code_object.context_objects.get(code_object.parent_class_id)
+                parent_context_summary += (
+                    f"<parent-class>\n{parent_class.docstring}\n</parent-class>\n"
+                )
             if (
                 code_object.parent_module_id is not None
-                and code_object.parent_module_id in code_object.context_docstrings
-                and code_object.context_docstrings.get(code_object.parent_module_id) is not None
+                and code_object.parent_module_id in code_object.context_objects
+                and code_object.context_objects.get(code_object.parent_module_id) is not None
             ):
-                parent_context_summary += f"<parent-module>\n{code_object.context_docstrings.get(code_object.parent_module_id)}\n</parent-module>\n"
+                parent_module = code_object.context_objects.get(code_object.parent_module_id)
+                parent_context_summary += (
+                    f"<parent-module>\n{parent_module.docstring}\n</parent-module>\n"
+                )
 
             method_summary = f"""
 <method name="{code_object.name}">
@@ -328,8 +343,6 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
             raise Exception("Unable to load gpt model")
 
     def check_outdated(self, code_object: GptInputCodeObject) -> bool:
-        return True
-
         try:
             with self.gpt_model.chat_session():
                 prompt = self.prompt_builder.build_check_outdated_prompt(code_object)
