@@ -22,7 +22,7 @@ def extract_code_affected_by_change(filename_old, filename_new):
         files=[filename_new],
         logger=logging.getLogger(__name__),
     )
-    # while look for methods and classes that have no children in current state ast
+    # while loop look for methods and classes that have no children in current state ast
     next_code_objects = [
         code_object
         for code_object in code_parser_new.code_representer.objects.values()

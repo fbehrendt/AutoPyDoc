@@ -38,5 +38,4 @@ if __name__ == "__main__":
         ollama_host=args.ollama_host,
         repo_owner=args.repo_owner,
         debug=True,
-        repo_owner=None,
     )
