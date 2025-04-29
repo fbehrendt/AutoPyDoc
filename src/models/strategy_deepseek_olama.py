@@ -39,7 +39,7 @@ class DeepseekR1PromptBuilder:
         self.check_outdated_prompt_template = """
 You are an AI documentation assistant, and your task is to evaluate if an existing function docstring correctly describes the given code of the function.
 The purpose of the documentation is to help developers and beginners understand the function and specific usage of the code.
-If any part of the docstring is inadequate, consider the whole docstring to be inadequate. Any mocked docstring is to be considered inadequate.
+If any part of the docstring is inadequate, consider the whole docstring to be inadequate. Any mocked docstring is to be considered inadequate. If any parameter/return, exception or attribute does not have a corresponding description and (apart from exceptions) type, it is to be considered inadequate
 
 The existing docstring is as follows:
 <existing-docstring>
@@ -217,7 +217,6 @@ Please reason step by step, and always summarize your final answer using the fol
     ) -> str:
         if isinstance(code_object, GptInputMethodObject):
             context_summary = ""
-
 
             if code_object.context_objects is not None and code_object.context is not None:
                 mapped_context: dict[str, list[ContextObject]] = {}
