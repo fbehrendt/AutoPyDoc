@@ -285,7 +285,7 @@ class RepoController:
                 if (
                     lines[i].strip().rstrip("\n").endswith('"""') and len(lines[i].strip()) >= 6
                 ):  # inline docstring
-                    end_pos = i
+                    end_pos = i + 1
                 else:
                     for j in range(i + 1, len(lines)):
                         if lines[j].strip().rstrip("\n").endswith('"""'):
