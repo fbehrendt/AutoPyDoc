@@ -217,8 +217,14 @@ class CodeParser:
                 parent_code_without_children = parent_code_without_children.replace(
                     child_obj.code, ""
                 )
-            sys.stderr = open(os.devnull, "w")
-            parent_ast_without_children = ast.parse(parent_code_without_children)
+            try:
+                sys.stderr = open(os.devnull, "w")
+                parent_ast_without_children = ast.parse(parent_code_without_children)
+            except Exception as e:
+                if isinstance(e, IndentationError):
+                    # empty code object apart from child methods and classes
+                    sys.stderr = sys.__stderr__
+                    return
             sys.stderr = sys.__stderr__
 
             for node in ast.walk(parent_ast_without_children):
