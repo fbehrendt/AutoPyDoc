@@ -236,13 +236,22 @@ class CodeObject:
     def get_sent_to_gpt(self) -> bool:
         return self.send_to_gpt
 
+    def _remove_docstring_from_code(self) -> str:
+        """Remove docstring from code and return it"""
+        if self.docstring is None:
+            return self.code
+        code_without_docstring = self.code
+        for line in self.docstring.split("\n"):
+            code_without_docstring = code_without_docstring.replace(line.strip(), "")
+        return code_without_docstring
+
     def get_context_object(self):
         return ContextObject(
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring,
-            code=self.code,
+            docstring=self.docstring if not self.outdated else "",
+            code=self.code if not self.outdated else self.code.replace(self.docstring, ""),
         )
 
 
@@ -331,8 +340,8 @@ class ModuleObject(CodeObject):
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring,
-            code=self.code,
+            docstring=self.docstring if not self.outdated else "",
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             exceptions=self.exceptions,
         )
 
@@ -490,8 +499,8 @@ class MethodObject(CodeObject):
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring,
-            code=self.code,
+            docstring=self.docstring if not self.outdated else "",
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             exceptions=self.exceptions,
             arguments=self.arguments,
         )
@@ -625,8 +634,8 @@ class ClassObject(CodeObject):
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring,
-            code=self.code,
+            docstring=self.docstring if not self.outdated else "",
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             exceptions=self.exceptions,
             class_attributes=self.class_attributes,
             instance_attributes=self.instance_attributes,
