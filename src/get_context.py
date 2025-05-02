@@ -209,6 +209,7 @@ class CodeParser:
         Extract classes and methods called by the CodeObject
         """
         for parent_obj in self.code_representer.get_code_objects():
+            # remove code of children
             parent_code_without_children = parent_obj.code
             for child_obj in [
                 self.code_representer.get(child_id)
@@ -217,6 +218,13 @@ class CodeParser:
                 parent_code_without_children = parent_code_without_children.replace(
                     child_obj.code, ""
                 )
+            # remove annotations
+            new_parent_code_without_annotations = []
+            for line in parent_code_without_children.split("\n"):
+                if not line.lstrip().startswith("@"):
+                    new_parent_code_without_annotations.append(line)
+            parent_code_without_children = "\n".join(new_parent_code_without_annotations)
+
             try:
                 sys.stderr = open(os.devnull, "w")
                 parent_ast_without_children = ast.parse(parent_code_without_children)
@@ -297,7 +305,20 @@ class CodeParser:
                         if len(matches) == 1:
                             called_code_obj = matches[0]
                         elif len(matches) > 1:
-                            raise NotImplementedError
+                            # if more than one code object in this file maches, check if one of them exists only locally
+                            if (
+                                len(
+                                    [match for match in matches if match.parent_id == parent_obj.id]
+                                )
+                                > 0
+                            ):
+                                matches = [
+                                    match for match in matches if match.parent_id == parent_obj.id
+                                ]
+                                if len(matches) == 1:
+                                    called_code_obj = matches[0]
+                                else:  # still more than one
+                                    raise NotImplementedError
                         elif len(matches) == 0:
                             # check imports
                             matches = self.import_finder.resolve_external_call(
@@ -510,28 +531,46 @@ class CodeParser:
                 if isinstance(node, ast.Assign):
                     if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
                         attr = {"name": node.targets[0].id}
-                        class_obj.add_class_attribute(attribute_name=attr)
+                        class_obj.add_class_attribute(attribute=attr)
                 elif isinstance(node, ast.AnnAssign):
                     if isinstance(node.target, ast.Name):
-                        if hasattr(node.annotation, "id"):
-                            attr_type = node.annotation.id
-                        elif hasattr(node.annotation, "value") and hasattr(
-                            node.annotation.value, "id"
-                        ):
-                            attr_type = node.annotation.value.id
-                        else:
-                            raise NotImplementedError
+                        annotation_location = node.annotation
+                        while True:
+                            if hasattr(annotation_location, "id"):
+                                attr_type = annotation_location.id
+                                break
+                            elif hasattr(annotation_location, "value"):
+                                annotation_location = annotation_location.value
+                            elif hasattr(annotation_location, "left"):
+                                annotation_location = annotation_location.left
+                            else:
+                                raise NotImplementedError
                         attr = {"name": node.target.id, "type": attr_type}
                         class_obj.add_class_attribute(attribute=attr)
+                    else:
+                        raise NotImplementedError
             for node in ast.walk(class_obj.ast):
                 if isinstance(node, ast.Assign):
                     for target in node.targets:
-                        if hasattr(target, "attr"):
-                            if hasattr(target.value, "id"):
-                                if target.value.id == "self":
-                                    attr = {"name": target.attr}
-                                    class_obj.add_instance_attribute(attribute=attr)
+                        if hasattr(target, "id"):
+                            attr_name = target.id
+                        elif hasattr(target, "attr"):
+                            attr_name = target.attr
+                        else:
+                            continue  # TODO review
+                        if not hasattr(target, "value"):
+                            continue  # TODO review
+                        if hasattr(target.value, "id"):
+                            if target.value.id == "self":
+                                attr = {"name": attr_name}
+                                class_obj.add_instance_attribute(attribute=attr)
                 elif isinstance(node, ast.AnnAssign):
+                    if hasattr(node.target, "id"):
+                        attr_name = node.target.id
+                    elif hasattr(node.target, "attr"):
+                        attr_name = node.target.attr
+                    else:
+                        raise NotImplementedError
                     if hasattr(node.target, "value") and hasattr(node.target.value, "id"):
                         if node.target.value.id == "self":
                             if hasattr(node.annotation, "id"):
@@ -542,7 +581,7 @@ class CodeParser:
                                 attr_type = node.annotation.value.id
                             else:
                                 raise NotImplementedError
-                            attr = {"name": node.target.id, "type": attr_type}
+                            attr = {"name": attr_name, "type": attr_type}
                             class_obj.add_instance_attribute(attribute=attr)
 
     def set_code_affected_by_changes_to_outdated(self, changes: list):
