@@ -228,7 +228,7 @@ class CodeObject:
             code_type=self.code_type,
             name=self.name,
             docstring=self.docstring,
-            code=self.code,
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             context=self.get_context(),
             context_objects=code_representer.get_context_objects(self.id),
         )
@@ -251,7 +251,7 @@ class CodeObject:
             name=self.name,
             code_type=self.code_type,
             docstring=self.docstring if not self.outdated else "",
-            code=self.code if not self.outdated else self.code.replace(self.docstring, ""),
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
         )
 
 
@@ -329,7 +329,7 @@ class ModuleObject(CodeObject):
             code_type=self.code_type,
             name=self.name,
             docstring=self.docstring,
-            code=self.code,
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             context=self.get_context(),
             context_objects=code_representer.get_context_objects(self.id),
             exceptions=self.exceptions,
@@ -482,7 +482,7 @@ class MethodObject(CodeObject):
             code_type=self.code_type,
             name=self.name,
             docstring=self.docstring,
-            code=self.code,
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             context=self.get_context(),
             context_objects=code_representer.get_context_objects(self.id),
             exceptions=self.exceptions,
@@ -610,7 +610,7 @@ class ClassObject(CodeObject):
             code_type=self.code_type,
             name=self.name,
             docstring=self.docstring,
-            code=self.code,
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             context=self.get_context(),
             context_objects=code_representer.get_context_objects(self.id),
             parent_method_id=self.outer_method_id,
@@ -1040,12 +1040,10 @@ class CodeRepresenter:
     def set_outdated(self, code_obj_id: int):
         code_obj = self.get(code_obj_id)
         code_obj.outdated = True
-        if isinstance(code_obj, MethodObject) or isinstance(code_obj, ClassObject):
-            if code_obj.outer_class_id is not None:
-                self.set_outdated(code_obj.outer_class_id)
-            if code_obj.module_id is not None:
-                module_obj = self.get(code_obj.module_id)
-                module_obj.outdated = True
+
+    def set_multiple_outdated(self, outdated_ids: list[int]):
+        for id in outdated_ids:
+            self.set_outdated(id)
 
     def is_outdated(self, code_obj_id):
         code_obj = self.get(code_obj_id)
