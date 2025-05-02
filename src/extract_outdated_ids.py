@@ -1,31 +1,17 @@
-import logging
-
-from get_context import CodeParser
-from code_representation import CodeRepresenter
+import copy
 
 
-def extract_code_affected_by_change(filename_old, filename_new):
+def extract_code_affected_by_change(code_parser_old, code_parser_new):
     outdated_ids = set()
     # create ast from latest_commit state and current state
     # create code representation from latest_commit state and current state
-    code_parser_old = CodeParser(
-        code_representer=CodeRepresenter(),
-        working_dir=None,
-        debug=True,
-        files=[filename_old],
-        logger=logging.getLogger(__name__),
-    )
-    code_parser_new = CodeParser(
-        code_representer=CodeRepresenter(),
-        working_dir=None,
-        debug=True,
-        files=[filename_new],
-        logger=logging.getLogger(__name__),
-    )
     # while loop look for methods and classes that have no children in current state ast
+    object_copy = copy.deepcopy(
+        code_parser_new.code_representer.objects
+    )  # prevent mutating objects in code_prepresenter
     next_code_objects = [
         code_object
-        for code_object in code_parser_new.code_representer.objects.values()
+        for code_object in object_copy.values()
         if (not hasattr(code_object, "class_ids") or len(code_object.class_ids) == 0)
         and (not hasattr(code_object, "method_ids") or len(code_object.method_ids) == 0)
     ]
@@ -49,7 +35,7 @@ def extract_code_affected_by_change(filename_old, filename_new):
                 # if they are different, or new, mark as outdated
                 outdated_ids.add(new_code_object.id)
                 new_code_object.outdated = True
-                for code_object in code_parser_new.code_representer.objects.values():
+                for code_object in object_copy.values():
                     if (
                         hasattr(code_object, "class_ids")
                         and new_code_object.id in code_object.class_ids
@@ -62,7 +48,7 @@ def extract_code_affected_by_change(filename_old, filename_new):
                         print("method id")
                 for parent_object in [
                     code_object
-                    for code_object in code_parser_new.code_representer.objects.values()
+                    for code_object in object_copy.values()
                     if (
                         hasattr(code_object, "class_ids")
                         and new_code_object.id in code_object.class_ids
@@ -80,7 +66,7 @@ def extract_code_affected_by_change(filename_old, filename_new):
                     # remove those methods/classes code from code of objects that have them as children, unless it's a new method/class
                     if len(old_code_object) == 1:
                         parent_object.code = parent_object.code.replace(new_code_object.code, "")
-                    code_parser_new.code_representer.objects.pop(new_code_object.id)
+                object_copy.pop(new_code_object.id)
                 if len(old_code_object) == 1:
                     for parent_object in [
                         code_object
@@ -105,11 +91,11 @@ def extract_code_affected_by_change(filename_old, filename_new):
         # update next code objects
         next_code_objects = [
             code_object
-            for code_object in code_parser_new.code_representer.objects.values()
+            for code_object in object_copy.values()
             if (not hasattr(code_object, "class_ids") or len(code_object.class_ids) == 0)
             and (not hasattr(code_object, "method_ids") or len(code_object.method_ids) == 0)
         ]
-    return outdated_ids, code_parser_new.code_representer
+    return outdated_ids
 
 
 if __name__ == "__main__":

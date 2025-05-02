@@ -9,6 +9,7 @@ from docstring_input_selector import (
     DocstringInputSelectorMethod,
     DocstringInputSelectorModule,
 )
+from extract_outdated_ids import extract_code_affected_by_change
 from get_context import CodeParser
 from gpt_input import GptOutput
 from gpt_interface import GptInterface
@@ -50,8 +51,8 @@ class AutoPyDoc:
         # initialize gpt interface early to fail early if model is unavailable or unable to load
         # TODO: make name configurable (see factory for available model names)
         # self.gpt_interface = GptInterface("mock")
-        # self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
-        self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
+        self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
+        # self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
 
         # pull repo, create code representation, create dependencies
         self.debug = debug
@@ -90,9 +91,23 @@ class AutoPyDoc:
         self.code_parser.check_return_type()
         self.code_parser.extract_attributes()
 
+        self.repo.repo.git.checkout(self.repo.latest_commit_hash)
+        self.code_parser_old = CodeParser(
+            code_representer=CodeRepresenter(),
+            working_dir=self.repo.working_dir,
+            debug=True,
+            files=self.repo.get_files_in_repo(),
+            logger=self.logger,
+        )
+        self.repo.repo.git.checkout(self.repo.current_commit)
+        outdated_ids = extract_code_affected_by_change(
+            code_parser_old=self.code_parser_old, code_parser_new=self.code_parser
+        )
+        self.code_parser.code_representer.set_multiple_outdated(outdated_ids)
+
         # get changes between last commit the tool ran for and now
-        self.changes = self.repo.get_changes()
-        self.code_parser.set_code_affected_by_changes_to_outdated(changes=self.changes)
+        # self.changes = self.repo.get_changes()
+        # self.code_parser.set_code_affected_by_changes_to_outdated(changes=self.changes)
 
         full_input_for_estimation = self.code_parser.code_representer.generate_next_batch(
             ignore_dependencies=True, dry=True
@@ -321,7 +336,7 @@ if __name__ == "__main__":
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
         ollama_host=os.getenv("OLLAMA_HOST", default=None),
-        branch="method_docstrings",
+        branch="class_docstrings",
         debug=True,
     )
     # auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)
