@@ -36,9 +36,14 @@ class DeepseekR1PromptBuilder:
         self.context_size = context_size
 
         self.check_outdated_prompt_template = """
-You are an AI documentation assistant, and your task is to evaluate if an existing function docstring correctly describes the given code of the function.
-The purpose of the documentation is to help developers and beginners understand the function and specific usage of the code.
-If any part of the docstring is inadequate, consider the whole docstring to be inadequate. Any mocked docstring is to be considered inadequate.
+You are an AI documentation assistant, and your task is to evaluate if an existing docstring for {code_type} {code_name} correctly describes the given code of the function.
+The purpose of the documentation is to help developers and beginners understand the code and its specific usage.
+If any part of the docstring is inadequate, consider the whole docstring to be inadequate. Any mocked docstring is to be considered inadequate. If ANY parameter/return, exception or attribute does not have a corresponding description and (apart from exceptions) type, it is to be considered inadequate.
+
+The code looks like the following:
+<code>
+{code}
+</code>
 
 The existing docstring is as follows:
 <existing-docstring>
@@ -58,9 +63,14 @@ Reason step by step to find out if the existing docstring matches the code, and 
 """
 
         self.generate_method_docstring_prompt_template = """
-You are an AI documentation assistant, and your task is to analyze the code of a Python function.
+You are an AI documentation assistant, and your task is to analyze the code of a Python function called {code_name}.
 The purpose of the analysis is to help developers and beginners understand the function and specific usage of the code.
 Use plain text (including all details), in a deterministic tone.
+
+The code looks like the following:
+<code>
+{code}
+</code>
 
 The context of the function is as follows:
 {context}
@@ -114,9 +124,14 @@ Here is an example of the expected output format:
 """
 
         self.generate_class_docstring_prompt_template = """
-You are an AI documentation assistant, and your task is to analyze the code of a Python class.
+You are an AI documentation assistant, and your task is to analyze the code of a Python class called {code_name}.
 The purpose of the analysis is to help developers and beginners understand the class and specific usage of the code.
 Use plain text (including all details), in a deterministic tone.
+
+The code looks like the following:
+<code>
+{code}
+</code>
 
 The context of the class is as follows:
 {context}
@@ -143,11 +158,17 @@ Please reason step by step, and always summarize your final answer using the fol
 
 <think>
 """
+        # TODO: add example back
 
         self.generate_module_docstring_prompt_template = """
 You are an AI documentation assistant, and your task is to analyze the code of a Python module.
 The purpose of the analysis is to help developers and beginners understand the module and specific usage of the code.
 Use plain text (including all details), in a deterministic tone.
+
+The code looks like the following:
+<code>
+{code}
+</code>
 
 The context of the module is as follows:
 {context}
@@ -171,11 +192,16 @@ Please reason step by step, and always summarize your final answer using the fol
 <think>
 """
 
+    # TODO: add example back
+
     def build_check_outdated_prompt(self, code_object: GptInputCodeObject) -> str:
         existing_docstring = code_object.docstring
 
         prompt_length_without_context = len(
             self.check_outdated_prompt_template.format(
+                code_type=code_object.code_type,
+                code_name=code_object.name,
+                code=code_object.code,
                 existing_docstring=existing_docstring,
                 context="",
             )
@@ -186,6 +212,9 @@ Please reason step by step, and always summarize your final answer using the fol
         self.logger.debug("Code Context length [%d/%d]", len(context), max_context_length)
 
         return self.check_outdated_prompt_template.format(
+            code_type=code_object.code_type,
+            code_name=code_object.name,
+            code=code_object.code,
             existing_docstring=existing_docstring,
             context=context[:max_context_length],
         )
@@ -200,13 +229,17 @@ Please reason step by step, and always summarize your final answer using the fol
         else:
             raise Exception("Unexpected code object type")
 
-        prompt_length_without_context = len(prompt_template.format(context=""))
+        prompt_length_without_context = len(
+            prompt_template.format(code_name=code_object.name, code=code_object.code, context="")
+        )
         max_context_length = self.context_size - prompt_length_without_context
 
         context = self._build_context_from_code_object(code_object, max_context_length)
         self.logger.debug("Code Context length [%d/%d]", len(context), max_context_length)
 
-        return prompt_template.format(context=context[:max_context_length])
+        return prompt_template.format(
+            code=code_object.code, code_name=code_object.name, context=context[:max_context_length]
+        )
 
     def _build_context_from_code_object(
         self, code_object: GptInputCodeObject, max_length: int
@@ -248,8 +281,6 @@ Please reason step by step, and always summarize your final answer using the fol
                         f"<called-by-module>\n{called_by_module.code}\n</called-by-module>\n"
                     )
 
-                context_summary += f"<related-code>\n{raw_context_summary}</related-code>\n"
-
             parent_context_summary = ""
             if (
                 code_object.parent_method_id is not None
@@ -257,16 +288,14 @@ Please reason step by step, and always summarize your final answer using the fol
             ):
                 parent_method = code_object.context_objects.get(code_object.parent_method_id)
                 parent_context_summary += (
-                    f"<parent-method>\n{parent_method.docstring}\n</parent-method>\n"
+                    f"<parent-method>\n{parent_method.code}\n</parent-method>\n"
                 )
             if (
                 code_object.parent_class_id is not None
                 and code_object.parent_class_id in code_object.context_objects
             ):
                 parent_class = code_object.context_objects.get(code_object.parent_class_id)
-                parent_context_summary += (
-                    f"<parent-class>\n{parent_class.docstring}\n</parent-class>\n"
-                )
+                parent_context_summary += f"<parent-class>\n{parent_class.code}\n</parent-class>\n"
             if (
                 code_object.parent_module_id is not None
                 and code_object.parent_module_id in code_object.context_objects
@@ -274,40 +303,36 @@ Please reason step by step, and always summarize your final answer using the fol
             ):
                 parent_module = code_object.context_objects.get(code_object.parent_module_id)
                 parent_context_summary += (
-                    f"<parent-module>\n{parent_module.docstring}\n</parent-module>\n"
+                    f"<parent-module>\n{parent_module.code}\n</parent-module>\n"
                 )
 
-            method_summary = f"""
-<method name="{code_object.name}">
-{code_object.code}
-</method>
-"""
+            raw_context_summary += parent_context_summary
+            context_summary += f"<related-code>\n{raw_context_summary}</related-code>\n"
 
             biggest_context = f"""
 {context_summary}
-{parent_context_summary}
-{method_summary}
 """
             if len(biggest_context) <= max_length:
                 return biggest_context
 
             medium_context = f"""
 {parent_context_summary}
-{method_summary}
 """
             if len(medium_context) <= max_length:
                 return medium_context
 
-            small_context = method_summary
+            small_context = ""
             if len(small_context) <= max_length:
                 return small_context
 
             return code_object.code
         elif isinstance(code_object, GptInputClassObject):
+            # TODO: build context from code object
             biggest_context = code_object.code
 
             return biggest_context
         elif isinstance(code_object, GptInputModuleObject):
+            # TODO: build context from code object
             biggest_context = code_object.code
 
             return biggest_context
@@ -319,25 +344,26 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
     def __init__(self, device=None, context_size=2048):
         print("-------------------------", GPT4All.list_gpus(), "----------------------")
         super().__init__()
+        if device is None:
+            device = GPT4All.list_gpus()[0]
 
         # TODO: remove temp workaround
-        self.fallback_stategy = ModelStrategyFactory.create_strategy("mock")
+        # self.fallback_stategy = ModelStrategyFactory.create_strategy("mock")
 
-        self.device = GPT4All.list_gpus()[0]
         self.context_size = context_size
 
         self.prompt_builder = DeepseekR1PromptBuilder(context_size)
 
-        model_name = "DeepSeek-R1-Distill-Llama-8B-Q4_0.gguf"
+        self.model_name = "DeepSeek-R1-Distill-Llama-8B-Q4_0.gguf"
 
         self.logger.info(
             "Using GPT4All model [%s] with context size [%d]",
-            model_name,
+            self.model_name,
             self.context_size,
         )
-        self.gpt_model = GPT4All(model_name=model_name, device=self.device)
+        self.gpt_model = GPT4All(model_name=self.model_name, device=device)
 
-        self.logger.info("Using device [%s], requested [%s]", self.gpt_model.device, self.device)
+        self.logger.info("Using device [%s], requested [%s]", self.gpt_model.device, device)
 
         if self.gpt_model.device is None:
             raise Exception("Unable to load gpt model")
