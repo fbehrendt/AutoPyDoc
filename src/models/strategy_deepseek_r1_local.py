@@ -595,14 +595,14 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                     for parameter_name in code_object.parameters:
                         try:
                             generated_parameters = generated_output["parameters"]
-                            matching_exception = next(
+                            matching_parameter = next(
                                 filter(
                                     lambda x: "name" in x and x["name"] == parameter_name,
                                     generated_parameters,
                                 )
                             )
 
-                            parameter_types[parameter_name] = matching_exception["type"]
+                            parameter_types[parameter_name] = matching_parameter["type"]
                         except StopIteration:
                             parameter_types[parameter_name] = False
                         except KeyError:
@@ -620,13 +620,13 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                             generated_parameters = generated_output[parameter_name] = (
                                 generated_output["parameters"]
                             )
-                            matching_exception = next(
+                            matching_parameter = next(
                                 filter(
                                     lambda x: "name" in x and x["name"] == parameter_name,
                                     generated_parameters,
                                 )
                             )
-                            parameter_descriptions[parameter_name] = matching_exception[
+                            parameter_descriptions[parameter_name] = matching_parameter[
                                 "description"
                             ]
                         except StopIteration:
@@ -734,36 +734,35 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                     class_attribute_descriptions: dict[str, str | bool] = {}
                     class_attribute_types: dict[str, str | bool] = {}
 
-                    for instance_attribute_name in code_object.class_attributes:
+                    for class_attribute in code_object.class_attributes:
+                        class_attribute_name = class_attribute["name"]
                         try:
-                            generated_exceptions = generated_output[instance_attribute_name] = (
-                                generated_output["class_attributes"]
-                            )
-                            matching_exception = next(
+                            generated_class_attributes = generated_output["class_attributes"]
+                            matching_class_attribute = next(
                                 filter(
-                                    lambda x: "name" in x and x["name"] == instance_attribute_name,
-                                    generated_exceptions,
+                                    lambda x: "name" in x and x["name"] == class_attribute_name,
+                                    generated_class_attributes,
                                 )
                             )
-                            class_attribute_descriptions[instance_attribute_name] = (
-                                matching_exception["description"]
+                            class_attribute_descriptions[class_attribute_name] = (
+                                matching_class_attribute["description"]
                             )
-                            class_attribute_types[instance_attribute_name] = matching_exception[
+                            class_attribute_types[class_attribute_name] = matching_class_attribute[
                                 "type"
                             ]
                         except StopIteration:
-                            class_attribute_descriptions[instance_attribute_name] = False
-                            class_attribute_types[instance_attribute_name] = False
+                            class_attribute_descriptions[class_attribute_name] = False
+                            class_attribute_types[class_attribute_name] = False
                         except KeyError:
-                            class_attribute_descriptions[instance_attribute_name] = False
-                            class_attribute_types[instance_attribute_name] = False
+                            class_attribute_descriptions[class_attribute_name] = False
+                            class_attribute_types[class_attribute_name] = False
                         except Exception as e:
                             self.logger.warning(
-                                f"An unkown error occurred while extracting generated description for class attribute [{instance_attribute_name}]",
+                                f"An unkown error occurred while extracting generated description for class attribute [{class_attribute_name}]",
                                 exc_info=e,
                             )
-                            class_attribute_descriptions[instance_attribute_name] = False
-                            class_attribute_types[instance_attribute_name] = False
+                            class_attribute_descriptions[class_attribute_name] = False
+                            class_attribute_types[class_attribute_name] = False
 
                     # extract instance attributes
                     instance_attribute_descriptions: dict[str, str | bool] = {}
@@ -771,20 +770,20 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
 
                     for instance_attribute_name in code_object.instance_attributes:
                         try:
-                            generated_exceptions = generated_output["instance_attributes"]
-                            matching_exception = next(
+                            generated_instance_attributes = generated_output["instance_attributes"]
+                            matching_instance_attribute = next(
                                 filter(
                                     lambda x: "name" in x and x["name"] == instance_attribute_name,
-                                    generated_exceptions,
+                                    generated_instance_attributes,
                                 )
                             )
 
                             instance_attribute_descriptions[instance_attribute_name] = (
-                                matching_exception["description"]
+                                matching_instance_attribute["description"]
                             )
-                            instance_attribute_types[instance_attribute_name] = matching_exception[
-                                "type"
-                            ]
+                            instance_attribute_types[instance_attribute_name] = (
+                                matching_instance_attribute["type"]
+                            )
                         except StopIteration:
                             instance_attribute_descriptions[instance_attribute_name] = False
                             instance_attribute_types[instance_attribute_name] = False
