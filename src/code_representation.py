@@ -250,7 +250,7 @@ class CodeObject:
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring if not self.outdated else "",
+            docstring=self.docstring,  # if not self.outdated else "", # TODO find a better solution
             code=self.code if not self.outdated else self._remove_docstring_from_code(),
         )
 
@@ -340,7 +340,7 @@ class ModuleObject(CodeObject):
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring if not self.outdated else "",
+            docstring=self.docstring,  # if not self.outdated else "", # TODO find a better solution
             code=self.code if not self.outdated else self._remove_docstring_from_code(),
             exceptions=self.exceptions,
         )
@@ -499,7 +499,7 @@ class MethodObject(CodeObject):
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring if not self.outdated else "",
+            docstring=self.docstring,  # if not self.outdated else "", # TODO find a better solution
             code=self.code if not self.outdated else self._remove_docstring_from_code(),
             exceptions=self.exceptions,
             arguments=self.arguments,
@@ -590,8 +590,7 @@ class ClassObject(CodeObject):
         :return type: dict[str, list[int]|int]
         """
         result = super().get_context()
-        result["outer_class_id"] = self.outer_class_id
-        result["outer_method_id"] = self.outer_method_id
+        result["parent_id"] = self.parent_id
         result["module_id"] = self.module_id
         result["inherited_from"] = self.inherited_from
         result["class_ids"] = self.class_ids
@@ -634,7 +633,7 @@ class ClassObject(CodeObject):
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring if not self.outdated else "",
+            docstring=self.docstring,  # if not self.outdated else "", # TODO find a better solution
             code=self.code if not self.outdated else self._remove_docstring_from_code(),
             exceptions=self.exceptions,
             class_attributes=self.class_attributes,
