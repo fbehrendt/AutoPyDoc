@@ -35,17 +35,6 @@ def extract_code_affected_by_change(code_parser_old, code_parser_new):
                 # if they are different, or new, mark as outdated
                 outdated_ids.add(new_code_object.id)
                 new_code_object.outdated = True
-                for code_object in object_copy.values():
-                    if (
-                        hasattr(code_object, "class_ids")
-                        and new_code_object.id in code_object.class_ids
-                    ):
-                        print("class id")
-                    if (
-                        hasattr(code_object, "method_ids")
-                        and new_code_object.id in code_object.method_ids
-                    ):
-                        print("method id")
                 for parent_object in [
                     code_object
                     for code_object in object_copy.values()
