@@ -17,6 +17,8 @@ from repo_controller import RepoController
 from validate_docstring import validate_docstring
 from validate_docstring_input import validate_docstring_input
 
+from save_data import save_data
+
 load_dotenv()
 
 logging.basicConfig(
@@ -51,8 +53,8 @@ class AutoPyDoc:
         # initialize gpt interface early to fail early if model is unavailable or unable to load
         # TODO: make name configurable (see factory for available model names)
         # self.gpt_interface = GptInterface("mock")
-        self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
-        # self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
+        # self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
+        self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
 
         # pull repo, create code representation, create dependencies
         self.debug = debug
@@ -114,10 +116,14 @@ class AutoPyDoc:
         )
         self.gpt_interface.estimate(full_input=full_input_for_estimation)
 
-        first_batch = self.code_parser.code_representer.generate_next_batch()
-        if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
-            self.logger.info("No need to do anything")
-            quit()
+        # first_batch = self.code_parser.code_representer.generate_next_batch() # TODO uncomment
+        first_batch = [
+            code_object.get_gpt_input(code_representer=self.code_parser.code_representer)
+            for code_object in self.code_parser.code_representer.get_classes()
+        ]  # get classes # TODO delete
+        # if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
+        #    self.logger.info("No need to do anything")
+        #    quit()
         self.gpt_interface.process_batch(first_batch, callback=self.process_gpt_result)
 
         # if parts are still outdated
@@ -190,6 +196,14 @@ class AutoPyDoc:
                 code_representer=self.code_parser.code_representer,
                 debug=True,
             )
+            save_data(
+                branch=self.repo.branch,
+                code_type=code_obj.code_type,
+                code_name=code_obj.name,
+                code_id=code_obj.id,
+                content_type="new_docstring",
+                data=new_docstring,
+            )
 
             # validate docstring syntax
             errors = validate_docstring(new_docstring)
@@ -204,7 +218,7 @@ class AutoPyDoc:
                     code_obj.retry += 1
                 else:
                     code_obj.retry = 1
-                return  # this prevents code_obj.outdated from being set to False and code_obj.is_updated from being set to True, causing it to be included in the next batch again.
+                return  # this prevents code_obj.outdated from being set to False and code_obj.is_updated from being set to True, causing it to be included in the next batch again. # TODO what about sent_to_gpt?
 
             # insert new docstring in the file
             self.repo.insert_docstring(

@@ -283,7 +283,7 @@ class RepoController:
                         break
             if lines[i].strip().startswith('"""'):
                 if (
-                    lines[i].strip().rstrip("\n").endswith('"""') and len(lines[i].strip()) >= 6
+                    lines[i].strip().rstrip("\n").endswith('"""') and len(lines[i].strip()) >= 5
                 ):  # inline docstring
                     end_pos = i + 1
                 else:

@@ -30,7 +30,7 @@ class GptInterface:
         # inferr missing arg/return types
         # generate exception descriptions (?)
 
-        for current_code_object in batch:
+        for current_code_object in batch[1:]:  # TODO change back to batch
             try:
                 # Only check docstring using gpt if a docstring is present
                 change_necessary = (
@@ -57,7 +57,7 @@ class GptInterface:
                         )
                         raise e
 
-                if not change_necessary:
+                if not change_necessary and False:  # TODO just for now (200 years later)
                     output = GptOutput(
                         current_code_object.id,
                         no_change_necessary=True,
