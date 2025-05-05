@@ -19,11 +19,11 @@ You are an AI documentation assistant, and your task is to evaluate if an existi
 The purpose of the documentation is to help developers and beginners understand the code and its specific usage.
 
 The docstring has to pass all of the following criteria to pass:
-- concise description
-- description accurately describes what the code does (rather than how)
-- all class and instance attributes are described
-- all exception raised directly (rather than in an method/subclass within the class) are described
-- docstring is not a mock
+- Concise description
+- Description accurately describes what the code does (rather than how)
+- All class and instance attributes are described
+- All exception raised directly (rather than in an method/subclass within the class) are described
+- Docstring is not a mock
 
 Criteria not mentioned above shall not be considered! Especially, methods and subclasses do not have to be described and no examples have to be (but can be) included
 
@@ -58,8 +58,10 @@ Please note:
 - Write mainly in the english language. If necessary, you can write with some English words in the analysis and description to enhance the document's readability because you do not need to translate the function name or variable name into the target language.
 - Keep the text short and concise, and avoid unnecessary details.
 - Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know you're provided with code snippet and documents.
-- AVOID ANY SPECULATION and inaccurate descriptions!
 - DO NOT use markdown syntax in the output
+- AVOID ANY SPECULATION and inaccurate descriptions!
+- ALWAYS describe the actual implemented code and avoid assuming the intention
+- If a method does not return anything, use type None for the return type.
 
 Now, provide the documentation for the target object in english in a professional way.
 Please reason step by step, and always summarize your final answer using the following json format <output-format syntax="json">{{
@@ -115,8 +117,9 @@ Please note:
 - Write mainly in the english language. If necessary, you can write with some English words in the analysis and description to enhance the document's readability because you do not need to translate the function name or variable name into the target language.
 - Keep the text short and concise, and avoid unnecessary details.
 - Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know you're provided with code snippet and documents.
-- AVOID ANY SPECULATION and inaccurate descriptions!
 - DO NOT use markdown syntax in the output
+- AVOID ANY SPECULATION and inaccurate descriptions!
+- ALWAYS describe the actual implemented code and avoid assuming the intention
 
 Now, provide the documentation for the target object in english in a professional way.
 Please reason step by step, and always summarize your final answer using the following json format <output-format syntax="json">{{
@@ -146,8 +149,9 @@ Please note:
 - Write mainly in the english language. If necessary, you can write with some English words in the analysis and description to enhance the document's readability because you do not need to translate the function name or variable name into the target language.
 - Keep the text short and concise, and avoid unnecessary details.
 - Keep in mind that your audience is document readers, so use a deterministic tone to generate precise content and don't let them know you're provided with code snippet and documents.
-- AVOID ANY SPECULATION and inaccurate descriptions!
 - DO NOT use markdown syntax in the output
+- AVOID ANY SPECULATION and inaccurate descriptions!
+- ALWAYS describe the actual implemented code and avoid assuming the intention
 
 Now, provide the documentation for the target object in english in a professional way.
 Please reason step by step, and always summarize your final answer using the following json format <output-format syntax="json">{{
