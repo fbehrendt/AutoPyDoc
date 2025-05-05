@@ -108,6 +108,8 @@ Here is an example of the expected output format:
 You are an AI documentation assistant, and your task is to analyze the code of a Python class called {code_name}.
 The purpose of the analysis is to help developers and beginners understand the class and specific usage of the code.
 Use plain text (including all details), in a deterministic tone.
+Provided context shall be used to better understand what the class does and does not need to be analyzed further than that.
+Do not generate descriptions for methods and subclasses.
 
 {context}
 
