@@ -20,6 +20,7 @@ from gpt_input import (
     GptOutputMethod,
     GptOutputModule,
 )
+from save_data import save_data
 
 from .model_factory import ModelStrategyFactory
 from .model_strategy import DocstringModelStrategy
@@ -535,6 +536,15 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
             with self.gpt_model.chat_session():
                 prompt = self.prompt_builder.build_check_outdated_prompt(code_object)
 
+                save_data(
+                    branch="class_docstrings",
+                    code_type=code_object.code_type,
+                    code_name=code_object.name,
+                    code_id=code_object.id,
+                    content_type="validation_prompt",
+                    data=prompt,
+                )  # update branch manually
+
                 self.logger.debug("Using prompt [%s]", prompt)
                 self.logger.info("Starting checking existing docstring")
 
@@ -549,6 +559,15 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                     max_tokens=2000,
                     callback=generation_callback,
                 )
+
+                save_data(
+                    branch="class_docstrings",
+                    code_type=code_object.code_type,
+                    code_name=code_object.name,
+                    code_id=code_object.id,
+                    content_type="validation_output",
+                    data=generated_text,
+                )  # update branch manually
 
                 self.logger.info("Finished checking existing docstring [%s]", generated_text)
 
@@ -704,6 +723,15 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                 with self.gpt_model.chat_session():
                     prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
 
+                    save_data(
+                        branch="class_docstrings",
+                        code_type=code_object.code_type,
+                        code_name=code_object.name,
+                        code_id=code_object.id,
+                        content_type="generation_prompt",
+                        data=prompt,
+                    )  # update branch manually here
+
                     self.logger.debug("Using prompt [%s]", prompt)
                     self.logger.info("Starting docstring generation")
 
@@ -722,6 +750,15 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                     self.logger.info("Finished docstring generation [%s]", generated_text)
 
                     generated_output = self._extract_generate_docstring_json_output(generated_text)
+
+                    save_data(
+                        branch="class_docstrings",
+                        code_type=code_object.code_type,
+                        code_name=code_object.name,
+                        code_id=code_object.id,
+                        content_type="generation_output",
+                        data=generated_output,
+                    )  # update branch manually here
 
                     # use generated_output to build gpt output object
 
