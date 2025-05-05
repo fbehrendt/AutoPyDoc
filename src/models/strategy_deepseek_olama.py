@@ -2,11 +2,8 @@ import logging
 import re
 from base64 import b64encode
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import Optional
 from urllib.parse import urlparse, urlunparse
-
-if TYPE_CHECKING:
-    from code_representation import ContextObject
 
 import json5
 from ollama import Client
@@ -37,9 +34,22 @@ class DeepseekR1PromptBuilder:
         self.context_size = context_size
 
         self.check_outdated_prompt_template = """
-You are an AI documentation assistant, and your task is to evaluate if an existing function docstring correctly describes the given code of the function.
-The purpose of the documentation is to help developers and beginners understand the function and specific usage of the code.
-If any part of the docstring is inadequate, consider the whole docstring to be inadequate. Any mocked docstring is to be considered inadequate. If any parameter/return, exception or attribute does not have a corresponding description and (apart from exceptions) type, it is to be considered inadequate
+You are an AI documentation assistant, and your task is to evaluate if an existing docstring for {code_type} {code_name} correctly describes the given code of the {code_type}.
+The purpose of the documentation is to help developers and beginners understand the code and its specific usage.
+
+The docstring has to pass all of the following criteria to pass:
+- concise description
+- description accurately describes what the code does (rather than how)
+- all class and instance attributes are described
+- all exception raised directly (rather than in an method/subclass within the class) are described
+- docstring is not a mock
+
+Criteria not mentioned above shall not be considered! Especially, methods and subclasses do not have to be described and no examples have to be (but can be) included
+
+The code looks like the following:
+<code>
+{code}
+</code>
 
 The existing docstring is as follows:
 <existing-docstring>
@@ -59,11 +69,10 @@ Reason step by step to find out if the existing docstring matches the code, and 
 """
 
         self.generate_method_docstring_prompt_template = """
-You are an AI documentation assistant, and your task is to analyze the code of a Python function.
+You are an AI documentation assistant, and your task is to analyze the code of a Python function called {code_name}.
 The purpose of the analysis is to help developers and beginners understand the function and specific usage of the code.
 Use plain text (including all details), in a deterministic tone.
 
-The context of the function is as follows:
 {context}
 
 Please note:
@@ -115,11 +124,10 @@ Here is an example of the expected output format:
 """
 
         self.generate_class_docstring_prompt_template = """
-You are an AI documentation assistant, and your task is to analyze the code of a Python class.
+You are an AI documentation assistant, and your task is to analyze the code of a Python class called {code_name}.
 The purpose of the analysis is to help developers and beginners understand the class and specific usage of the code.
 Use plain text (including all details), in a deterministic tone.
 
-The context of the class is as follows:
 {context}
 
 Please note:
@@ -147,11 +155,10 @@ Please reason step by step, and always summarize your final answer using the fol
         # TODO: add example back
 
         self.generate_module_docstring_prompt_template = """
-You are an AI documentation assistant, and your task is to analyze the code of a Python module.
+You are an AI documentation assistant, and your task is to analyze the code of a Python module called {code_name}.
 The purpose of the analysis is to help developers and beginners understand the module and specific usage of the code.
 Use plain text (including all details), in a deterministic tone.
 
-The context of the module is as follows:
 {context}
 
 Please note:
@@ -180,6 +187,9 @@ Please reason step by step, and always summarize your final answer using the fol
 
         prompt_length_without_context = len(
             self.check_outdated_prompt_template.format(
+                code_type=code_object.code_type,
+                code_name=code_object.name,
+                code=code_object.code,
                 existing_docstring=existing_docstring,
                 context="",
             )
@@ -190,6 +200,9 @@ Please reason step by step, and always summarize your final answer using the fol
         self.logger.debug("Code Context length [%d/%d]", len(context), max_context_length)
 
         return self.check_outdated_prompt_template.format(
+            code_type=code_object.code_type,
+            code_name=code_object.name,
+            code=code_object.code,
             existing_docstring=existing_docstring,
             context=context[:max_context_length],
         )
@@ -204,13 +217,60 @@ Please reason step by step, and always summarize your final answer using the fol
         else:
             raise Exception("Unexpected code object type")
 
-        prompt_length_without_context = len(prompt_template.format(context=""))
+        prompt_length_without_context = len(
+            prompt_template.format(context="", code_name=code_object.name)
+        )
         max_context_length = self.context_size - prompt_length_without_context
 
         context = self._build_context_from_code_object(code_object, max_context_length)
         self.logger.debug("Code Context length [%d/%d]", len(context), max_context_length)
 
-        return prompt_template.format(context=context[:max_context_length])
+        return prompt_template.format(
+            context=context[:max_context_length], code_name=code_object.name
+        )
+
+    # Helper to map context ids to objects
+    def _map_context(self, code_object: GptInputCodeObject) -> dict[str, list[any]]:
+        mapped_context: dict[str, list[any]] = {}
+
+        if code_object.context_objects is None or code_object.context is None:
+            return mapped_context
+
+        for key, value in code_object.context.items():
+            items = []
+
+            if value is None:
+                continue
+
+            elif isinstance(value, int):
+                obj = code_object.context_objects.get(value)
+                if obj:
+                    items.append(obj)
+            elif isinstance(value, Iterable):
+                for item_id in value:
+                    obj = code_object.context_objects.get(item_id)
+                    if obj:
+                        items.append(obj)
+            else:
+                logging.warning(f"Unexpected context type for key [{key}]=[{type(value)}]")
+                continue  # Skip this key
+
+            mapped_context[key] = items
+        return mapped_context
+
+    # Helper function to get context object and its docstring
+    def _get_docstring_context(
+        self, obj_id: Optional[int], context_objects: Optional[dict[int, any]], tag: str
+    ) -> str:
+        if obj_id is None or context_objects is None or obj_id not in context_objects:
+            return ""
+
+        obj = context_objects.get(obj_id)
+
+        if obj is not None and obj.docstring:
+            return f"<{tag}>\n{obj.docstring}\n</{tag}>\n"
+
+        return ""
 
     def _build_context_from_code_object(
         self, code_object: GptInputCodeObject, max_length: int
@@ -219,18 +279,7 @@ Please reason step by step, and always summarize your final answer using the fol
             context_summary = ""
 
             if code_object.context_objects is not None and code_object.context is not None:
-                mapped_context: dict[str, list[ContextObject]] = {}
-                for key, value in code_object.context.items():
-                    if value is None:
-                        continue
-                    elif isinstance(value, int):
-                        mapped_context[key] = [code_object.context_objects.get(value)]
-                    elif isinstance(value, Iterable):
-                        mapped_context[key] = [
-                            code_object.context_objects.get(item) for item in value
-                        ]
-                    else:
-                        raise Exception("Unexpected context type")
+                mapped_context = self._map_context(code_object)
 
                 raw_context_summary = ""
                 for called_method in mapped_context["called_methods"]:
@@ -254,52 +303,46 @@ Please reason step by step, and always summarize your final answer using the fol
                         f"<called-by-module>\n{called_by_module.docstring}\n</called-by-module>\n"
                     )
 
-                context_summary += f"<related-code>\n{raw_context_summary}</related-code>\n"
+                context_summary += raw_context_summary
 
-            parent_context_summary = ""
-            if (
-                code_object.parent_method_id is not None
-                and code_object.parent_method_id in code_object.context_objects
-            ):
-                parent_method = code_object.context_objects.get(code_object.parent_method_id)
-                parent_context_summary += (
-                    f"<parent-method>\n{parent_method.docstring}\n</parent-method>\n"
+            parent_context_summary = (
+                self._get_docstring_context(
+                    code_object.parent_method_id, code_object.context_objects, "parent-method"
                 )
-            if (
-                code_object.parent_class_id is not None
-                and code_object.parent_class_id in code_object.context_objects
-            ):
-                parent_class = code_object.context_objects.get(code_object.parent_class_id)
-                parent_context_summary += (
-                    f"<parent-class>\n{parent_class.docstring}\n</parent-class>\n"
+                + self._get_docstring_context(
+                    code_object.parent_class_id, code_object.context_objects, "parent-class"
                 )
-            if (
-                code_object.parent_module_id is not None
-                and code_object.parent_module_id in code_object.context_objects
-                and code_object.context_objects.get(code_object.parent_module_id) is not None
-            ):
-                parent_module = code_object.context_objects.get(code_object.parent_module_id)
-                parent_context_summary += (
-                    f"<parent-module>\n{parent_module.docstring}\n</parent-module>\n"
+                + self._get_docstring_context(
+                    code_object.parent_module_id, code_object.context_objects, "parent-module"
                 )
+            )
 
             method_summary = f"""
+The method to generate the docstring for:
 <method name="{code_object.name}">
 {code_object.code}
 </method>
 """
 
             biggest_context = f"""
+{method_summary}
+
+The context of the method is as follows:
+<related-code>
 {context_summary}
 {parent_context_summary}
-{method_summary}
+</related-code>
 """
             if len(biggest_context) <= max_length:
                 return biggest_context
 
             medium_context = f"""
-{parent_context_summary}
 {method_summary}
+
+The context of the method is as follows:
+<related-code>
+{parent_context_summary}
+</related-code>
 """
             if len(medium_context) <= max_length:
                 return medium_context
@@ -308,17 +351,133 @@ Please reason step by step, and always summarize your final answer using the fol
             if len(small_context) <= max_length:
                 return small_context
 
-            return code_object.code
+            if len(code_object.code) <= max_length:
+                return code_object.code
+            else:
+                return code_object.code[: max_length - 3] + "..."
         elif isinstance(code_object, GptInputClassObject):
-            # TODO: build context from code object
-            biggest_context = code_object.code
+            context_summary = ""
 
-            return biggest_context
+            if code_object.context_objects is not None and code_object.context is not None:
+                mapped_context = self._map_context(code_object)
+
+                raw_context_summary = ""
+
+                for called_by_method in mapped_context.get("called_by_methods", []):
+                    if called_by_method.docstring:
+                        raw_context_summary += f'<called-by-method name="{called_by_method.name}">\n{called_by_method.docstring}\n</called-by-method>\n'
+                for called_by_class in mapped_context.get("called_by_classes", []):
+                    if called_by_class.docstring:
+                        raw_context_summary += f'<called-by-class name="{called_by_class.name}">\n{called_by_class.docstring}\n</called-by-class>\n'
+                for called_by_module in mapped_context.get("called_by_modules", []):
+                    if called_by_module.docstring:
+                        raw_context_summary += f'<called-by-module name="{called_by_module.name}">\n{called_by_module.docstring}\n</called-by-module>\n'
+
+                context_summary += raw_context_summary
+
+            parent_inheritance_summary = ""
+            parent_inheritance_summary += self._get_docstring_context(
+                code_object.parent_method_id, code_object.context_objects, "parent-method"
+            )
+            parent_inheritance_summary += self._get_docstring_context(
+                code_object.parent_class_id, code_object.context_objects, "parent-class"
+            )
+            parent_inheritance_summary += self._get_docstring_context(
+                code_object.parent_module_id, code_object.context_objects, "parent-module"
+            )
+            parent_inheritance_summary += self._get_docstring_context(
+                code_object.inherited_from, code_object.context_objects, "base-class"
+            )
+
+            child_context_summary = ""
+            if code_object.context_objects:
+                for method_id in code_object.method_ids:
+                    child_context_summary += self._get_docstring_context(
+                        method_id, code_object.context_objects, "child-method"
+                    )
+                for class_id in code_object.class_ids:
+                    child_context_summary += self._get_docstring_context(
+                        class_id, code_object.context_objects, "child-class"
+                    )
+
+            class_summary = f"""
+The class to generate the docstring for:
+<class name="{code_object.name}">
+{code_object.code}
+</class>
+"""
+            biggest_context = f"""
+{class_summary}
+
+The context of the class is as follows:
+<related-code>
+{context_summary}
+{parent_inheritance_summary}
+{child_context_summary}
+</related-code>
+"""
+            if len(biggest_context) <= max_length:
+                return biggest_context
+
+            medium_context = f"""
+{class_summary}
+
+The context of the class is as follows:
+<related-code>
+{parent_inheritance_summary}
+{child_context_summary}
+</related-code>
+"""
+            if len(medium_context) <= max_length:
+                return medium_context
+
+            small_context = class_summary
+            if len(small_context) <= max_length:
+                return small_context
+
+            if len(code_object.code) <= max_length:
+                return code_object.code
+            else:
+                return code_object.code[: max_length - 3] + "..."
+
         elif isinstance(code_object, GptInputModuleObject):
-            # TODO: build context from code object
-            biggest_context = code_object.code
+            child_context_summary = ""
+            if code_object.context_objects:
+                for func_id in code_object.method_ids:
+                    child_context_summary += self._get_docstring_context(
+                        func_id, code_object.context_objects, "child-function"
+                    )
+                for class_id in code_object.class_ids:
+                    child_context_summary += self._get_docstring_context(
+                        class_id, code_object.context_objects, "child-class"
+                    )
 
-            return biggest_context
+            module_summary = f"""
+The module to generate the docstring for:
+<module name="{code_object.name}">
+{code_object.code}
+</module>
+"""
+
+            biggest_context = f"""
+{module_summary}
+
+The context of the module is as follows:
+<related-code>
+{child_context_summary}
+</related-code>
+"""
+            if len(biggest_context) <= max_length:
+                return biggest_context
+
+            small_context = module_summary
+            if len(small_context) <= max_length:
+                return small_context
+
+            if len(code_object.code) <= max_length:
+                return code_object.code
+            else:
+                return code_object.code[: max_length - 3] + "..."
         else:
             raise Exception("Unexpected code object type")
 
@@ -397,43 +556,43 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 stream = self.client.generate(
                     model=self.model_name,
                     prompt=prompt,
-                    format={
-                        "type": "object",
-                        "properties": {
-                            "description": {"type": "string"},
-                            "parameters": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "name": {
-                                            "type": "string",
-                                        },
-                                        "type": {
-                                            "type": "string",
-                                        },
-                                        "description": {
-                                            "type": "string",
-                                        },
-                                    },
-                                    "required": ["name", "type", "description"],
-                                },
-                            },
-                            "returns": {
-                                "type": "object",
-                                "properties": {
-                                    "type": {
-                                        "type": "string",
-                                    },
-                                    "description": {
-                                        "type": "string",
-                                    },
-                                },
-                                "required": ["type", "description"],
-                            },
-                        },
-                        "required": ["description", "parameters", "returns"],
-                    },
+                    # format={
+                    #     "type": "object",
+                    #     "properties": {
+                    #         "description": {"type": "string"},
+                    #         "parameters": {
+                    #             "type": "array",
+                    #             "items": {
+                    #                 "type": "object",
+                    #                 "properties": {
+                    #                     "name": {
+                    #                         "type": "string",
+                    #                     },
+                    #                     "type": {
+                    #                         "type": "string",
+                    #                     },
+                    #                     "description": {
+                    #                         "type": "string",
+                    #                     },
+                    #                 },
+                    #                 "required": ["name", "type", "description"],
+                    #             },
+                    #         },
+                    #         "returns": {
+                    #             "type": "object",
+                    #             "properties": {
+                    #                 "type": {
+                    #                     "type": "string",
+                    #                 },
+                    #                 "description": {
+                    #                     "type": "string",
+                    #                 },
+                    #             },
+                    #             "required": ["type", "description"],
+                    #         },
+                    #     },
+                    #     "required": ["description", "parameters", "returns"],
+                    # },
                     stream=True,
                     options={"num_ctx": self.context_size, "temperature": 0.6},
                 )
@@ -574,49 +733,49 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 stream = self.client.generate(
                     model=self.model_name,
                     prompt=prompt,
-                    format={
-                        "type": "object",
-                        "properties": {
-                            "description": {"type": "string"},
-                            "class_attributes": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "name": {
-                                            "type": "string",
-                                        },
-                                        "type": {
-                                            "type": "string",
-                                        },
-                                        "description": {
-                                            "type": "string",
-                                        },
-                                    },
-                                    "required": ["name", "type", "description"],
-                                },
-                            },
-                            "instance_attributes": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "name": {
-                                            "type": "string",
-                                        },
-                                        "type": {
-                                            "type": "string",
-                                        },
-                                        "description": {
-                                            "type": "string",
-                                        },
-                                    },
-                                    "required": ["name", "type", "description"],
-                                },
-                            },
-                        },
-                        "required": ["description", "class_attributes", "instance_attributes"],
-                    },
+                    # format={
+                    #     "type": "object",
+                    #     "properties": {
+                    #         "description": {"type": "string"},
+                    #         "class_attributes": {
+                    #             "type": "array",
+                    #             "items": {
+                    #                 "type": "object",
+                    #                 "properties": {
+                    #                     "name": {
+                    #                         "type": "string",
+                    #                     },
+                    #                     "type": {
+                    #                         "type": "string",
+                    #                     },
+                    #                     "description": {
+                    #                         "type": "string",
+                    #                     },
+                    #                 },
+                    #                 "required": ["name", "type", "description"],
+                    #             },
+                    #         },
+                    #         "instance_attributes": {
+                    #             "type": "array",
+                    #             "items": {
+                    #                 "type": "object",
+                    #                 "properties": {
+                    #                     "name": {
+                    #                         "type": "string",
+                    #                     },
+                    #                     "type": {
+                    #                         "type": "string",
+                    #                     },
+                    #                     "description": {
+                    #                         "type": "string",
+                    #                     },
+                    #                 },
+                    #                 "required": ["name", "type", "description"],
+                    #             },
+                    #         },
+                    #     },
+                    #     "required": ["description", "class_attributes", "instance_attributes"],
+                    # },
                     stream=True,
                     options={"num_ctx": self.context_size, "temperature": 0.6},
                 )
@@ -740,28 +899,28 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 stream = self.client.generate(
                     model=self.model_name,
                     prompt=prompt,
-                    format={
-                        "type": "object",
-                        "properties": {
-                            "description": {"type": "string"},
-                            "exceptions": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "exception_class": {
-                                            "type": "string",
-                                        },
-                                        "description": {
-                                            "type": "string",
-                                        },
-                                    },
-                                    "required": ["exception_class", "description"],
-                                },
-                            },
-                        },
-                        "required": ["description", "parameters"],
-                    },
+                    # format={
+                    #     "type": "object",
+                    #     "properties": {
+                    #         "description": {"type": "string"},
+                    #         "exceptions": {
+                    #             "type": "array",
+                    #             "items": {
+                    #                 "type": "object",
+                    #                 "properties": {
+                    #                     "exception_class": {
+                    #                         "type": "string",
+                    #                     },
+                    #                     "description": {
+                    #                         "type": "string",
+                    #                     },
+                    #                 },
+                    #                 "required": ["exception_class", "description"],
+                    #             },
+                    #         },
+                    #     },
+                    #     "required": ["description", "parameters"],
+                    # },
                     stream=True,
                     options={"num_ctx": self.context_size, "temperature": 0.6},
                 )
