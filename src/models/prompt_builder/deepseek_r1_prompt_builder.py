@@ -36,8 +36,6 @@ The existing docstring is as follows:
 <existing-docstring>
 {existing_docstring}
 </existing-docstring>
-
-The context of the code is as follows:
 {context}
 
 Reason step by step to find out if the existing docstring matches the code, and put your final answer within <output-format syntax="json">{{
@@ -178,16 +176,22 @@ Please reason step by step, and always summarize your final answer using the fol
             )
         )
         max_context_length = self.context_size - prompt_length_without_context
+        code_part = code_object.code[: min(max_context_length, len(code_object.code))]
+        max_context_length_excluding_code = max_context_length - len(code_part)
 
-        context = self._build_context_from_code_object(code_object, max_context_length)
-        self.logger.debug("Code Context length [%d/%d]", len(context), max_context_length)
+        context = self._build_context_from_code_object(
+            code_object, max_context_length_excluding_code, include_code_object=False
+        )
+        self.logger.debug(
+            "Code Context length [%d/%d]", len(context), max_context_length_excluding_code
+        )
 
         return self.check_outdated_prompt_template.format(
             code_type=code_object.code_type,
             code_name=code_object.name,
-            code=code_object.code,
+            code=code_part,
             existing_docstring=existing_docstring,
-            context=context[:max_context_length],
+            context=context[:max_context_length_excluding_code],
         )
 
     def build_generate_docstring_prompt(self, code_object: GptInputCodeObject) -> str:
@@ -256,7 +260,7 @@ Please reason step by step, and always summarize your final answer using the fol
         return ""
 
     def _build_context_from_code_object(
-        self, code_object: GptInputCodeObject, max_length: int
+        self, code_object: GptInputCodeObject, max_length: int, include_code_object=True
     ) -> str:
         if isinstance(code_object, GptInputMethodObject):
             context_summary = ""
@@ -300,12 +304,15 @@ Please reason step by step, and always summarize your final answer using the fol
                 )
             )
 
-            method_summary = f"""
+            if include_code_object:
+                method_summary = f"""
 The method to generate the docstring for:
 <method name="{code_object.name}">
 {code_object.code}
 </method>
 """
+            else:
+                method_summary = ""
 
             biggest_context = f"""
 {method_summary}
@@ -383,12 +390,16 @@ The context of the method is as follows:
                         class_id, code_object.context_objects, "child-class"
                     )
 
-            class_summary = f"""
+            if include_code_object:
+                class_summary = f"""
 The class to generate the docstring for:
 <class name="{code_object.name}">
 {code_object.code}
 </class>
 """
+            else:
+                class_summary = ""
+
             biggest_context = f"""
 {class_summary}
 
@@ -435,12 +446,15 @@ The context of the class is as follows:
                         class_id, code_object.context_objects, "child-class"
                     )
 
-            module_summary = f"""
+            if include_code_object:
+                module_summary = f"""
 The module to generate the docstring for:
 <module name="{code_object.name}">
 {code_object.code}
 </module>
 """
+            else:
+                module_summary = ""
 
             biggest_context = f"""
 {module_summary}
