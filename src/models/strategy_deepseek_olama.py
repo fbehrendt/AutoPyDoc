@@ -1,8 +1,5 @@
-import logging
 import re
 from base64 import b64encode
-from collections.abc import Iterable
-from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
 import json5
