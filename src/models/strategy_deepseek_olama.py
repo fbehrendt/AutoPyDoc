@@ -14,6 +14,7 @@ from gpt_input import (
     GptOutputModule,
 )
 from models.prompt_builder.deepseek_r1_prompt_builder import DeepseekR1PromptBuilder
+from save_data import save_data
 
 from .model_strategy import DocstringModelStrategy
 
@@ -52,6 +53,14 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
     def check_outdated(self, code_object: GptInputCodeObject) -> bool:
         try:
             prompt = self.prompt_builder.build_check_outdated_prompt(code_object)
+            save_data(
+                branch="class_docstrings",
+                code_type=code_object.code_type,
+                code_name=code_object.name,
+                code_id=code_object.id,
+                content_type="validation_prompt",
+                data=prompt,
+            )  # update branch manually here
 
             self.logger.debug("Using prompt [%s]", prompt)
             self.logger.info("Starting checking existing docstring")
@@ -77,6 +86,15 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 print(chunk["response"], end="", flush=True)
                 generated_text += chunk["response"]
 
+            save_data(
+                branch="class_docstrings",
+                code_type=code_object.code_type,
+                code_name=code_object.name,
+                code_id=code_object.id,
+                content_type="validation_result",
+                data=generated_text,
+            )  # update branch manually here
+
             self.logger.info("Finished checking existing docstring [%s]", generated_text)
 
             docstring_matches = self._extract_check_outdated_output(generated_text)
@@ -90,6 +108,15 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
         if isinstance(code_object, gpt_input.GptInputMethodObject):
             try:
                 prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
+
+                save_data(
+                    branch="class_docstrings",
+                    code_type=code_object.code_type,
+                    code_name=code_object.name,
+                    code_id=code_object.id,
+                    content_type="generation_prompt",
+                    data=prompt,
+                )  # update branch manually here
 
                 self.logger.debug("Using prompt [%s]", prompt)
                 self.logger.info("Starting docstring generation")
@@ -144,6 +171,15 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                     print(chunk["response"], end="", flush=True)
                     generated_text += chunk["response"]
 
+                save_data(
+                    branch="class_docstrings",
+                    code_type=code_object.code_type,
+                    code_name=code_object.name,
+                    code_id=code_object.id,
+                    content_type="generation_result",
+                    data=generated_text,
+                )  # update branch manually here
+
                 self.logger.info("Finished docstring generation [%s]", generated_text)
 
                 generated_output = self._extract_generate_docstring_json_output(generated_text)
@@ -159,14 +195,14 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 for parameter_name in code_object.parameters:
                     try:
                         generated_parameters = generated_output["parameters"]
-                        matching_instance_attribute = next(
+                        matching_parameters = next(
                             filter(
                                 lambda x: "name" in x and x["name"] == parameter_name,
                                 generated_parameters,
                             )
                         )
 
-                        parameter_types[parameter_name] = matching_instance_attribute["type"]
+                        parameter_types[parameter_name] = matching_parameters["type"]
                     except StopIteration:
                         parameter_types[parameter_name] = False
                     except KeyError:
@@ -181,18 +217,14 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 parameter_descriptions: dict[str, str | bool] = {}
                 for parameter_name in code_object.parameters:
                     try:
-                        generated_parameters = generated_output[parameter_name] = generated_output[
-                            "parameters"
-                        ]
-                        matching_instance_attribute = next(
+                        generated_parameters = generated_output["parameters"]
+                        matching_parameters = next(
                             filter(
                                 lambda x: "name" in x and x["name"] == parameter_name,
                                 generated_parameters,
                             )
                         )
-                        parameter_descriptions[parameter_name] = matching_instance_attribute[
-                            "description"
-                        ]
+                        parameter_descriptions[parameter_name] = matching_parameters["description"]
                     except StopIteration:
                         parameter_descriptions[parameter_name] = False
                     except KeyError:
@@ -207,28 +239,24 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 exception_descriptions: dict[str, str | bool] = {}
                 for exception in code_object.exceptions:
                     try:
-                        generated_parameters = generated_output[exception] = generated_output[
-                            "parameters"
-                        ]
-                        matching_instance_attribute = next(
+                        generated_exceptions = generated_output["exceptions"]
+                        matching_exception = next(
                             filter(
                                 lambda x: "name" in x and x["name"] == parameter_name,
-                                generated_parameters,
+                                generated_exceptions,
                             )
                         )
-                        parameter_descriptions[parameter_name] = matching_instance_attribute[
-                            "description"
-                        ]
+                        exception_descriptions[exception] = matching_exception["description"]
                     except StopIteration:
-                        parameter_descriptions[parameter_name] = False
+                        exception_descriptions[exception] = False
                     except KeyError:
-                        parameter_descriptions[parameter_name] = False
+                        exception_descriptions[exception] = False
                     except Exception as e:
                         self.logger.warning(
-                            f"An unkown error occurred while extracting generated description for parameter [{parameter_name}]",
+                            f"An unkown error occurred while extracting generated description for exception [{exception}]",
                             exc_info=e,
                         )
-                        parameter_descriptions[parameter_name] = False
+                        exception_descriptions[exception] = False
 
                 return_type: str | bool = False
                 if code_object.return_missing:
@@ -267,6 +295,15 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
         elif isinstance(code_object, gpt_input.GptInputClassObject):
             try:
                 prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
+
+                save_data(
+                    branch="class_docstrings",
+                    code_type=code_object.code_type,
+                    code_name=code_object.name,
+                    code_id=code_object.id,
+                    content_type="generation_prompt",
+                    data=prompt,
+                )  # update branch manually here
 
                 self.logger.debug("Using prompt [%s]", prompt)
                 self.logger.info("Starting docstring generation")
@@ -327,6 +364,15 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                     print(chunk["response"], end="", flush=True)
                     generated_text += chunk["response"]
 
+                save_data(
+                    branch="class_docstrings",
+                    code_type=code_object.code_type,
+                    code_name=code_object.name,
+                    code_id=code_object.id,
+                    content_type="generation_result",
+                    data=generated_text,
+                )  # update branch manually here
+
                 self.logger.info("Finished docstring generation [%s]", generated_text)
 
                 generated_output = self._extract_generate_docstring_json_output(generated_text)
@@ -342,36 +388,35 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 class_attribute_descriptions: dict[str, str | bool] = {}
                 class_attribute_types: dict[str, str | bool] = {}
 
-                for instance_attribute_name in code_object.class_attributes:
+                for class_attribute in code_object.class_attributes:
+                    class_attribute_name = class_attribute["name"]
                     try:
-                        generated_exceptions = generated_output[instance_attribute_name] = (
-                            generated_output["class_attributes"]
-                        )
-                        matching_instance_attribute = next(
+                        generated_class_attributes = generated_output["class_attributes"]
+                        matching_class_attribute = next(
                             filter(
-                                lambda x: "name" in x and x["name"] == instance_attribute_name,
-                                generated_exceptions,
+                                lambda x: "name" in x and x["name"] == class_attribute_name,
+                                generated_class_attributes,
                             )
                         )
-                        class_attribute_descriptions[instance_attribute_name] = (
-                            matching_instance_attribute["description"]
+                        class_attribute_descriptions[class_attribute_name] = (
+                            matching_class_attribute["description"]
                         )
-                        class_attribute_types[instance_attribute_name] = (
-                            matching_instance_attribute["type"]
-                        )
+                        class_attribute_types[class_attribute_name] = matching_class_attribute[
+                            "type"
+                        ]
                     except StopIteration:
-                        class_attribute_descriptions[instance_attribute_name] = False
-                        class_attribute_types[instance_attribute_name] = False
+                        class_attribute_descriptions[class_attribute_name] = False
+                        class_attribute_types[class_attribute_name] = False
                     except KeyError:
-                        class_attribute_descriptions[instance_attribute_name] = False
-                        class_attribute_types[instance_attribute_name] = False
+                        class_attribute_descriptions[class_attribute_name] = False
+                        class_attribute_types[class_attribute_name] = False
                     except Exception as e:
                         self.logger.warning(
-                            f"An unkown error occurred while extracting generated description for class attribute [{instance_attribute_name}]",
+                            f"An unkown error occurred while extracting generated description for class attribute [{class_attribute_name}]",
                             exc_info=e,
                         )
-                        class_attribute_descriptions[instance_attribute_name] = False
-                        class_attribute_types[instance_attribute_name] = False
+                        class_attribute_descriptions[class_attribute_name] = False
+                        class_attribute_types[class_attribute_name] = False
 
                 # extract instance attributes
                 instance_attribute_descriptions: dict[str, str | bool] = {}
@@ -434,6 +479,15 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
             try:
                 prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
 
+                save_data(
+                    branch="class_docstrings",
+                    code_type=code_object.code_type,
+                    code_name=code_object.name,
+                    code_id=code_object.id,
+                    content_type="generation_prompt",
+                    data=prompt,
+                )  # update branch manually here
+
                 self.logger.debug("Using prompt [%s]", prompt)
                 self.logger.info("Starting docstring generation")
 
@@ -471,6 +525,15 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 for chunk in stream:
                     generated_text += chunk["response"]
 
+                save_data(
+                    branch="class_docstrings",
+                    code_type=code_object.code_type,
+                    code_name=code_object.name,
+                    code_id=code_object.id,
+                    content_type="generation_result",
+                    data=generated_text,
+                )  # update branch manually here
+
                 self.logger.info("Finished docstring generation [%s]", generated_text)
 
                 generated_output = self._extract_generate_docstring_json_output(generated_text)
@@ -488,7 +551,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 for exception_class in code_object.exceptions:
                     try:
                         generated_exceptions = generated_output["exceptions"]
-                        matching_instance_attribute = next(
+                        matching_exception_class = next(
                             filter(
                                 lambda x: "exception_class" in x
                                 and x["exception_class"] == exception_class,
@@ -496,7 +559,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                             )
                         )
 
-                        exception_descriptions[exception_class] = matching_instance_attribute[
+                        exception_descriptions[exception_class] = matching_exception_class[
                             "description"
                         ]
                     except StopIteration:

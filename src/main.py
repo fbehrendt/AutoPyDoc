@@ -116,14 +116,10 @@ class AutoPyDoc:
         )
         self.gpt_interface.estimate(full_input=full_input_for_estimation)
 
-        # first_batch = self.code_parser.code_representer.generate_next_batch() # TODO uncomment
-        first_batch = [
-            code_object.get_gpt_input(code_representer=self.code_parser.code_representer)
-            for code_object in self.code_parser.code_representer.get_classes()
-        ]  # get classes # TODO delete
-        # if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
-        #    self.logger.info("No need to do anything")
-        #    quit()
+        first_batch = self.code_parser.code_representer.generate_next_batch()
+        if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
+            self.logger.info("No need to do anything")
+            quit()
         self.gpt_interface.process_batch(first_batch, callback=self.process_gpt_result)
 
         # if parts are still outdated
