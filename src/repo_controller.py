@@ -225,7 +225,7 @@ class RepoController:
                     hasattr(current_code_obj, "outer_class_id")
                     and current_code_obj.outer_class_id is not None
                 ):
-                    current_code_obj = code_representer.get(code_obj.outer_class_id)
+                    current_code_obj = code_representer.get(current_code_obj.outer_class_id)
                     class_nesting.append(current_code_obj)
                 start_pos = 0
                 for outer_class_obj in class_nesting[
