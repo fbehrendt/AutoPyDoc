@@ -18,6 +18,10 @@ class ModelStrategyFactory:
             from .strategy_deepseek_olama import OllamaDeepseekR1Strategy
 
             return OllamaDeepseekR1Strategy(**kwargs)
+        if model_type == "gemini":
+            from models.strategy_google_gemini import GoogleGeminiStrategy
+
+            return GoogleGeminiStrategy(**kwargs)
         if model_type == "mock":
             from .strategy_mock import MockStrategy
 

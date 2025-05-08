@@ -4,6 +4,7 @@ dependencies = [
   "configparser>=7.1.0",
   "coverage>=7.7.1",
   "gitpython>=3.1.44",
+  "google-genai>=1.12.1",
   "gpt4all>=2.8.2",
   "json5>=0.10.0",
   "ollama>=0.4.7",
