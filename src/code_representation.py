@@ -1,17 +1,17 @@
+import os
+import pathlib
+import sys
 from ast import AST
 from dataclasses import dataclass, field, fields
 from typing import List
-import pathlib
-import sys
-import os
 
 file_path = os.path.dirname(os.path.realpath(__file__))
 project_dir = str(pathlib.Path(file_path).parent.parent.absolute())
 sys.path.append(project_dir)
 from gpt_input import (
+    GptInputClassObject,
     GptInputCodeObject,
     GptInputMethodObject,
-    GptInputClassObject,
     GptInputModuleObject,
 )
 
@@ -84,6 +84,8 @@ class CodeObject:
         # self.__set_fields_frozen()
         self.id = hash(self)
         self.code_type = "code"
+        self.class_ids = set()
+        self.method_ids = set()
         self.called_methods = set()
         self.called_classes = set()
         self.called_by_methods = set()
@@ -112,6 +114,24 @@ class CodeObject:
                     return local_setter
 
                 setattr(self, field_name, property(local_getter, frozen(field_name)))
+
+    def add_class_id(self, class_id: int):
+        """
+        Add a class id
+
+        :param class_id: class id
+        :type class_id: int
+        """
+        self.class_ids.add(class_id)
+
+    def add_method_id(self, method_id: int):
+        """
+        Add a method id
+
+        :param method_id: method id
+        :type method_id: int
+        """
+        self.method_ids.add(method_id)
 
     def add_called_method(self, called_method_id: int):
         """
@@ -208,7 +228,7 @@ class CodeObject:
             code_type=self.code_type,
             name=self.name,
             docstring=self.docstring,
-            code=self.code,
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             context=self.get_context(),
             context_objects=code_representer.get_context_objects(self.id),
         )
@@ -216,13 +236,22 @@ class CodeObject:
     def get_sent_to_gpt(self) -> bool:
         return self.send_to_gpt
 
+    def _remove_docstring_from_code(self) -> str:
+        """Remove docstring from code and return it"""
+        if self.docstring is None:
+            return self.code
+        code_without_docstring = self.code
+        for line in self.docstring.split("\n"):
+            code_without_docstring = code_without_docstring.replace(line.strip(), "")
+        return code_without_docstring
+
     def get_context_object(self):
         return ContextObject(
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring,
-            code=self.code,
+            docstring=self.docstring,  # if not self.outdated else "", # TODO find a better solution
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
         )
 
 
@@ -261,8 +290,6 @@ class ModuleObject(CodeObject):
     def __post_init__(self):
         super().__post_init__()
         self.code_type = "module"
-        self.class_ids = set()
-        self.method_ids = set()
 
     def add_exception(self, exception: str):
         """
@@ -272,24 +299,6 @@ class ModuleObject(CodeObject):
         :type exception: str
         """
         self.exceptions.add(exception)
-
-    def add_class_id(self, class_id: int):
-        """
-        Add a class id
-
-        :param class_id: class id
-        :type class_id: int
-        """
-        self.class_ids.add(class_id)
-
-    def add_method_id(self, method_id: int):
-        """
-        Add a method id
-
-        :param method_id: method id
-        :type method_id: int
-        """
-        self.method_ids.add(method_id)
 
     def get_context(self) -> dict[str, list[int]]:
         """
@@ -320,7 +329,7 @@ class ModuleObject(CodeObject):
             code_type=self.code_type,
             name=self.name,
             docstring=self.docstring,
-            code=self.code,
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             context=self.get_context(),
             context_objects=code_representer.get_context_objects(self.id),
             exceptions=self.exceptions,
@@ -331,8 +340,8 @@ class ModuleObject(CodeObject):
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring,
-            code=self.code,
+            docstring=self.docstring,  # if not self.outdated else "", # TODO find a better solution
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             exceptions=self.exceptions,
         )
 
@@ -473,7 +482,7 @@ class MethodObject(CodeObject):
             code_type=self.code_type,
             name=self.name,
             docstring=self.docstring,
-            code=self.code,
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             context=self.get_context(),
             context_objects=code_representer.get_context_objects(self.id),
             exceptions=self.exceptions,
@@ -490,8 +499,8 @@ class MethodObject(CodeObject):
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring,
-            code=self.code,
+            docstring=self.docstring,  # if not self.outdated else "", # TODO find a better solution
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             exceptions=self.exceptions,
             arguments=self.arguments,
         )
@@ -537,8 +546,6 @@ class ClassObject(CodeObject):
     def __post_init__(self):
         super().__post_init__()
         self.code_type = "class"
-        self.class_ids = set()
-        self.method_ids = set()
         self.class_attributes = list()
         self.instance_attributes = list()
 
@@ -550,25 +557,6 @@ class ClassObject(CodeObject):
         :type exception: str
         """
         self.exceptions.add(exception)
-
-    def add_class_id(self, class_id: int):
-        """
-        Add a class id
-
-        :param class_id: class id
-        :type class_id: int
-        """
-        if class_id != self.id:
-            self.class_ids.add(class_id)
-
-    def add_method_id(self, method_id: int):
-        """
-        Add a method id
-
-        :param method_id: method id
-        :type method_id: int
-        """
-        self.method_ids.add(method_id)
 
     def add_class_attribute(self, attribute: dict[str, str]):
         """
@@ -602,8 +590,7 @@ class ClassObject(CodeObject):
         :return type: dict[str, list[int]|int]
         """
         result = super().get_context()
-        result["outer_class_id"] = self.outer_class_id
-        result["outer_method_id"] = self.outer_method_id
+        result["parent_id"] = self.parent_id
         result["module_id"] = self.module_id
         result["inherited_from"] = self.inherited_from
         result["class_ids"] = self.class_ids
@@ -622,7 +609,7 @@ class ClassObject(CodeObject):
             code_type=self.code_type,
             name=self.name,
             docstring=self.docstring,
-            code=self.code,
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             context=self.get_context(),
             context_objects=code_representer.get_context_objects(self.id),
             parent_method_id=self.outer_method_id,
@@ -646,8 +633,8 @@ class ClassObject(CodeObject):
             id=self.id,
             name=self.name,
             code_type=self.code_type,
-            docstring=self.docstring,
-            code=self.code,
+            docstring=self.docstring,  # if not self.outdated else "", # TODO find a better solution
+            code=self.code if not self.outdated else self._remove_docstring_from_code(),
             exceptions=self.exceptions,
             class_attributes=self.class_attributes,
             instance_attributes=self.instance_attributes,
@@ -968,19 +955,17 @@ class CodeRepresenter:
         """
         code_obj = self.get(code_obj_id)
         for code_id in code_obj.called_classes:
-            if self.get(code_id).outdated:
+            if self.is_outdated(code_id):
                 return True
         for code_id in code_obj.called_methods:
-            if self.get(code_id).outdated:
+            if self.is_outdated(code_id):
                 return True
-        if isinstance(code_obj, ClassObject) or isinstance(code_obj, ModuleObject):
-            for class_id in code_obj.class_ids:
-                if self.get(class_id).outdated:
-                    return True
-        if isinstance(code_obj, ClassObject):
-            for method_id in code_obj.method_ids:
-                if self.get(method_id).outdated:
-                    return True
+        for class_id in code_obj.class_ids:
+            if self.is_outdated(class_id):
+                return True
+        for method_id in code_obj.method_ids:
+            if self.is_outdated(method_id):
+                return True
         return False
 
     def update_docstring(self, code_obj_id: int, new_docstring: str):
@@ -1004,18 +989,18 @@ class CodeRepresenter:
     def get_sent_to_gpt_ids(self) -> list[int]:
         return [code_obj.id for code_obj in self.objects.values() if code_obj.get_sent_to_gpt()]
 
-    def generate_next_batch(self, ignore_dependencies=False) -> list[GptInputCodeObject]:
+    def generate_next_batch(self, ignore_dependencies=False, dry=False) -> list[GptInputCodeObject]:
         ids = [
             id
             for id in self.get_outdated_ids()
-            if (ignore_dependencies)
-            or not self.depends_on_outdated_code(id)
-            and not self.get(id).send_to_gpt
+            if ignore_dependencies
+            or (not self.depends_on_outdated_code(id) and not self.get(id).send_to_gpt)
         ]
         batch: List[GptInputCodeObject] = []
         for id in ids:
             code_obj = self.get(id)
-            code_obj.send_to_gpt = True
+            if not dry:
+                code_obj.send_to_gpt = True
             batch.append(code_obj.get_gpt_input(code_representer=self))
         return batch
 
@@ -1054,12 +1039,10 @@ class CodeRepresenter:
     def set_outdated(self, code_obj_id: int):
         code_obj = self.get(code_obj_id)
         code_obj.outdated = True
-        if isinstance(code_obj, MethodObject) or isinstance(code_obj, ClassObject):
-            if code_obj.outer_class_id is not None:
-                self.set_outdated(code_obj.outer_class_id)
-            if code_obj.module_id is not None:
-                module_obj = self.get(code_obj.module_id)
-                module_obj.outdated = True
+
+    def set_multiple_outdated(self, outdated_ids: list[int]):
+        for id in outdated_ids:
+            self.set_outdated(id)
 
     def is_outdated(self, code_obj_id):
         code_obj = self.get(code_obj_id)
@@ -1067,19 +1050,19 @@ class CodeRepresenter:
             return True
         for dependency_id in [*code_obj.called_methods, *code_obj.called_classes]:
             dependency_obj = self.get(dependency_id)
-            if dependency_obj.is_outdated() and not dependency_obj.is_updated:
+            if self.is_outdated(dependency_obj.id) and not dependency_obj.is_updated:
                 return True
-        if isinstance(code_obj, ClassObject):
-            for dependency_id in [
-                *code_obj.class_ids,
-                *code_obj.method_ids,
-                code_obj.inherited_from,
-            ]:
-                dependency_obj = self.get(dependency_id)
-                if dependency_obj.is_outdated() and not dependency_obj.is_updated:
-                    return True
-        if isinstance(code_obj, ModuleObject):
-            for dependency_id in [*code_obj.class_ids, *code_obj.method_ids]:
-                dependency_obj = self.get(dependency_id)
-                if dependency_obj.is_outdated() and not dependency_obj.is_updated:
-                    return True
+
+        for dependency_id in [
+            *code_obj.class_ids,
+            *code_obj.method_ids,
+        ]:
+            if dependency_id is None:
+                continue
+            dependency_obj = self.get(dependency_id)
+            if self.is_outdated(dependency_obj.id) and not dependency_obj.is_updated:
+                return True
+        if isinstance(code_obj, ClassObject) and code_obj.inherited_from is not None:
+            dependency_obj = self.get(code_obj.inherited_from)
+            if self.is_outdated(dependency_id) and not dependency_obj.is_updated:
+                return True

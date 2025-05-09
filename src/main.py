@@ -1,5 +1,6 @@
 import logging
 import os
+from dotenv import load_dotenv
 
 from code_representation import ClassObject, CodeRepresenter, MethodObject, ModuleObject
 from docstring_builder import create_docstring
@@ -8,12 +9,17 @@ from docstring_input_selector import (
     DocstringInputSelectorMethod,
     DocstringInputSelectorModule,
 )
+from extract_outdated_ids import extract_code_affected_by_change
 from get_context import CodeParser
 from gpt_input import GptOutput
 from gpt_interface import GptInterface
 from repo_controller import RepoController
 from validate_docstring import validate_docstring
 from validate_docstring_input import validate_docstring_input
+
+from save_data import save_data
+
+load_dotenv()
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -49,6 +55,9 @@ class AutoPyDoc:
         # self.gpt_interface = GptInterface("mock")
         # self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
         self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
+        # self.gpt_interface = GptInterface(
+        #     "gemini", context_size=2**13, gemini_api_key="xxxxxxxxxxxxxxxxxxxxxxxxxx"
+        # )
 
         # pull repo, create code representation, create dependencies
         self.debug = debug
@@ -87,12 +96,26 @@ class AutoPyDoc:
         self.code_parser.check_return_type()
         self.code_parser.extract_attributes()
 
+        self.repo.repo.git.checkout(self.repo.latest_commit_hash)
+        self.code_parser_old = CodeParser(
+            code_representer=CodeRepresenter(),
+            working_dir=self.repo.working_dir,
+            debug=True,
+            files=self.repo.get_files_in_repo(),
+            logger=self.logger,
+        )
+        self.repo.repo.git.checkout(self.repo.current_commit)
+        outdated_ids = extract_code_affected_by_change(
+            code_parser_old=self.code_parser_old, code_parser_new=self.code_parser
+        )
+        self.code_parser.code_representer.set_multiple_outdated(outdated_ids)
+
         # get changes between last commit the tool ran for and now
-        self.changes = self.repo.get_changes()
-        self.code_parser.set_code_affected_by_changes_to_outdated(changes=self.changes)
+        # self.changes = self.repo.get_changes()
+        # self.code_parser.set_code_affected_by_changes_to_outdated(changes=self.changes)
 
         full_input_for_estimation = self.code_parser.code_representer.generate_next_batch(
-            ignore_dependencies=True
+            ignore_dependencies=True, dry=True
         )
         self.gpt_interface.estimate(full_input=full_input_for_estimation)
 
@@ -172,6 +195,14 @@ class AutoPyDoc:
                 code_representer=self.code_parser.code_representer,
                 debug=True,
             )
+            save_data(
+                branch=self.repo.branch,
+                code_type=code_obj.code_type,
+                code_name=code_obj.name,
+                code_id=code_obj.id,
+                content_type="new_docstring",
+                data=new_docstring,
+            )
 
             # validate docstring syntax
             errors = validate_docstring(new_docstring)
@@ -179,14 +210,14 @@ class AutoPyDoc:
                 # TODO resent to GPT, with note. If this is the second time, don't update this docstring and put note in pull request description
                 self.logger.warning("Docstring is not valid. Retry")
                 if hasattr(code_obj, "retry") and code_obj.retry > 0:
-                    code_obj.retry += 1
                     if code_obj.retry > 2:
                         self.logger.error("Docstring is not still invalid after 3 attempts")
                         if not self.debug:
                             raise NotImplementedError
+                    code_obj.retry += 1
                 else:
                     code_obj.retry = 1
-                return  # this prevents code_obj.outdated from being set to False and code_obj.is_updated from being set to True, causing it to be included in the next batch again.
+                return  # this prevents code_obj.outdated from being set to False and code_obj.is_updated from being set to True, causing it to be included in the next batch again. # TODO what about sent_to_gpt?
 
             # insert new docstring in the file
             self.repo.insert_docstring(
@@ -227,41 +258,58 @@ class AutoPyDoc:
 
         developer_changes = []
 
+        self.repo.repo.git.stash("save")
         self.repo.repo.git.checkout(self.repo.latest_commit_hash)
+
         sys.stderr = open(os.devnull, "w")
-        code_ast = ast.parse(open(code_obj.filename).read())
-        sys.stderr = sys.__stderr__
-        for node in ast.walk(code_ast):
-            if isinstance(code_obj, MethodObject) and (
-                isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef)
-            ):
-                if code_obj.name == node.name:
+        # if the file is new, all existing docstrings are manually generated
+        if os.path.isfile(code_obj.filename):
+            code_ast = ast.parse(open(code_obj.filename).read())
+            sys.stderr = sys.__stderr__
+            old_docstring = -1
+
+            for node in ast.walk(code_ast):
+                if isinstance(code_obj, MethodObject) and (
+                    isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef)
+                ):
+                    if code_obj.name == node.name:
+                        old_docstring = ast.get_docstring(node, clean=True) or ""
+                        break
+                elif isinstance(code_obj, ClassObject) and isinstance(node, ast.ClassDef):
+                    if code_obj.name == node.name:
+                        old_docstring = ast.get_docstring(node, clean=True) or ""
+                        break
+                elif isinstance(code_obj, ModuleObject) and isinstance(node, ast.Module):
                     old_docstring = ast.get_docstring(node, clean=True) or ""
                     break
-            elif isinstance(code_obj, ClassObject) and isinstance(node, ast.ClassDef):
-                if code_obj.name == node.name:
-                    old_docstring = ast.get_docstring(node, clean=True) or ""
-                    break
-            elif isinstance(code_obj, ModuleObject) and isinstance(node, ast.Module):
-                old_docstring = ast.get_docstring(node, clean=True) or ""
-                break
-        if code_obj.old_docstring is not None and old_docstring == code_obj.old_docstring:
-            print("+++docstrings are equal+++")
-            return developer_changes
-        else:
-            print("---docstrings are different---")
-            new_docstring_dismantler = DocstringDismantler(docstring=code_obj.old_docstring or "")
-            old_docstring_dismantler = DocstringDismantler(docstring=old_docstring or "")
-            developer_changes = new_docstring_dismantler.compare_docstrings(
-                old_docstring_dismantler
+
+            if old_docstring == -1:
+                # new method/class
+                return []
+            if code_obj.old_docstring is not None and old_docstring == code_obj.old_docstring:
+                print("+++docstrings are equal+++")
+                return []
+
+        # if the file does not exist, all docstrings were made manually
+        print("---docstrings are different---")
+        new_docstring_dismantler = DocstringDismantler(docstring=code_obj.old_docstring or "")
+        if not ("old_docstring" in locals() or "old_docstring" in globals()):
+            old_docstring = ""
+        old_docstring_dismantler = DocstringDismantler(docstring=old_docstring or "")
+        developer_changes = old_docstring_dismantler.compare_docstrings(new_docstring_dismantler)
+        if len(developer_changes) > 0:
+            print(
+                f"=============\n{code_obj.name} in {pathlib.Path(code_obj.filename).stem}\n============="
             )
-            if len(developer_changes) > 0:
-                print(
-                    f"=============\n{code_obj.name} in {pathlib.Path(code_obj.filename).stem}\n============="
-                )
-            for developer_change in developer_changes:
-                print(developer_change)
-        self.repo.repo.git.checkout("HEAD")
+        for developer_change in developer_changes:
+            print(developer_change)
+
+        self.repo.repo.git.checkout(self.repo.current_commit)
+        git_stash_list = self.repo.repo.git.stash("list")
+        if len(git_stash_list) > 0:
+            self.repo.repo.git.stash("pop")
+            self.repo.repo.git.stash("clear")
+
         if developer_changes is None:
             print()
         return developer_changes
@@ -296,10 +344,12 @@ class AutoPyDoc:
 
 if __name__ == "__main__":
     auto_py_doc = AutoPyDoc()
+
     auto_py_doc.main(
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
         ollama_host=os.getenv("OLLAMA_HOST", default=None),
+        branch="class_docstrings",
         debug=True,
     )
     # auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)

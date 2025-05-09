@@ -1,23 +1,24 @@
-import configparser
-import validators
-from git import Repo, Actor
-import os
-import sys
-import re
-import pathlib
-from pathlib import Path
-from github import Github
-from dotenv import load_dotenv
-import shutil
 import ast
-import astunparse
+import configparser
 import filecmp
 import inspect
+import os
+import pathlib
+import re
+import shutil
+import sys
+from pathlib import Path
+
+import astunparse
+import validators
+from dotenv import load_dotenv
+from git import Actor, Repo
+from github import Github
 
 from code_representation import (
+    ClassObject,
     CodeRepresenter,
     MethodObject,
-    ClassObject,
     ModuleObject,
 )
 
@@ -77,6 +78,7 @@ class RepoController:
         if os.path.exists(os.path.join(parent_dir, "saved_files")):
             shutil.rmtree(os.path.join(parent_dir, "saved_files"))
 
+        self.current_commit = self.repo.head.commit.hexsha
         self.get_latest_commit()
 
     def get_files_in_repo(self) -> list[str]:
@@ -205,6 +207,8 @@ class RepoController:
         :raises Exception("End of docstring not found"): raised when the end of the docstring cannot be located
         """
         # TODO use ast.get_source_code_segment() and/or look into asttokens
+        self.repo.git.checkout(self.current_commit)
+
         code_obj = code_representer.get(code_obj_id)
         with open(file=code_obj.filename, mode="r") as f:
             lines = f.readlines()
@@ -221,7 +225,7 @@ class RepoController:
                     hasattr(current_code_obj, "outer_class_id")
                     and current_code_obj.outer_class_id is not None
                 ):
-                    current_code_obj = code_representer.get(code_obj.outer_class_id)
+                    current_code_obj = code_representer.get(current_code_obj.outer_class_id)
                     class_nesting.append(current_code_obj)
                 start_pos = 0
                 for outer_class_obj in class_nesting[
@@ -279,9 +283,9 @@ class RepoController:
                         break
             if lines[i].strip().startswith('"""'):
                 if (
-                    lines[i].strip().rstrip("\n").endswith('"""') and len(lines[i].strip()) >= 6
+                    lines[i].strip().rstrip("\n").endswith('"""') and len(lines[i].strip()) >= 5
                 ):  # inline docstring
-                    end_pos = i
+                    end_pos = i + 1
                 else:
                     for j in range(i + 1, len(lines)):
                         if lines[j].strip().rstrip("\n").endswith('"""'):
@@ -386,6 +390,8 @@ class RepoController:
                 i = 1
                 while new_branch in [ref.name for ref in self.repo.references]:
                     new_branch = self.branch + "_AutoPyDoc_" + str(i)
+                    i += 1
+
                 current = self.repo.create_head(new_branch)
                 current.checkout()
             # main = self.repo.heads.main # TODO are those two lines necessary?
