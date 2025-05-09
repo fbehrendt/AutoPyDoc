@@ -25,9 +25,7 @@ class DocstringInputClass:
     class_attributes: dict = field(default_factory=dict, compare=False, hash=False)
     class_attribute_types: dict = field(default_factory=dict, compare=False, hash=False)
     instance_attributes: dict = field(default_factory=dict, compare=False, hash=False)
-    instance_attribute_types: dict = field(
-        default_factory=dict, compare=False, hash=False
-    )
+    instance_attribute_types: dict = field(default_factory=dict, compare=False, hash=False)
 
 
 @dataclass
@@ -41,10 +39,11 @@ class DocstringInputModule:
 
 
 class DocstringInputSelectorMethod:
-    def __init__(self, code_obj, gpt_result, developer_docstring_changes):
+    def __init__(self, code_obj, gpt_result, developer_docstring_changes, indentation_level):
         self.code_obj = code_obj
         self.gpt_result = gpt_result
         self.developer_docstring_changes = developer_docstring_changes
+        self.indentation_level = indentation_level
         self.docstring_input = DocstringInputMethod(id=code_obj.id)
         self.__select_description()
         self.__select_parameters()
@@ -62,7 +61,9 @@ class DocstringInputSelectorMethod:
                 and developer_docstring_change["change"] == "description"
                 and len(developer_docstring_change["new"]) > 10
             ):
-                self.docstring_input.description = developer_docstring_change["new"]
+                self.docstring_input.description = developer_docstring_change["new"].replace(
+                    "\n", "\n" + " " * self.indentation_level
+                )
                 break
         if len(self.docstring_input.description) < 10:
             self.docstring_input.description = self.gpt_result.description
@@ -113,18 +114,14 @@ class DocstringInputSelectorMethod:
         for developer_docstring_change in self.developer_docstring_changes:
             if developer_docstring_change["place"] == "return":
                 if developer_docstring_change["change"] == "added":
-                    self.docstring_input.return_type = developer_docstring_change[
-                        "type"
+                    self.docstring_input.return_type = developer_docstring_change["type"]
+                    self.docstring_input.return_description = developer_docstring_change[
+                        "description"
                     ]
-                    self.docstring_input.return_description = (
-                        developer_docstring_change["description"]
-                    )
                 elif developer_docstring_change["change"] == "type":
                     self.docstring_input.return_type = developer_docstring_change["new"]
                 elif developer_docstring_change["change"] == "description":
-                    self.docstring_input.return_description = (
-                        developer_docstring_change["new"]
-                    )
+                    self.docstring_input.return_description = developer_docstring_change["new"]
                 break
 
     def __select_exceptions(self):
@@ -150,10 +147,11 @@ class DocstringInputSelectorMethod:
 
 
 class DocstringInputSelectorModule:
-    def __init__(self, code_obj, gpt_result, developer_docstring_changes):
+    def __init__(self, code_obj, gpt_result, developer_docstring_changes, indentation_level):
         self.code_obj = code_obj
         self.gpt_result = gpt_result
         self.developer_docstring_changes = developer_docstring_changes
+        self.indentation_level = indentation_level
         self.docstring_input = DocstringInputModule(id=code_obj.id)
         self.__select_description()
         self.__select_exceptions()
@@ -169,7 +167,9 @@ class DocstringInputSelectorModule:
                 and developer_docstring_change["change"] == "description"
                 and len(developer_docstring_change["new"]) > 10
             ):
-                self.docstring_input.description = developer_docstring_change["new"]
+                self.docstring_input.description = developer_docstring_change["new"].replace(
+                    "\n", "\n" + " " * self.indentation_level
+                )
                 break
         if len(self.docstring_input.description) < 10:
             self.docstring_input.description = self.gpt_result.description
@@ -197,10 +197,11 @@ class DocstringInputSelectorModule:
 
 
 class DocstringInputSelectorClass:
-    def __init__(self, code_obj, gpt_result, developer_docstring_changes):
+    def __init__(self, code_obj, gpt_result, developer_docstring_changes, indentation_level):
         self.code_obj = code_obj
         self.gpt_result = gpt_result
         self.developer_docstring_changes = developer_docstring_changes
+        self.indentation_level = indentation_level
         self.docstring_input = DocstringInputClass(id=code_obj.id)
         self.__select_description()
         self.__select_class_attributes()
@@ -217,7 +218,9 @@ class DocstringInputSelectorClass:
                 and developer_docstring_change["change"] == "description"
                 and len(developer_docstring_change["new"]) > 10
             ):
-                self.docstring_input.description = developer_docstring_change["new"]
+                self.docstring_input.description = developer_docstring_change["new"].replace(
+                    "\n", "\n" + " " * self.indentation_level
+                )
                 break
         if len(self.docstring_input.description) < 10:
             self.docstring_input.description = self.gpt_result.description
@@ -247,16 +250,16 @@ class DocstringInputSelectorClass:
                     and developer_docstring_change["name"] == class_attribute_name
                 ):
                     if developer_docstring_change["change"] == "added":
-                        self.docstring_input.class_attribute_types[
-                            class_attribute_name
-                        ] = developer_docstring_change["type"]
+                        self.docstring_input.class_attribute_types[class_attribute_name] = (
+                            developer_docstring_change["type"]
+                        )
                         self.docstring_input.class_attributes[class_attribute_name] = (
                             developer_docstring_change["description"]
                         )
                     elif developer_docstring_change["change"] == "type":
-                        self.docstring_input.class_attribute_types[
-                            class_attribute_name
-                        ] = developer_docstring_change["new"]
+                        self.docstring_input.class_attribute_types[class_attribute_name] = (
+                            developer_docstring_change["new"]
+                        )
                     elif developer_docstring_change["change"] == "description":
                         self.docstring_input.class_attributes[class_attribute_name] = (
                             developer_docstring_change["new"]
@@ -264,26 +267,22 @@ class DocstringInputSelectorClass:
                     break
 
     def __select_instance_attributes(self):
-        for (
-            instance_attribute_name
-        ) in self.gpt_result.instance_attribute_descriptions.keys():
+        for instance_attribute_name in self.gpt_result.instance_attribute_descriptions.keys():
             instance_attr_annotation = [
                 attr["type"]
                 for attr in self.code_obj.instance_attributes
                 if attr["name"] == instance_attribute_name and "type" in attr.keys()
             ]
             if len(instance_attr_annotation) > 0:
-                self.docstring_input.instance_attribute_types[
-                    instance_attribute_name
-                ] = instance_attr_annotation[0]
+                self.docstring_input.instance_attribute_types[instance_attribute_name] = (
+                    instance_attr_annotation[0]
+                )
             else:
-                self.docstring_input.instance_attribute_types[
-                    instance_attribute_name
-                ] = self.gpt_result.instance_attribute_types[instance_attribute_name]
+                self.docstring_input.instance_attribute_types[instance_attribute_name] = (
+                    self.gpt_result.instance_attribute_types[instance_attribute_name]
+                )
                 self.docstring_input.instance_attributes[instance_attribute_name] = (
-                    self.gpt_result.instance_attribute_descriptions[
-                        instance_attribute_name
-                    ]
+                    self.gpt_result.instance_attribute_descriptions[instance_attribute_name]
                 )
 
             for developer_docstring_change in self.developer_docstring_changes:
@@ -292,18 +291,18 @@ class DocstringInputSelectorClass:
                     and developer_docstring_change["name"] == instance_attribute_name
                 ):
                     if developer_docstring_change["change"] == "added":
-                        self.docstring_input.instance_attribute_types[
-                            instance_attribute_name
-                        ] = developer_docstring_change["type"]
-                        self.docstring_input.instance_attributes[
-                            instance_attribute_name
-                        ] = developer_docstring_change["description"]
+                        self.docstring_input.instance_attribute_types[instance_attribute_name] = (
+                            developer_docstring_change["type"]
+                        )
+                        self.docstring_input.instance_attributes[instance_attribute_name] = (
+                            developer_docstring_change["description"]
+                        )
                     elif developer_docstring_change["change"] == "type":
-                        self.docstring_input.instance_attribute_types[
-                            instance_attribute_name
-                        ] = developer_docstring_change["new"]
+                        self.docstring_input.instance_attribute_types[instance_attribute_name] = (
+                            developer_docstring_change["new"]
+                        )
                     elif developer_docstring_change["change"] == "description":
-                        self.docstring_input.instance_attributes[
-                            instance_attribute_name
-                        ] = developer_docstring_change["new"]
+                        self.docstring_input.instance_attributes[instance_attribute_name] = (
+                            developer_docstring_change["new"]
+                        )
                     break

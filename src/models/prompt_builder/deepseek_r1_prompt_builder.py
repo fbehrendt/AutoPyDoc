@@ -21,7 +21,8 @@ The purpose of the documentation is to help developers and beginners understand 
 The docstring has to pass all of the following criteria to pass:
 - Concise description
 - Description accurately describes what the code does (rather than how)
-- All class and instance attributes are described
+- All class and instance attributes and their types are described if applicable
+- All method parameters and their types are described if applicable
 - All exception raised directly (rather than in an method/subclass within the class) are described
 - Docstring is not a mock
 
@@ -51,6 +52,11 @@ Reason step by step to find out if the existing docstring matches the code, and 
 You are an AI documentation assistant, and your task is to analyze the code of a Python function called {code_name}.
 The purpose of the analysis is to help developers and beginners understand the function and specific usage of the code.
 Use plain text (including all details), in a deterministic tone.
+
+The code looks like the following:
+<code>
+{code}
+</code>
 
 {context}
 
@@ -111,6 +117,11 @@ Use plain text (including all details), in a deterministic tone.
 Provided context shall be used to better understand what the class does and does not need to be analyzed further than that.
 Do not generate descriptions for methods and subclasses.
 
+The code looks like the following:
+<code>
+{code}
+</code>
+
 {context}
 
 Please note:
@@ -142,6 +153,11 @@ Please reason step by step, and always summarize your final answer using the fol
 You are an AI documentation assistant, and your task is to analyze the code of a Python module called {code_name}.
 The purpose of the analysis is to help developers and beginners understand the module and specific usage of the code.
 Use plain text (including all details), in a deterministic tone.
+
+The code looks like the following:
+<code>
+{code}
+</code>
 
 {context}
 
@@ -195,7 +211,7 @@ Please reason step by step, and always summarize your final answer using the fol
             code_name=code_object.name,
             code=code_part,
             existing_docstring=existing_docstring,
-            context=context[:max_context_length_excluding_code],
+            context="",  # context[:max_context_length_excluding_code], TODO revert
         )
 
     def build_generate_docstring_prompt(self, code_object: GptInputCodeObject) -> str:
@@ -209,15 +225,21 @@ Please reason step by step, and always summarize your final answer using the fol
             raise Exception("Unexpected code object type")
 
         prompt_length_without_context = len(
-            prompt_template.format(context="", code_name=code_object.name)
+            prompt_template.format(context="", code_name=code_object.name, code=code_object.code)
         )
         max_context_length = self.context_size - prompt_length_without_context
+        code_part = code_object.code[: min(max_context_length, len(code_object.code))]
+        max_context_length_excluding_code = max_context_length - len(code_part)
 
-        context = self._build_context_from_code_object(code_object, max_context_length)
+        context = self._build_context_from_code_object(
+            code_object, max_context_length_excluding_code
+        )
         self.logger.debug("Code Context length [%d/%d]", len(context), max_context_length)
 
         return prompt_template.format(
-            context=context[:max_context_length], code_name=code_object.name
+            context="",  # context[:max_context_length], TODO revert
+            code_name=code_object.name,
+            code=code_object.code,
         )
 
     # Helper to map context ids to objects
