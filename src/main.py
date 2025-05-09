@@ -119,7 +119,23 @@ class AutoPyDoc:
         )
         self.gpt_interface.estimate(full_input=full_input_for_estimation)
 
+        save_data(
+            branch="semantic_validation",
+            code_type="",
+            code_name="",
+            code_id="",
+            content_type="total_objects_" + str(len(self.code_parser.code_representer.objects)),
+            data="",
+        )
         first_batch = self.code_parser.code_representer.generate_next_batch()
+        save_data(
+            branch="semantic_validation",
+            code_type="",
+            code_name="",
+            code_id="",
+            content_type="batch_" + str(len(first_batch)),
+            data="",
+        )
         if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
             self.logger.info("No need to do anything")
             quit()
@@ -153,6 +169,30 @@ class AutoPyDoc:
             f"Waiting for {str(len(self.code_parser.code_representer.get_sent_to_gpt_ids()))} more results"
         )
         code_obj = self.code_parser.code_representer.get(result.id)
+
+        start_pos, indentation_level, end_pos = self.repo.identify_docstring_location(
+            code_obj.id, code_representer=self.code_parser.code_representer
+        )
+
+        if result.no_change_necessary:
+            save_data(
+                branch="semantic_validation",
+                code_type=code_obj.code_type,
+                code_name=code_obj.name,
+                code_id=code_obj.id,
+                content_type="accurate",
+                data="",
+            )
+        else:
+            save_data(
+                branch="semantic_validation",
+                code_type=code_obj.code_type,
+                code_name=code_obj.name,
+                code_id=code_obj.id,
+                content_type="inaccurate",
+                data="",
+            )
+
         if not result.no_change_necessary:
             # merge new docstring with developer comments
             developer_docstring_changes = self.extract_dev_comments(code_obj)
@@ -161,18 +201,21 @@ class AutoPyDoc:
                     code_obj=code_obj,
                     gpt_result=result,
                     developer_docstring_changes=developer_docstring_changes,
+                    indentation_level=indentation_level,
                 ).get_result()
             if isinstance(code_obj, ClassObject):
                 docstring_input = DocstringInputSelectorClass(
                     code_obj=code_obj,
                     gpt_result=result,
                     developer_docstring_changes=developer_docstring_changes,
+                    indentation_level=indentation_level,
                 ).get_result()
             if isinstance(code_obj, ModuleObject):
                 docstring_input = DocstringInputSelectorModule(
                     code_obj=code_obj,
                     gpt_result=result,
                     developer_docstring_changes=developer_docstring_changes,
+                    indentation_level=indentation_level,
                 ).get_result()
 
             # validate if docstring input was generated successfully
@@ -183,10 +226,6 @@ class AutoPyDoc:
             )
             self.repo.pr_notes.extend(new_pr_notes)
 
-            start_pos, indentation_level, end_pos = self.repo.identify_docstring_location(
-                code_obj.id, code_representer=self.code_parser.code_representer
-            )
-
             # build docstring
             new_docstring = create_docstring(
                 code_obj=code_obj,
@@ -195,23 +234,31 @@ class AutoPyDoc:
                 code_representer=self.code_parser.code_representer,
                 debug=True,
             )
-            save_data(
-                branch=self.repo.branch,
-                code_type=code_obj.code_type,
-                code_name=code_obj.name,
-                code_id=code_obj.id,
-                content_type="new_docstring",
-                data=new_docstring,
-            )
 
             # validate docstring syntax
             errors = validate_docstring(new_docstring)
             if len(errors) > 0:
+                save_data(
+                    branch="syntax_validation",
+                    code_type=code_obj.code_type,
+                    code_name=code_obj.name,
+                    code_id=code_obj.id,
+                    content_type="error",
+                    data=str(errors),
+                )
+                save_data(
+                    branch="syntax_validation",
+                    code_type=code_obj.code_type,
+                    code_name=code_obj.name,
+                    code_id=code_obj.id,
+                    content_type="new_docstring",
+                    data=new_docstring,
+                )
                 # TODO resent to GPT, with note. If this is the second time, don't update this docstring and put note in pull request description
                 self.logger.warning("Docstring is not valid. Retry")
                 if hasattr(code_obj, "retry") and code_obj.retry > 0:
                     if code_obj.retry > 2:
-                        self.logger.error("Docstring is not still invalid after 3 attempts")
+                        self.logger.error("Docstring is still invalid after 3 attempts")
                         if not self.debug:
                             raise NotImplementedError
                     code_obj.retry += 1
@@ -233,6 +280,14 @@ class AutoPyDoc:
         # if parts are still outdated
         next_batch = self.code_parser.code_representer.generate_next_batch()
         if len(next_batch) > 0:
+            save_data(
+                branch="semantic_validation",
+                code_type="",
+                code_name="",
+                code_id="",
+                content_type="batch_" + str(len(next_batch)),
+                data="",
+            )
             self.gpt_interface.process_batch(next_batch, callback=self.process_gpt_result)
 
     # TODO move elsewhere
@@ -349,7 +404,7 @@ if __name__ == "__main__":
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
         ollama_host=os.getenv("OLLAMA_HOST", default=None),
-        branch="class_docstrings",
+        branch="module_docstrings",
         debug=True,
     )
     # auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)
