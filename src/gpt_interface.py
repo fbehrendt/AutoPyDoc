@@ -7,6 +7,8 @@ from gpt_input import (
 )
 from models import ModelStrategyFactory
 
+from save_data import save_data
+
 
 class GptInterface:
     def __init__(self, model_name: str, **kwargs):
@@ -30,7 +32,7 @@ class GptInterface:
         # inferr missing arg/return types
         # generate exception descriptions (?)
 
-        for current_code_object in batch[1:]:  # TODO change back to batch
+        for current_code_object in batch:
             try:
                 # Only check docstring using gpt if a docstring is present
                 change_necessary = (
@@ -56,8 +58,16 @@ class GptInterface:
                             "Error while determining if change is necessary", exc_info=e
                         )
                         raise e
+                save_data(
+                    branch="semantic_validation",
+                    code_type="valdiated",
+                    code_name="",
+                    code_id="",
+                    content_type=current_code_object.name + "_" + str(current_code_object.id),
+                    data="",
+                )
 
-                if not change_necessary and False:  # TODO just for now (200 years later)
+                if not change_necessary:
                     output = GptOutput(
                         current_code_object.id,
                         no_change_necessary=True,
@@ -75,7 +85,14 @@ class GptInterface:
                         except Exception as e:
                             self.logger.fatal("Error while processing batch", exc_info=e)
                             raise e
-
+                    save_data(
+                        branch="semantic_validation",
+                        code_type="generated",
+                        code_name="",
+                        code_id="",
+                        content_type=current_code_object.name + "_" + str(current_code_object.id),
+                        data="",
+                    )
                     callback(output)
             except KeyboardInterrupt as e:
                 raise e
