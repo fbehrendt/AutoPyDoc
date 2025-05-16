@@ -58,7 +58,8 @@ class RepoController:
 
         self.username = username
         self.pull_request_token = pull_request_token
-        if repo_owner is None:
+        self.repo_owner = repo_owner
+        if self.repo_owner is None:
             self.repo_owner = username
 
         self.is_remote_repo = validators.url(repo_path)
