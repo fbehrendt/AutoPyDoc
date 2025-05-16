@@ -52,9 +52,9 @@ class AutoPyDoc:
 
         # initialize gpt interface early to fail early if model is unavailable or unable to load
         # TODO: make name configurable (see factory for available model names)
-        # self.gpt_interface = GptInterface("mock")
+        self.gpt_interface = GptInterface("mock")
         # self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
-        self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
+        # self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
         # self.gpt_interface = GptInterface(
         #     "gemini", context_size=2**13, gemini_api_key="xxxxxxxxxxxxxxxxxxxxxxxxxx"
         # )
