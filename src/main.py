@@ -272,6 +272,7 @@ class AutoPyDoc:
                 start=start_pos,
                 end=end_pos,
                 new_docstring=new_docstring,
+                old_docstring=code_obj.old_docstring,
             )
             code_obj.update_docstring(new_docstring=new_docstring)
 
