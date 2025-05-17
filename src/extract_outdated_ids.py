@@ -1,4 +1,5 @@
 import copy
+import helpers
 
 
 def extract_code_affected_by_change(code_parser_old, code_parser_new):
@@ -34,7 +35,7 @@ def extract_code_affected_by_change(code_parser_old, code_parser_new):
             else:
                 if len(old_code_object) == 1:
                     # compare them
-                    if new_code_object.code == old_code_object[0].code:
+                    if new_code_object.code == old_code_object.code or helpers.remove_comments(new_code_object.code) == helpers.remove_comments(old_code_object[0].code):
                         new_code_object.validated_unaltered = True
                         continue
                 # if they are different, or new, mark as outdated

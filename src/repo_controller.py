@@ -9,7 +9,6 @@ import shutil
 import sys
 from pathlib import Path
 
-import astunparse
 import validators
 from dotenv import load_dotenv
 from git import Actor, Repo
@@ -21,6 +20,8 @@ from code_representation import (
     MethodObject,
     ModuleObject,
 )
+
+import helpers
 
 
 class RepoController:
@@ -345,14 +346,7 @@ class RepoController:
 
     def remove_comments(self, filename: str) -> str:
         with open(filename) as f:
-            sys.stderr = open(os.devnull, "w")
-            lines = astunparse.unparse(ast.parse(f.read())).split("\n")
-            sys.stderr = sys.__stderr__
-            content = []
-            for line in lines:
-                if line.lstrip()[:1] not in ("'", '"'):
-                    content.append(line)
-            content = "\n".join(content)
+            content = helpers.remove_comments(f.read())
             new_filename = filename.rstrip(".py") + "_no_comments.py"
             with open(new_filename, mode="w") as f:
                 f.write(content)
