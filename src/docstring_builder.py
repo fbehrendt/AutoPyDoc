@@ -24,6 +24,11 @@ class DocstringBuilder:
         """
         self.indentation_level = indentation_level
 
+    def enforce_indentation(self, string):
+        string = string.split("\n")
+        string = [" " * self.indentation_level + substring.lstrip() for substring in string]
+        return "\n".join(string)
+
     def add_description(self, description: str) -> typing.Self:
         """
         Add description section
@@ -45,9 +50,9 @@ class DocstringBuilder:
         :return type: str
         """
         docstring = " " * self.indentation_level + '"""\n'
-        docstring += " " * self.indentation_level + self.description + "\n"
+        docstring += self.description + "\n"
         docstring += " " * self.indentation_level + '"""'
-        return docstring
+        return self.enforce_indentation(docstring)
 
 
 class DocstringBuilderMethod(DocstringBuilder):
@@ -148,8 +153,7 @@ class DocstringBuilderMethod(DocstringBuilder):
             or len(self.exceptions)
         ):
             docstring += "\n"
-            docstring += " " * self.indentation_level
-        docstring += self.description
+        docstring += self.enforce_indentation(self.description)
         if (
             len(self.params) == 0
             and not hasattr(self, "return_description")
@@ -190,7 +194,7 @@ class DocstringBuilderMethod(DocstringBuilder):
             )
         docstring += "\n"  # according to restructuredtext_lint, this is necessary
         docstring += " " * self.indentation_level + '"""'
-        return docstring
+        return self.enforce_indentation(docstring)
 
 
 class DocstringBuilderClass(DocstringBuilder):
@@ -307,7 +311,7 @@ class DocstringBuilderClass(DocstringBuilder):
 
         docstring += "\n"  # according to restructuredtext_lint, this is necessary
         docstring += " " * self.indentation_level + '"""'
-        return docstring
+        return self.enforce_indentation(docstring)
 
 
 class DocstringBuilderModule(DocstringBuilder):
@@ -371,7 +375,7 @@ class DocstringBuilderModule(DocstringBuilder):
             )
         docstring += "\n"
         docstring += " " * self.indentation_level + '"""'
-        return docstring
+        return self.enforce_indentation(docstring)
 
 
 def create_docstring(
