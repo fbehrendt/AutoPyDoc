@@ -152,6 +152,7 @@ class DocstringBuilderMethod(DocstringBuilder):
         :return: docstring
         :return type: str
         """
+        docstring = ""
         if (
             len(self.params) > 0
             or hasattr(self, "return_description")
@@ -279,6 +280,7 @@ class DocstringBuilderClass(DocstringBuilder):
         :return: docstring
         :return type: str
         """
+        docstring = ""
         if len(self.class_attributes) > 0 or len(self.instance_attributes) > 0:
             docstring += "\n"
             docstring += " " * self.indentation_level
@@ -358,6 +360,7 @@ class DocstringBuilderModule(DocstringBuilder):
         :return: docstring
         :return type: str
         """
+        docstring = ""
         if len(self.exceptions) > 0:
             docstring += "\n"
             docstring += " " * self.indentation_level
