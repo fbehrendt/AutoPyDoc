@@ -30,6 +30,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     auto_py_doc = AutoPyDoc()
+    print("AutoPyDoc called via cli")
     auto_py_doc.main(
         repo_path=args.repo_path,
         username=args.username,

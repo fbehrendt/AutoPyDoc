@@ -54,8 +54,10 @@ class AutoPyDoc:
         # TODO: make name configurable (see factory for available model names)
         if ollama_host is None:
             self.gpt_interface = GptInterface("mock")
+            self.logger.info("Ollama host not provided. Using mock strategy")
         else:
             self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
+            self.logger.info("Using Ollama strategy")
         # self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
         # self.gpt_interface = GptInterface(
         #     "gemini", context_size=2**13, gemini_api_key="xxxxxxxxxxxxxxxxxxxxxxxxxx"
