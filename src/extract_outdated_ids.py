@@ -36,6 +36,8 @@ def extract_code_affected_by_change(code_parser_old, code_parser_new):
                 old_code_object = [code_obj for code_obj in old_code_object if not isinstance(code_obj, ModuleObject)]
                 if len(old_code_object) != 1:
                     raise NotImplementedError
+            if len(old_code_object) == 0:
+                continue
             # compare them
             if new_code_object.code == old_code_object[0].code or helpers.remove_comments(new_code_object.code) == helpers.remove_comments(old_code_object[0].code):
                 new_code_object.validated_unaltered = True
