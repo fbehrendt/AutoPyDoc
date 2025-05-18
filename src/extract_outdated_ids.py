@@ -1,5 +1,6 @@
 import copy
 import helpers
+from code_representation import ModuleObject
 
 
 def extract_code_affected_by_change(code_parser_old, code_parser_new):
@@ -31,58 +32,59 @@ def extract_code_affected_by_change(code_parser_old, code_parser_new):
                 )
             ]
             if len(old_code_object) > 1:
-                raise NotImplementedError
-            else:
+                # if that does not work, ignore modules
+                old_code_object = [code_obj for code_obj in old_code_object if not isinstance(code_obj, ModuleObject)]
+                if len(old_code_object) != 1:
+                    raise NotImplementedError
+            # compare them
+            if new_code_object.code == old_code_object[0].code or helpers.remove_comments(new_code_object.code) == helpers.remove_comments(old_code_object[0].code):
+                new_code_object.validated_unaltered = True
+                continue
+            # if they are different, or new, mark as outdated
+            outdated_ids.add(new_code_object.id)
+            new_code_object.outdated = True
+            for parent_object in [
+                code_object
+                for code_object in object_copy.values()
+                if (
+                    hasattr(code_object, "class_ids")
+                    and new_code_object.id in code_object.class_ids
+                )
+                or (
+                    hasattr(code_object, "method_ids")
+                    and new_code_object.id in code_object.method_ids
+                )
+            ]:
+                # remove those methods/classes from list of children of other objects
+                if new_code_object.id in parent_object.class_ids:
+                    parent_object.class_ids.remove(new_code_object.id)
+                if new_code_object.id in parent_object.method_ids:
+                    parent_object.method_ids.remove(new_code_object.id)
+                # remove those methods/classes code from code of objects that have them as children, unless it's a new method/class
                 if len(old_code_object) == 1:
-                    # compare them
-                    if new_code_object.code == old_code_object.code or helpers.remove_comments(new_code_object.code) == helpers.remove_comments(old_code_object[0].code):
-                        new_code_object.validated_unaltered = True
-                        continue
-                # if they are different, or new, mark as outdated
-                outdated_ids.add(new_code_object.id)
-                new_code_object.outdated = True
+                    parent_object.code = parent_object.code.replace(new_code_object.code, "")
+            object_copy.pop(new_code_object.id)
+            if len(old_code_object) == 1:
                 for parent_object in [
                     code_object
-                    for code_object in object_copy.values()
+                    for code_object in code_parser_old.code_representer.objects.values()
                     if (
                         hasattr(code_object, "class_ids")
-                        and new_code_object.id in code_object.class_ids
+                        and old_code_object[0].id in code_object.class_ids
                     )
                     or (
                         hasattr(code_object, "method_ids")
-                        and new_code_object.id in code_object.method_ids
+                        and old_code_object[0].id in code_object.method_ids
                     )
                 ]:
                     # remove those methods/classes from list of children of other objects
-                    if new_code_object.id in parent_object.class_ids:
-                        parent_object.class_ids.remove(new_code_object.id)
-                    if new_code_object.id in parent_object.method_ids:
-                        parent_object.method_ids.remove(new_code_object.id)
-                    # remove those methods/classes code from code of objects that have them as children, unless it's a new method/class
-                    if len(old_code_object) == 1:
-                        parent_object.code = parent_object.code.replace(new_code_object.code, "")
-                object_copy.pop(new_code_object.id)
-                if len(old_code_object) == 1:
-                    for parent_object in [
-                        code_object
-                        for code_object in code_parser_old.code_representer.objects.values()
-                        if (
-                            hasattr(code_object, "class_ids")
-                            and old_code_object[0].id in code_object.class_ids
-                        )
-                        or (
-                            hasattr(code_object, "method_ids")
-                            and old_code_object[0].id in code_object.method_ids
-                        )
-                    ]:
-                        # remove those methods/classes from list of children of other objects
-                        if old_code_object[0].id in parent_object.class_ids:
-                            parent_object.class_ids.remove(old_code_object[0].id)
-                        if old_code_object[0].id in parent_object.method_ids:
-                            parent_object.method_ids.remove(old_code_object[0].id)
-                        # remove those methods/classes code from code of objects that have them as children
-                        parent_object.code = parent_object.code.replace(old_code_object[0].code, "")
-                        code_parser_old.code_representer.objects.pop(old_code_object[0].id)
+                    if old_code_object[0].id in parent_object.class_ids:
+                        parent_object.class_ids.remove(old_code_object[0].id)
+                    if old_code_object[0].id in parent_object.method_ids:
+                        parent_object.method_ids.remove(old_code_object[0].id)
+                    # remove those methods/classes code from code of objects that have them as children
+                    parent_object.code = parent_object.code.replace(old_code_object[0].code, "")
+                    code_parser_old.code_representer.objects.pop(old_code_object[0].id)
         # update next code objects
         next_code_objects = [
             code_object

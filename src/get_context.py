@@ -406,7 +406,12 @@ class CodeParser:
             if len(matches) == 1:
                 return matches
             else:
-                raise NotImplementedError
+                # if that does not work, ignore modules
+                matches = [code_obj for code_obj in matches if not isinstance(code_obj, ModuleObject)]
+                if len(matches) == 1:
+                    return matches
+                else:
+                    raise NotImplementedError
 
     def resolve_variable_chain(self, variable_to_resolve, filename):
         tree = ast.parse(open(filename).read())
