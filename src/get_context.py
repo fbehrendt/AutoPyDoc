@@ -82,7 +82,9 @@ class CodeParser:
         """
         module_id = None
         if isinstance(tree, ast.Module):
-            module_name = ""  # TODO get module name
+            # import ntpath
+            # module_name = ntpath.basename(file_path)
+            module_name = pathlib.Path(file_path).stem
             docstring = ast.get_docstring(node=tree, clean=True)
             source_code = open(file_path).read()
             module_obj = ModuleObject(
