@@ -23,7 +23,8 @@ jobs:
         cd /home/runner/work
         git clone https://github.com/fbehrendt/AutoPyDoc.git
         # you can use a different branch of AutoPyDoc by uncommenting and adjusting the line below
-        # git switch -c development origin/development
+        # cd AutoPyDoc
+        # git switch <branch of AutoPyDoc>
         # git branch --show-current
     - name: clone this repo
       run: |
@@ -40,4 +41,5 @@ jobs:
     - name: run AutoPyDoc
       run: |
         cd /home/runner/work/AutoPyDoc
-        uv run /home/runner/work/AutoPyDoc/src/main_cli.py /home/runner/work/<target repo name>/<target repo name> <username> "${{ secrets.PULL_REQUEST_TOKEN }}" "${GITHUB_REF##*/}" fbehrendt
+        # the ollama_host can be omitted, in which case the fallback strategy (currently mock) is used for generation
+        uv run /home/runner/work/AutoPyDoc/src/main_cli.py /home/runner/work/<target repo name>/<target repo name> <username> "${{ secrets.PULL_REQUEST_TOKEN }}" "${GITHUB_REF##*/}" <repo_owner> --ollama_host "${{ secrets.OLLAMA_HOSTNAME }}" 
