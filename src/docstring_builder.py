@@ -24,10 +24,17 @@ class DocstringBuilder:
         """
         self.indentation_level = indentation_level
 
-    def enforce_indentation(self, string):
+    def enforce_indentation(self, string: str):
         string = string.split("\n")
         string = [" " * self.indentation_level + substring.lstrip() for substring in string]
         return "\n".join(string)
+    
+    def add_parantheses(self, string: str):
+        # make sure, the docstring does not contain """
+        string = string.replace('"""', "```")
+        if "\n" in string:
+            return '"""\n' + string + '\n"""'
+        return '"""' + string + '"""'
 
     def add_description(self, description: str) -> typing.Self:
         """
@@ -49,9 +56,8 @@ class DocstringBuilder:
         :return: docstring
         :return type: str
         """
-        docstring = " " * self.indentation_level + '"""\n'
-        docstring += self.description + "\n"
-        docstring += " " * self.indentation_level + '"""'
+        docstring += self.description
+        docstring = self.add_parantheses(docstring)
         return self.enforce_indentation(docstring)
 
 
@@ -146,7 +152,6 @@ class DocstringBuilderMethod(DocstringBuilder):
         :return: docstring
         :return type: str
         """
-        docstring = " " * self.indentation_level + '"""'
         if (
             len(self.params) > 0
             or hasattr(self, "return_description")
@@ -190,10 +195,9 @@ class DocstringBuilderMethod(DocstringBuilder):
         for exception in self.exceptions:
             docstring += (
                 " " * self.indentation_level
-                + f":raises {exception['name']}: {exception['description']}\n"
+                + f":raises {exception['name']}: {exception['description']}\n" # according to restructuredtext_lint, the extra \n is necessary
             )
-        docstring += "\n"  # according to restructuredtext_lint, this is necessary
-        docstring += " " * self.indentation_level + '"""'
+        docstring = self.add_parantheses(docstring)
         return self.enforce_indentation(docstring)
 
 
@@ -275,7 +279,6 @@ class DocstringBuilderClass(DocstringBuilder):
         :return: docstring
         :return type: str
         """
-        docstring = " " * self.indentation_level + '"""'
         if len(self.class_attributes) > 0 or len(self.instance_attributes) > 0:
             docstring += "\n"
             docstring += " " * self.indentation_level
@@ -306,11 +309,10 @@ class DocstringBuilderClass(DocstringBuilder):
             )
             docstring += (
                 " " * self.indentation_level
-                + f":type {instance_attribute['name']}: {instance_attribute['type']}\n"
+                + f":type {instance_attribute['name']}: {instance_attribute['type']}\n" # according to restructuredtext_lint, the extra \n is necessary
             )
 
-        docstring += "\n"  # according to restructuredtext_lint, this is necessary
-        docstring += " " * self.indentation_level + '"""'
+        docstring = self.add_parantheses(docstring)
         return self.enforce_indentation(docstring)
 
 
@@ -356,7 +358,6 @@ class DocstringBuilderModule(DocstringBuilder):
         :return: docstring
         :return type: str
         """
-        docstring = " " * self.indentation_level + '"""'
         if len(self.exceptions) > 0:
             docstring += "\n"
             docstring += " " * self.indentation_level
@@ -373,8 +374,7 @@ class DocstringBuilderModule(DocstringBuilder):
                 " " * self.indentation_level
                 + f":raises {exception['name']}: {exception['description']}\n"
             )
-        docstring += "\n"
-        docstring += " " * self.indentation_level + '"""'
+        docstring = self.add_parantheses(docstring)
         return self.enforce_indentation(docstring)
 
 
