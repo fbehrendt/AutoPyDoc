@@ -317,7 +317,14 @@ class RepoController:
             new_path = shutil.copy(filename, new_location)
             self.cmp_files.append([filename, new_path])
 
-    def insert_docstring(self, filename: str, start: int, end: int, new_docstring: str, old_docstring: str | None = None):
+    def insert_docstring(
+        self,
+        filename: str,
+        start: int,
+        end: int,
+        new_docstring: str,
+        old_docstring: str | None = None,
+    ):
         """
         Insert the new docstring. Lines between start and end will be overridden. Static method
 
@@ -332,14 +339,24 @@ class RepoController:
         """
         self.save_file_for_comparison(filename)
         with open(filename, "r") as f:
-            if start == 0 and old_docstring is not None and len(old_docstring) > 6: # module docstring
-                content = f.read()
-                content.replace(old=old_docstring, new=new_docstring, count=1)
+            content = f.readlines()
+            content_before = "".join(content)
+            if (
+                start == 0 and old_docstring is not None and len(old_docstring) > 6
+            ):  # module docstring
+                new_content = content_before.replace(old_docstring, new_docstring.strip('"""'))
+                # since this does not replace """ or ''', remove ''' and duplicate """
+                new_content.replace('""""""', '"""')
+                new_content.replace("'''", "")
             else:
-                content = f.readlines()
                 before = content[:start]
                 after = content[end:]
                 new_content = "".join(before) + new_docstring + "\n" + "".join(after)
+            if not helpers.remove_comments(new_content) == helpers.remove_comments(content_before):
+                self.logger.error(
+                    f"Code integrity was violated by replacing old docstring {old_docstring} with new docstring {new_docstring} at line {start} to {end} in file {filename}!"
+                )
+                raise NotImplementedError  # TODO
 
             with open(filename, "w") as file:
                 file.write(new_content)
