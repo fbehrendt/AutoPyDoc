@@ -1,6 +1,7 @@
 import logging
 import os
 from dotenv import load_dotenv
+import requests
 
 from code_representation import ClassObject, CodeRepresenter, MethodObject, ModuleObject
 from docstring_builder import create_docstring
@@ -52,12 +53,22 @@ class AutoPyDoc:
 
         # initialize gpt interface early to fail early if model is unavailable or unable to load
         # TODO: make name configurable (see factory for available model names)
+        if ollama_host is not None:
+            try:
+                response = requests.get(ollama_host)
+                # print(response.status_code)
+                self.gpt_interface = GptInterface(
+                    "ollama", context_size=2**13, ollama_host=ollama_host
+                )
+                self.logger.info("Using Ollama strategy")
+            except Exception as e:
+                ollama_host = None
+                self.logger.error(
+                    f"Failed to connect to ollama. Using fallback strategy. Error type: {type(e)}"
+                )
         if ollama_host is None:
             self.gpt_interface = GptInterface("mock")
             self.logger.info("Ollama host not provided. Using mock strategy")
-        else:
-            self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
-            self.logger.info("Using Ollama strategy")
         # self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
         # self.gpt_interface = GptInterface(
         #     "gemini", context_size=2**13, gemini_api_key="xxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -410,6 +421,7 @@ if __name__ == "__main__":
         username="fbehrendt",
         ollama_host=os.getenv("OLLAMA_HOST", default=None),
         branch="module_docstrings",
+        repo_owner="fbehrendt",
         debug=True,
     )
     # auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)
