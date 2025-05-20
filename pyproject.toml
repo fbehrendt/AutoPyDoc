@@ -1,3 +1,7 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=61.0"]
+
 [project]
 dependencies = [
   "astunparse>=1.6.3",
@@ -29,3 +33,6 @@ dev = [
 
 [tool.ruff]
 line-length = 100
+
+[project.scripts]
+autopydoc = "main_cli:cli"
