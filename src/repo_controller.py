@@ -183,12 +183,10 @@ class RepoController:
             self.repo.git.checkout(self.branch)
             self.logger.info(f"Checked out branch {self.repo.active_branch.name}")
             assert not self.repo.bare
-        elif self.debug:
-            self.repo = Repo(self.working_dir)
-            return
         else:
-            self.clear_working_dir()
-            self.repo = Repo.clone_from(self.repo_url, self.working_dir)
+            # self.clear_working_dir()
+            self.repo = Repo(self.working_dir)
+            # self.repo = Repo.clone_from(self.repo_url, self.working_dir)
             self.repo.git.checkout(self.branch)
             assert not self.repo.bare
 

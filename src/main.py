@@ -94,7 +94,6 @@ class AutoPyDoc:
         self.code_parser.extract_attributes()
 
         self.repo.repo.git.checkout(self.repo.latest_commit_hash)
-        self.logger.info(f"Checked out branch {self.repo.repo.active_branch.name}")
         self.code_parser_old = CodeParser(
             code_representer=CodeRepresenter(),
             working_dir=self.repo.working_dir,
@@ -103,7 +102,6 @@ class AutoPyDoc:
             logger=self.logger,
         )
         self.repo.repo.git.checkout(self.repo.current_commit)
-        self.logger.info(f"Checked out branch {self.repo.repo.active_branch.name}")
         outdated_ids = extract_code_affected_by_change(
             code_parser_old=self.code_parser_old, code_parser_new=self.code_parser
         )
