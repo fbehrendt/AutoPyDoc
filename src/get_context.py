@@ -10,6 +10,8 @@ from code_representation import (
     CodeRepresenter,
     MethodObject,
     ModuleObject,
+    NoMatchError,
+    MultipleMatchesError,
 )
 from extract_affected_code_from_change_info import (
     extract_classes_from_change_info,
@@ -17,8 +19,57 @@ from extract_affected_code_from_change_info import (
     extract_module_from_change_info,
 )
 from import_finder import ImportFinder
+from repo_controller import UnknownCodeObjectError
 
 code = CodeRepresenter()  # TODO what is this for?
+
+
+class AttributeExtractionError(Exception):
+    """
+    Exception raised when Attribute extraction fails.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
+class ExceptionExtractionError(Exception):
+    """
+    Exception raised when exception extraction fails.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
+class VariableChainResolutionError(Exception):
+    """
+    Exception raised when variable chain resolution fails.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
+class VariableChainCreationError(Exception):
+    """
+    Exception raised when variable chain creatin fails.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
 
 
 class CodeParser:
@@ -266,7 +317,7 @@ class CodeParser:
                                         )
                                     else:
                                         if not self.debug:
-                                            raise NotImplementedError
+                                            raise VariableChainCreationError
                                     value = value.value
                     # Do not include recursive calls, to prevent unsolvable dependencies
                     if called_func_name == parent_obj.name:
@@ -284,18 +335,10 @@ class CodeParser:
                         if len(matches) == 1:
                             called_code_obj = matches[0]
                         else:
-                            raise NotImplementedError
-                        # matches = [
-                        #    code_obj
-                        #    for code_obj in self.code_representer.objects.values()
-                        #    if code_obj.filename == outer_code_obj.filename
-                        #    and code_obj.parent_id == outer_code_obj.id
-                        #    and code_obj.name == called_func_name
-                        # ]
-                        # if len(matches) == 1:
-                        #    called_func = matches[0]
-                        # else:
-                        #    raise NotImplementedError
+                            if len(matches) > 1:
+                                raise MultipleMatchesError
+                            else:
+                                raise NoMatchError
                     else:
                         # check this file
                         matches = [
@@ -320,7 +363,7 @@ class CodeParser:
                                 if len(matches) == 1:
                                     called_code_obj = matches[0]
                                 else:  # still more than one
-                                    raise NotImplementedError
+                                    raise MultipleMatchesError
                         elif len(matches) == 0:
                             # check imports
                             matches = self.import_finder.resolve_external_call(
@@ -339,16 +382,16 @@ class CodeParser:
                             if len(matches) == 1:
                                 called_code_obj = matches[0]
                             elif len(matches) > 1:
-                                raise NotImplementedError
+                                raise MultipleMatchesError
                             elif len(matches) == 0:
-                                raise NotImplementedError
+                                raise NoMatchError
                     # add called method/class
                     if called_code_obj.code_type == "class":
                         parent_obj.add_called_class(called_code_obj.id)
                     elif called_code_obj.code_type == "method":
                         parent_obj.add_called_method(called_code_obj.id)
                     else:
-                        raise NotImplementedError
+                        raise UnknownCodeObjectError
                     # add caller module/class/method
                     if isinstance(parent_obj, MethodObject):
                         self.code_representer.objects[called_code_obj.id].add_caller_method(
@@ -363,7 +406,7 @@ class CodeParser:
                             parent_obj.id
                         )
                     else:
-                        raise NotImplementedError
+                        raise UnknownCodeObjectError
 
     def resolve_variable(self, variable_to_resolve, called_func_name, filename):
         # check in this file
@@ -407,11 +450,16 @@ class CodeParser:
                 return matches
             else:
                 # if that does not work, ignore modules
-                matches = [code_obj for code_obj in matches if not isinstance(code_obj, ModuleObject)]
+                matches = [
+                    code_obj for code_obj in matches if not isinstance(code_obj, ModuleObject)
+                ]
                 if len(matches) == 1:
                     return matches
                 else:
-                    raise NotImplementedError
+                    if len(matches) > 1:
+                        raise MultipleMatchesError
+                    else:
+                        raise NoMatchError
 
     def resolve_variable_chain(self, variable_to_resolve, filename):
         tree = ast.parse(open(filename).read())
@@ -424,7 +472,7 @@ class CodeParser:
                 for target in targets:
                     if not hasattr(target, "id"):
                         if not self.debug:
-                            raise NotImplementedError
+                            raise VariableChainResolutionError
                         return None
                 if variable_to_resolve in [target.id for target in targets]:
                     if isinstance(node.value, ast.Call):
@@ -433,7 +481,7 @@ class CodeParser:
                         elif hasattr(node.value.func, "attr"):
                             name = node.value.func.attr
                         else:
-                            raise NotImplementedError
+                            raise VariableChainResolutionError
                         matches = self.code_representer.get_by_filename_and_name(
                             filename=filename, name=name
                         )
@@ -441,7 +489,7 @@ class CodeParser:
                         if len(matches) == 1:
                             return matches[0]
                         elif len(matches) > 1:
-                            raise NotImplementedError
+                            raise MultipleMatchesError
                         elif len(matches) == 0:
                             # resolve imports
                             matches = self.import_finder.resolve_external_call(
@@ -452,7 +500,7 @@ class CodeParser:
                             if matches is None:
                                 return None
                             elif len(matches) > 1:
-                                raise NotImplementedError
+                                raise MultipleMatchesError
                             elif len(matches) == 1:
                                 return matches[0]
                     else:
@@ -474,7 +522,7 @@ class CodeParser:
                         code_obj.add_exception(node.exc.func.id)
                     else:
                         if not self.debug:
-                            raise NotImplementedError
+                            raise ExceptionExtractionError
 
     def extract_args_and_return_type(self):
         """
@@ -551,11 +599,11 @@ class CodeParser:
                             elif hasattr(annotation_location, "left"):
                                 annotation_location = annotation_location.left
                             else:
-                                raise NotImplementedError
+                                raise AttributeExtractionError
                         attr = {"name": node.target.id, "type": attr_type}
                         class_obj.add_class_attribute(attribute=attr)
                     else:
-                        raise NotImplementedError
+                        raise AttributeExtractionError
             for node in ast.walk(class_obj.ast):
                 if isinstance(node, ast.Assign):
                     for target in node.targets:
@@ -577,7 +625,7 @@ class CodeParser:
                     elif hasattr(node.target, "attr"):
                         attr_name = node.target.attr
                     else:
-                        raise NotImplementedError
+                        raise AttributeExtractionError
                     if hasattr(node.target, "value") and hasattr(node.target.value, "id"):
                         if node.target.value.id == "self":
                             if hasattr(node.annotation, "id"):
@@ -587,7 +635,7 @@ class CodeParser:
                             ):
                                 attr_type = node.annotation.value.id
                             else:
-                                raise NotImplementedError
+                                raise AttributeExtractionError
                             attr = {"name": attr_name, "type": attr_type}
                             class_obj.add_instance_attribute(attribute=attr)
 
@@ -603,8 +651,6 @@ class CodeParser:
                 change_start=change["start"],
                 change_length=change["lines_changed"],
             )
-            if not self.debug:
-                raise NotImplementedError
             changed_module = extract_module_from_change_info(filename=change["filename"])
             for changed_method in changed_methods:
                 method_obj = self.code_representer.get_by_type_filename_and_code(
@@ -613,7 +659,7 @@ class CodeParser:
                     code=changed_method["content"],
                 )
                 self.code_representer.set_outdated(method_obj.id)
-                method_obj.dev_comments = self.extract_dev_comments(method_obj)
+                # method_obj.dev_comments = self.extract_dev_comments(method_obj)
 
             for changed_class in changed_classes:
                 class_obj = self.code_representer.get_by_type_filename_and_code(
@@ -622,7 +668,7 @@ class CodeParser:
                     code=changed_class["content"],
                 )
                 self.code_representer.set_outdated(class_obj.id)
-                class_obj.dev_comments = self.extract_dev_comments(class_obj)
+                # class_obj.dev_comments = self.extract_dev_comments(class_obj)
 
             module_obj = self.code_representer.get_by_type_filename_and_code(
                 code_type="module",
@@ -630,25 +676,7 @@ class CodeParser:
                 code=changed_module["content"],
             )
             self.code_representer.set_outdated(module_obj.id)
-            module_obj.dev_comments = self.extract_dev_comments(module_obj)
-
-    def extract_dev_comments(self, code_obj: CodeObject) -> list[str]:
-        """
-        Extract developer comments. NOT IMPLEMENTED
-
-        :param code_obj: A dictionary with details regarding a method/class/module
-        :code_obj type: CodeObject
-
-        :return: dev comments
-        :return type: list[str]
-
-        :raises NotImplementedError: raised when not in debug mode, because this is not yet implemented
-        """
-        self.logger.info("###MOCK### Extracting developer comments")
-        if not self.debug:
-            raise NotImplementedError
-        else:
-            return ["A developer comment"]
+            # module_obj.dev_comments = self.extract_dev_comments(module_obj)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import copy
 import helpers
-from code_representation import ModuleObject
+from code_representation import ModuleObject, NoMatchError, MultipleMatchesError
 
 
 def extract_code_affected_by_change(code_parser_old, code_parser_new):
@@ -46,8 +46,10 @@ def extract_code_affected_by_change(code_parser_old, code_parser_new):
                             tmp.append(code_obj)
                             parent_ids.append(code_obj.parent_id)
                     old_code_object = tmp
-                if len(old_code_object) != 1:
-                    raise NotImplementedError
+                if len(old_code_object) < 1:
+                    raise NoMatchError
+                elif len(old_code_object) > 1:
+                    raise MultipleMatchesError
             # compare them
             if (len(old_code_object) > 0) and (
                 new_code_object.code == old_code_object[0].code

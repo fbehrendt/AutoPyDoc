@@ -8,6 +8,8 @@ from code_representation import (
 )
 from docstring_input_selector import DocstringInput
 
+from repo_controller import UnknownCodeObjectError
+
 
 class DocstringBuilder:
     """Docstring Builder"""
@@ -363,7 +365,6 @@ def create_docstring(
     :return: docstring for the CodeObject
     :return type: str
 
-    :raises NotImplementedError: raised when trying to access functionality that is not yet implemented
     """
 
     if isinstance(code_obj, MethodObject):
@@ -425,9 +426,6 @@ def create_docstring(
                 exception_description=docstring_input.exceptions[exception],
             )
     else:
-        raise NotImplementedError
+        raise UnknownCodeObjectError("Unknown code object")
     new_docstring = docstring_builder.build()
-    if not new_docstring.lstrip().startswith('"""'):
-        print()
-        raise NotImplementedError
     return new_docstring
