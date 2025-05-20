@@ -18,12 +18,12 @@ jobs:
       uses: actions/checkout@v4
       with:
         # fetch all commits/branches/tags to be able to compare the current commit with the previous one
-        fetch-depth: 0"
+        fetch-depth: 0
 
     - name: Run AutoPyDoc using Action
       uses: fbehrendt/AutoPyDoc@<action version>
       with:
-        repo_path: "${{ github.workspace }}/${{ github.event.repository.name }}"
+        repo_path: "${{ github.workspace }}"
         username: "AutoPyDoc"
         repo_owner: ${{ github.repository_owner }}
         pull_request_token: ${{ secrets.PULL_REQUEST_TOKEN }} # Manually created PAT with PR creation rights added as a repository secret

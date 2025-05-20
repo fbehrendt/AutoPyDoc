@@ -7,7 +7,7 @@ inputs:
   repo_path:
     description: "Repo path (passed to --repo-path). Defaults to the workspace of the calling workflow."
     required: false
-    default: ${{ github.workspace }}/${{ github.event.repository.name }} # Uses default output path of the actions/checkout action
+    default: ${{ github.workspace }} # Uses default output path of the actions/checkout action
   username:
     description: "Username for PR attribution (passed to --username). Required by the script."
     required: true
