@@ -1,6 +1,8 @@
 import logging
 from typing import Callable
 
+import requests
+
 from gpt_input import (
     GptInputCodeObject,
     GptOutput,
@@ -13,7 +15,28 @@ from save_data import save_data
 class GptInterface:
     def __init__(self, model_name: str, **kwargs):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.model = ModelStrategyFactory.create_strategy(model_name, **kwargs)
+
+        if model_name == "ollama":
+            ollama_host = kwargs.get("ollama_host")
+
+            if ollama_host is not None:
+                try:
+                    response = requests.get(ollama_host)
+                    response.raise_for_status()
+
+                    self.logger.info(f"Using {model_name} strategy.")
+                    self.model = ModelStrategyFactory.create_strategy("ollama", **kwargs)
+                except Exception as e:
+                    self.model = ModelStrategyFactory.create_strategy("mock", **kwargs)
+                    self.logger.error(
+                        f"Failed to connect to ollama. Using mock strategy as a fallback. Error type: {type(e)}"
+                    )
+            else:
+                self.logger.info(f"Using {model_name} strategy.")
+                self.model = ModelStrategyFactory.create_strategy("mock", **kwargs)
+        else:
+            self.logger.info(f"Using {model_name} strategy.")
+            self.model = ModelStrategyFactory.create_strategy(model_name, **kwargs)
 
     def estimate(self, full_input: list[GptInputCodeObject]):
         pass  # TODO fill this method
