@@ -85,7 +85,7 @@ def gemini(ctx, gemini_api_key):
     )
 
 @cli.command()
-@click.option("--device", required=False, help="Device for GPT4All model (e.g., 'gpu', 'cpu', or specific GPU name). Defaults to first available GPU or CPU.")
+@click.option("--device", required=False, help="Device for GPT4All (e.g., 'gpu', 'cpu', or specific GPU name). Defaults to first available GPU or CPU.")
 @click.pass_context
 def local_deepseek(ctx, device):
     """Use the local DeepSeek strategy via GPT4All."""

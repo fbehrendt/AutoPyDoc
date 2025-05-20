@@ -39,7 +39,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
         self.model_name = "deepseek-r1:8b"
 
         self.logger.info(
-            "Using GPT4All model [%s] with context size [%d]",
+            "Using Ollama model [%s] with context size [%d]",
             self.model_name,
             self.context_size,
         )
