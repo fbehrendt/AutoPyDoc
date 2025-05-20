@@ -222,7 +222,7 @@ class RepoController:
         :raises Exception("End of docstring not found"): raised when the end of the docstring cannot be located
         """
         # TODO use ast.get_source_code_segment() and/or look into asttokens
-        self.repo.git.checkout(self.current_commit)
+        # self.repo.git.checkout(self.current_commit) # TODO was this necessary?
 
         code_obj = code_representer.get(code_obj_id)
         with open(file=code_obj.filename, mode="r") as f:
