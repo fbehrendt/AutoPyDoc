@@ -42,4 +42,9 @@ jobs:
       run: |
         cd /home/runner/work/AutoPyDoc
         # the ollama_host can be omitted, in which case the fallback strategy (currently mock) is used for generation
-        uv run /home/runner/work/AutoPyDoc/src/main_cli.py /home/runner/work/<target repo name>/<target repo name> <username> "${{ secrets.PULL_REQUEST_TOKEN }}" "${GITHUB_REF##*/}" <repo_owner> --ollama_host "${{ secrets.OLLAMA_HOSTNAME }}" 
+        uv run /home/runner/work/AutoPyDoc/src/main_cli.py \
+          --repo-path "/home/runner/work/<target repo name>/<target repo name>" \
+          --branch "module_docstrings" \
+          --username "<username>" --repo-owner "fbehrendt" \
+          --pull-request-token "${{ secrets.PULL_REQUEST_TOKEN }}" \
+          ollama --ollama-host "${{ secrets.OLLAMA_HOSTNAME }}"
