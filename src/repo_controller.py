@@ -24,6 +24,19 @@ from code_representation import (
 import helpers
 
 
+class CodeIntegrityViolationError(Exception):
+    """
+    Exception raised when code integrity was violated.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
 class RepoController:
     """A class to control interactions with the target repository"""
 
@@ -347,7 +360,7 @@ class RepoController:
                 new_content = content_before.replace(old_docstring, new_docstring.strip('"""'))
                 # since this does not replace """ or ''', remove ''' and duplicate """
                 new_content.replace('""""""', '"""')
-                new_content.replace("'''", "")
+                new_content.replace("'''", "")  # TODO might break stuff
             else:
                 before = content[:start]
                 after = content[end:]
@@ -356,7 +369,7 @@ class RepoController:
                 self.logger.error(
                     f"Code integrity was violated by replacing old docstring {old_docstring} with new docstring {new_docstring} at line {start} to {end} in file {filename}!"
                 )
-                raise NotImplementedError  # TODO
+                raise CodeIntegrityViolationError("Code integrity violated")
 
             with open(filename, "w") as file:
                 file.write(new_content)

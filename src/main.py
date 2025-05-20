@@ -14,7 +14,7 @@ from extract_outdated_ids import extract_code_affected_by_change
 from get_context import CodeParser
 from gpt_input import GptOutput
 from gpt_interface import GptInterface
-from repo_controller import RepoController
+from repo_controller import RepoController, CodeIntegrityViolationError
 from validate_docstring import validate_docstring
 from validate_docstring_input import validate_docstring_input
 
@@ -198,6 +198,7 @@ class AutoPyDoc:
                 content_type="accurate",
                 data="",
             )
+            code_obj.outdated = False
         else:
             save_data(
                 branch="semantic_validation",
@@ -269,7 +270,7 @@ class AutoPyDoc:
                     content_type="new_docstring",
                     data=new_docstring,
                 )
-                # TODO resent to GPT, with note. If this is the second time, don't update this docstring and put note in pull request description
+                # TODO re-sent to GPT, with note. If this is the second time, don't update this docstring and put note in pull request description
                 self.logger.warning("Docstring is not valid. Retry")
                 if hasattr(code_obj, "retry") and code_obj.retry > 0:
                     if code_obj.retry > 2:
@@ -282,17 +283,20 @@ class AutoPyDoc:
                 return  # this prevents code_obj.outdated from being set to False and code_obj.is_updated from being set to True, causing it to be included in the next batch again. # TODO what about sent_to_gpt?
 
             # insert new docstring in the file
-            self.repo.insert_docstring(
-                filename=code_obj.filename,
-                start=start_pos,
-                end=end_pos,
-                new_docstring=new_docstring,
-                old_docstring=code_obj.old_docstring,
-            )
-            code_obj.update_docstring(new_docstring=new_docstring)
-
-            code_obj.is_updated = True
-        code_obj.outdated = False
+            try:
+                self.repo.insert_docstring(
+                    filename=code_obj.filename,
+                    start=start_pos,
+                    end=end_pos,
+                    new_docstring=new_docstring,
+                    old_docstring=code_obj.old_docstring,
+                )
+            except CodeIntegrityViolationError:
+                code_obj.send_to_gpt = False
+            else:
+                code_obj.update_docstring(new_docstring=new_docstring)
+                code_obj.is_updated = True
+                code_obj.outdated = False
         # if parts are still outdated
         next_batch = self.code_parser.code_representer.generate_next_batch()
         if len(next_batch) > 0:
