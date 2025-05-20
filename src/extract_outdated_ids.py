@@ -33,11 +33,27 @@ def extract_code_affected_by_change(code_parser_old, code_parser_new):
             ]
             if len(old_code_object) > 1:
                 # if that does not work, ignore modules
-                old_code_object = [code_obj for code_obj in old_code_object if not isinstance(code_obj, ModuleObject)]
+                old_code_object = [
+                    code_obj
+                    for code_obj in old_code_object
+                    if not isinstance(code_obj, ModuleObject)
+                ]
+                if len(old_code_object) > 1:
+                    parent_ids = []
+                    tmp = []
+                    for code_obj in old_code_object:
+                        if code_obj.parent_id not in parent_ids:
+                            tmp.append(code_obj)
+                            parent_ids.append(code_obj.parent_id)
+                    old_code_object = tmp
                 if len(old_code_object) != 1:
                     raise NotImplementedError
             # compare them
-            if (len(old_code_object) > 0) and (new_code_object.code == old_code_object[0].code or helpers.remove_comments(new_code_object.code) == helpers.remove_comments(old_code_object[0].code)):
+            if (len(old_code_object) > 0) and (
+                new_code_object.code == old_code_object[0].code
+                or helpers.remove_comments(new_code_object.code)
+                == helpers.remove_comments(old_code_object[0].code)
+            ):
                 new_code_object.validated_unaltered = True
                 continue
             # if they are different, or new, mark as outdated
