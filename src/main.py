@@ -170,8 +170,8 @@ class AutoPyDoc:
 
         # if every docstring is updated
         if not self.repo.validate_code_integrity():
-            self.logger.critical("Code integrity no longer given!!! aborting")
-            raise Exception("Code integrity no longer given!!! aborting")
+            self.logger.fatal("Code integrity no longer given!!! aborting")
+            raise CodeIntegrityViolationError("Code integrity no longer given!!! aborting")
             quit()  # saveguard in case someone tries to catch the exception and continue anyways
         self.logger.info("Code integrity validated")
 
@@ -274,9 +274,10 @@ class AutoPyDoc:
                 self.logger.warning("Docstring is not valid. Retry")
                 if hasattr(code_obj, "retry") and code_obj.retry > 0:
                     if code_obj.retry > 2:
-                        self.logger.error("Docstring is still invalid after 3 attempts")
-                        if not self.debug:
-                            raise NotImplementedError
+                        self.logger.error("Docstring is still invalid after 3 attempts. Skipping")
+                        code_obj.outdated = False
+                        code_obj.is_updated = True
+                        return
                     code_obj.retry += 1
                 else:
                     code_obj.retry = 1
