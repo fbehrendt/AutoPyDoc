@@ -346,7 +346,10 @@ if __name__ == "__main__":
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
         model_strategy_name="ollama",
-        model_strategy_params={"context_size": 2**13, "ollama_host": "http://87.122.16.11:7280/"},
+        model_strategy_params={
+            "context_size": 2**13,
+            "ollama_host": os.getenv("OLLAMA_HOST", default="http://localhost:7280/")
+        },
         branch="module_docstrings",
         repo_owner="fbehrendt",
         debug=False,
