@@ -45,6 +45,7 @@ jobs:
         uv run /home/runner/work/AutoPyDoc/src/main_cli.py \
           --repo-path "/home/runner/work/<target repo name>/<target repo name>" \
           --branch "module_docstrings" \
-          --username "<username>" --repo-owner "fbehrendt" \
+          --username "<username>" \
+           --repo-owner "<repo_owner>" \
           --pull-request-token "${{ secrets.PULL_REQUEST_TOKEN }}" \
           ollama --ollama-host "${{ secrets.OLLAMA_HOSTNAME }}"
