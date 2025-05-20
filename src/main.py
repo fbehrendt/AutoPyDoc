@@ -37,9 +37,10 @@ class AutoPyDoc:
         self,
         repo_path: str,
         username: str,
+        model_strategy_name: str,
+        model_strategy_params: dict[str, str],
         pull_request_token=None,
         branch: str = "main",
-        ollama_host: str = None,
         debug=False,
         repo_owner=None,
     ) -> None:  # repo_path will be required later
@@ -51,28 +52,9 @@ class AutoPyDoc:
         :type debug: boolean
         """
 
-        # initialize gpt interface early to fail early if model is unavailable or unable to load
-        # TODO: make name configurable (see factory for available model names)
-        if ollama_host is not None:
-            try:
-                response = requests.get(ollama_host)
-                # print(response.status_code)
-                self.gpt_interface = GptInterface(
-                    "ollama", context_size=2**13, ollama_host=ollama_host
-                )
-                self.logger.info("Using Ollama strategy")
-            except Exception as e:
-                ollama_host = None
-                self.logger.error(
-                    f"Failed to connect to ollama. Using fallback strategy. Error type: {type(e)}"
-                )
-        if ollama_host is None:
-            self.gpt_interface = GptInterface("mock")
-            self.logger.info("Ollama host not provided. Using mock strategy")
-        # self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
-        # self.gpt_interface = GptInterface(
-        #     "gemini", context_size=2**13, gemini_api_key="xxxxxxxxxxxxxxxxxxxxxxxxxx"
-        # )
+        # Initialize gpt interface with the chosen strategy and its parameters early to fail early if model is unavailable or unable to load
+        self.logger.info(f"Using {model_strategy_name} strategy.")
+        self.gpt_interface = GptInterface(model_strategy_name, **model_strategy_params)
 
         # pull repo, create code representation, create dependencies
         self.debug = debug
@@ -423,9 +405,11 @@ if __name__ == "__main__":
     auto_py_doc.main(
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
-        ollama_host=os.getenv("OLLAMA_HOST", default=None),
+        model_strategy_name="mock",
+        model_strategy_params={'context_size': 2**13},
         branch="module_docstrings",
         repo_owner="fbehrendt",
         debug=True,
     )
+
     # auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)
