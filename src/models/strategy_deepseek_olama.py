@@ -15,13 +15,10 @@ from gpt_input import (
 )
 from models.prompt_builder.deepseek_r1_prompt_builder import DeepseekR1PromptBuilder
 from save_data import save_data
+from src import helpers
 
 from .model_strategy import DocstringModelStrategy
 
-CHECK_OUTDATED_JSON_OUTPUT_REGEX = (
-    r'({\s*"analysis":\s*"(.*)"\s*,\s*"matches"\s*:\s*(true|false)\s*})'
-)
-DOCSTRING_GENERATION_JSON_OUTPUT_REGEX = r"{[^`]+}"
 SAVE_DATA_BRANCH = "class_docstrings"
 
 
@@ -596,27 +593,18 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
             raise Exception("Unexpected code object type")
 
     def _extract_check_outdated_output(self, result: str) -> bool:
-        match = re.search(CHECK_OUTDATED_JSON_OUTPUT_REGEX, result, re.DOTALL | re.IGNORECASE)
-
-        if match is None or match.group(1) is None:
+        try:
+            analysis_json = helpers.parse_first_json_object(result)
+        except ValueError:
             raise ValueError("No JSON match found")
-
-        analysis_json_str = match.group(1)
-        analysis_json = json5.loads(analysis_json_str)
 
         return "matches" in analysis_json and analysis_json["matches"]
 
     def _extract_generate_docstring_json_output(self, result: str) -> dict:
-        match = re.search(DOCSTRING_GENERATION_JSON_OUTPUT_REGEX, result, re.DOTALL | re.IGNORECASE)
-
-        if match is None:
+        try:
+            return helpers.parse_first_json_object(result)
+        except ValueError:
             raise ValueError("No JSON match found")
-
-        analysis_json_str = match.group(0)
-        analysis_json = json5.loads(analysis_json_str)
-
-        return analysis_json
-
 
 def extract_authentication(url: str) -> tuple[str, dict[str, str]]:
     parsed_url = urlparse(url)
