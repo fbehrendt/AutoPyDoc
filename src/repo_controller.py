@@ -37,6 +37,32 @@ class CodeIntegrityViolationError(Exception):
         super().__init__(self.message)
 
 
+class UnknownCodeObjectError(Exception):
+    """
+    Exception raised when a code object has an unknown type.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+class EmptyRepositoryError(Exception):
+    """
+    Exception raised when the repository is empty.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
 class RepoController:
     """A class to control interactions with the target repository"""
 
@@ -264,7 +290,7 @@ class RepoController:
                     self.logger.error(
                         f"Unkown code_obj type {type(code_obj)} in {inspect.currentframe().f_code.co_name}"
                     )
-                    raise NotImplementedError
+                    raise UnknownCodeObjectError
 
                 # get start of signature
                 for i in range(start_pos, len(lines)):
@@ -463,7 +489,7 @@ class RepoController:
             self.repo.git.push("--set-upstream", "origin", current)
             return new_branch
         self.logger.critical("Bare repository")
-        raise Exception("Bare repository")
+        raise EmptyRepositoryError("Bare repository")
 
     def create_pull_request(
         self,
