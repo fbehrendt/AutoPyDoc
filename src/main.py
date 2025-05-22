@@ -15,7 +15,6 @@ from get_context import CodeParser
 from gpt_input import GptOutput
 from gpt_interface import GptInterface
 from repo_controller import CodeIntegrityViolationError, RepoController
-from save_data import save_data
 from validate_docstring import validate_docstring
 from validate_docstring_input import validate_docstring_input
 
