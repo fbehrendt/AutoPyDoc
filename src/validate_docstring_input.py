@@ -23,7 +23,7 @@ def validate_docstring_input(
         return parent_chain
 
     def get_rel_filename(abs_filename, repo_path):
-        return abs_filename.lstrip(repo_path)[1].lstrip("/").lstrip("\\")
+        return abs_filename.lstrip(repo_path).lstrip("/").lstrip("\\")
 
     code_obj = code_representer.get(docstring_input.id)
     pr_notes = []
