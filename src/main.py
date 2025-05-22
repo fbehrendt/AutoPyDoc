@@ -10,7 +10,6 @@ from docstring_input_selector import (
     DocstringInputSelectorMethod,
     DocstringInputSelectorModule,
 )
-from extract_outdated_ids import extract_code_affected_by_change
 from get_context import CodeParser
 from gpt_input import GptOutput
 from gpt_interface import GptInterface
@@ -74,36 +73,13 @@ class AutoPyDoc:
             logger=self.logger,
         )
 
-        def save_objects(objects):
-            content = ""
-            for object in objects.values():
-                print(str(object.__dict__))
-                content += str(object.__dict__)
-                content += "\n"
-            with open(file="saved_objects.txt", mode="w") as f:
-                f.write(content)
-
-        # save_objects(self.code_parser.code_representer.objects)
-
         self.code_parser.extract_class_and_method_calls()
         self.code_parser.extract_args_and_return_type()
         self.code_parser.extract_exceptions()
         self.code_parser.check_return_type()
         self.code_parser.extract_attributes()
 
-        self.repo.repo.git.checkout(self.repo.latest_commit_hash)
-        self.code_parser_old = CodeParser(
-            code_representer=CodeRepresenter(),
-            working_dir=self.repo.working_dir,
-            debug=True,
-            files=self.repo.get_files_in_repo(),
-            logger=self.logger,
-        )
-        self.repo.repo.git.checkout(self.repo.current_commit)
-        outdated_ids = extract_code_affected_by_change(
-            code_parser_old=self.code_parser_old, code_parser_new=self.code_parser
-        )
-        self.code_parser.code_representer.set_multiple_outdated(outdated_ids)
+        self.code_parser.detect_outdated_code(repo_controller=self.repo)
 
         # get changes between last commit the tool ran for and now
         # self.changes = self.repo.get_changes()

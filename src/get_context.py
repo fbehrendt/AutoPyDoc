@@ -18,8 +18,10 @@ from extract_affected_code_from_change_info import (
     extract_methods_from_change_info,
     extract_module_from_change_info,
 )
+from extract_outdated_ids import extract_code_affected_by_change
 from import_finder import ImportFinder
 from repo_controller import UnknownCodeObjectError
+from repo_controller import RepoController
 
 code = CodeRepresenter()  # TODO what is this for?
 
@@ -678,12 +680,17 @@ class CodeParser:
             self.code_representer.set_outdated(module_obj.id)
             # module_obj.dev_comments = self.extract_dev_comments(module_obj)
 
-
-if __name__ == "__main__":
-    code_parser = CodeParser(CodeRepresenter())
-    code_parser.add_file()
-    code_parser.create_dependencies()
-    for node in code_parser.code_representer.objects.values():
-        docstring = ast.get_docstring(node=node.ast)
-        print(docstring)
-    print("finished")
+    def detect_outdated_code(self, repo_controller: RepoController):
+        repo_controller.repo.git.checkout(repo_controller.latest_commit_hash)
+        self.code_parser_old = CodeParser(
+            code_representer=CodeRepresenter(),
+            working_dir=repo_controller.working_dir,
+            debug=True,
+            files=repo_controller.get_files_in_repo(),
+            logger=self.logger,
+        )
+        repo_controller.repo.git.checkout(repo_controller.current_commit)
+        outdated_ids = extract_code_affected_by_change(
+            code_parser_old=self.code_parser_old, code_parser_new=self
+        )
+        self.code_representer.set_multiple_outdated(outdated_ids)
