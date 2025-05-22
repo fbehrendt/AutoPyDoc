@@ -18,8 +18,6 @@ from repo_controller import RepoController, CodeIntegrityViolationError
 from validate_docstring import validate_docstring
 from validate_docstring_input import validate_docstring_input
 
-from save_data import save_data
-
 load_dotenv()
 
 logging.basicConfig(
@@ -115,24 +113,8 @@ class AutoPyDoc:
             ignore_dependencies=True, dry=True
         )
         self.gpt_interface.estimate(full_input=full_input_for_estimation)
-
-        save_data(
-            branch="semantic_validation",
-            code_type="",
-            code_name="",
-            code_id="",
-            content_type="total_objects_" + str(len(self.code_parser.code_representer.objects)),
-            data="",
-        )
         first_batch = self.code_parser.code_representer.generate_next_batch()
-        save_data(
-            branch="semantic_validation",
-            code_type="",
-            code_name="",
-            code_id="",
-            content_type="batch_" + str(len(first_batch)),
-            data="",
-        )
+
         if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
             self.logger.info("No need to do anything")
             quit()
@@ -172,26 +154,8 @@ class AutoPyDoc:
         )
 
         if result.no_change_necessary:
-            save_data(
-                branch="semantic_validation",
-                code_type=code_obj.code_type,
-                code_name=code_obj.name,
-                code_id=code_obj.id,
-                content_type="accurate",
-                data="",
-            )
             code_obj.outdated = False
         else:
-            save_data(
-                branch="semantic_validation",
-                code_type=code_obj.code_type,
-                code_name=code_obj.name,
-                code_id=code_obj.id,
-                content_type="inaccurate",
-                data="",
-            )
-
-        if not result.no_change_necessary:
             # merge new docstring with developer comments
             developer_docstring_changes = self.extract_dev_comments(code_obj)
             if isinstance(code_obj, MethodObject):
@@ -236,22 +200,6 @@ class AutoPyDoc:
             # validate docstring syntax
             errors = validate_docstring(new_docstring)
             if len(errors) > 0:
-                save_data(
-                    branch="syntax_validation",
-                    code_type=code_obj.code_type,
-                    code_name=code_obj.name,
-                    code_id=code_obj.id,
-                    content_type="error",
-                    data=str(errors),
-                )
-                save_data(
-                    branch="syntax_validation",
-                    code_type=code_obj.code_type,
-                    code_name=code_obj.name,
-                    code_id=code_obj.id,
-                    content_type="new_docstring",
-                    data=new_docstring,
-                )
                 # TODO re-sent to GPT, with note. If this is the second time, don't update this docstring and put note in pull request description
                 self.logger.warning("Docstring is not valid. Retry")
                 if hasattr(code_obj, "retry") and code_obj.retry > 0:
@@ -283,14 +231,6 @@ class AutoPyDoc:
         # if parts are still outdated
         next_batch = self.code_parser.code_representer.generate_next_batch()
         if len(next_batch) > 0:
-            save_data(
-                branch="semantic_validation",
-                code_type="",
-                code_name="",
-                code_id="",
-                content_type="batch_" + str(len(next_batch)),
-                data="",
-            )
             self.gpt_interface.process_batch(next_batch, callback=self.process_gpt_result)
 
     # TODO move elsewhere
@@ -405,11 +345,11 @@ if __name__ == "__main__":
     auto_py_doc.main(
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
-        model_strategy_name="mock",
-        model_strategy_params={"context_size": 2**13},
+        model_strategy_name="ollama",
+        model_strategy_params={"context_size": 2**13, "ollama_host": "http://87.122.16.11:7280/"},
         branch="module_docstrings",
         repo_owner="fbehrendt",
-        debug=True,
+        debug=False,
     )
 
     # auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)
