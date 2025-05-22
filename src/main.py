@@ -79,12 +79,6 @@ class AutoPyDoc:
         self.code_parser.check_return_type()
         self.code_parser.extract_attributes()
 
-        self.code_parser.detect_outdated_code(repo_controller=self.repo)
-
-        # get changes between last commit the tool ran for and now
-        # self.changes = self.repo.get_changes()
-        # self.code_parser.set_code_affected_by_changes_to_outdated(changes=self.changes)
-
         full_input_for_estimation = self.code_parser.code_representer.generate_next_batch(
             ignore_dependencies=True, dry=True
         )
@@ -133,7 +127,7 @@ class AutoPyDoc:
             code_obj.outdated = False
         else:
             # merge new docstring with developer comments
-            developer_docstring_changes = self.extract_dev_comments(code_obj)
+            developer_docstring_changes = self.repo.extract_dev_comments(code_obj)
             if isinstance(code_obj, MethodObject):
                 docstring_input = DocstringInputSelectorMethod(
                     code_obj=code_obj,
@@ -219,100 +213,6 @@ class AutoPyDoc:
         print("{} => {}".format(a, b))
         for i, s in enumerate(difflib.unified_diff([a], [b])):
             print("DIFF:\n", s)
-
-    # TODO move elsewhere
-    def extract_dev_comments(self, code_obj):
-        import ast
-        import pathlib
-        import sys
-
-        from code_representation import ClassObject, MethodObject, ModuleObject
-        from docstring_dismantler import DocstringDismantler
-
-        developer_changes = []
-
-        self.repo.repo.git.stash("save")
-        self.repo.repo.git.checkout(self.repo.latest_commit_hash)
-
-        sys.stderr = open(os.devnull, "w")
-        # if the file is new, all existing docstrings are manually generated
-        if os.path.isfile(code_obj.filename):
-            code_ast = ast.parse(open(code_obj.filename).read())
-            sys.stderr = sys.__stderr__
-            old_docstring = -1
-
-            for node in ast.walk(code_ast):
-                if isinstance(code_obj, MethodObject) and (
-                    isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef)
-                ):
-                    if code_obj.name == node.name:
-                        old_docstring = ast.get_docstring(node, clean=True) or ""
-                        break
-                elif isinstance(code_obj, ClassObject) and isinstance(node, ast.ClassDef):
-                    if code_obj.name == node.name:
-                        old_docstring = ast.get_docstring(node, clean=True) or ""
-                        break
-                elif isinstance(code_obj, ModuleObject) and isinstance(node, ast.Module):
-                    old_docstring = ast.get_docstring(node, clean=True) or ""
-                    break
-
-            if old_docstring == -1:
-                # new method/class
-                return []
-            if code_obj.old_docstring is not None and old_docstring == code_obj.old_docstring:
-                print("+++docstrings are equal+++")
-                return []
-
-        # if the file does not exist, all docstrings were made manually
-        print("---docstrings are different---")
-        new_docstring_dismantler = DocstringDismantler(docstring=code_obj.old_docstring or "")
-        if not ("old_docstring" in locals() or "old_docstring" in globals()):
-            old_docstring = ""
-        old_docstring_dismantler = DocstringDismantler(docstring=old_docstring or "")
-        developer_changes = old_docstring_dismantler.compare_docstrings(new_docstring_dismantler)
-        if len(developer_changes) > 0:
-            print(
-                f"=============\n{code_obj.name} in {pathlib.Path(code_obj.filename).stem}\n============="
-            )
-        for developer_change in developer_changes:
-            print(developer_change)
-
-        self.repo.repo.git.checkout(self.repo.current_commit)
-        git_stash_list = self.repo.repo.git.stash("list")
-        if len(git_stash_list) > 0:
-            self.repo.repo.git.stash("pop")
-            self.repo.repo.git.stash("clear")
-
-        if developer_changes is None:
-            print()
-        return developer_changes
-        # tree = self.repo.repo.head.commit.tree
-        # self.repo.latest_commit_hash
-        # print("Latest commit hash:", self.repo.latest_commit_hash)
-        # self.repo.repo.head.commit
-        # steps_in_the_past = 1
-        # while self.repo.repo.commit(f"HEAD~{steps_in_the_past}").hexsha != self.repo.latest_commit_hash:
-        #    commit = self.repo.repo.commit(f"HEAD~{steps_in_the_past}")
-        #    print(steps_in_the_past, "    " + commit.message, "    " + commit.hexsha)
-        #    steps_in_the_past += 1
-        # steps_in_the_past -= 1 # The commit after the AutoPyDoc commit is a merge commit
-        # search in between for commit message starting with "Automatically generated docstrings using AutoPyDoc"
-        # if such a commit exists, compare to that commit, if not, compare to latest commit, if not exists compare to empty file
-        # get docstrings of codeobj using ast.parse() and ast.docstring()
-        # for code_obj_id in self.code_parser.code_representer.get_outdated_ids():
-        #    code_obj = self.code_parser.code_representer.get(code_obj_id)
-        #    filename = code_obj.filename
-        #    commits = list(
-        #        self.repo.repo.iter_commits(all=True, max_count=10, paths=filename)
-        #    )
-        #    print(filename)
-        #    for commit in commits:
-        #        print("    " + commit.message, "    " + commit.hexsha)
-        #    print()
-        # TODO get version before and after
-        # TODO ast parse visit code ast.docstring() on both files
-        # diff
-        # print()
 
 
 if __name__ == "__main__":

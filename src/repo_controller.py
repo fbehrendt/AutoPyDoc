@@ -19,7 +19,10 @@ from code_representation import (
     CodeRepresenter,
     MethodObject,
     ModuleObject,
+    CodeObject,
 )
+
+from docstring_dismantler import DocstringDismantler
 
 import helpers
 
@@ -407,6 +410,65 @@ class RepoController:
                 f.write(content)
             return new_filename
 
+    def extract_dev_comments(self, code_obj: CodeObject):
+        developer_changes = []
+
+        self.repo.git.stash("save")
+        self.repo.git.checkout(self.latest_commit_hash)
+
+        sys.stderr = open(os.devnull, "w")
+        # if the file is new, all existing docstrings are manually generated
+        if os.path.isfile(code_obj.filename):
+            code_ast = ast.parse(open(code_obj.filename).read())
+            sys.stderr = sys.__stderr__
+            old_docstring = -1
+
+            for node in ast.walk(code_ast):
+                if isinstance(code_obj, MethodObject) and (
+                    isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef)
+                ):
+                    if code_obj.name == node.name:
+                        old_docstring = ast.get_docstring(node, clean=True) or ""
+                        break
+                elif isinstance(code_obj, ClassObject) and isinstance(node, ast.ClassDef):
+                    if code_obj.name == node.name:
+                        old_docstring = ast.get_docstring(node, clean=True) or ""
+                        break
+                elif isinstance(code_obj, ModuleObject) and isinstance(node, ast.Module):
+                    old_docstring = ast.get_docstring(node, clean=True) or ""
+                    break
+
+            if old_docstring == -1:
+                # new method/class
+                return []
+            if code_obj.old_docstring is not None and old_docstring == code_obj.old_docstring:
+                print("+++docstrings are equal+++")
+                return []
+
+        # if the file does not exist, all docstrings were made manually
+        print("---docstrings are different---")
+        new_docstring_dismantler = DocstringDismantler(docstring=code_obj.old_docstring or "")
+        if not ("old_docstring" in locals() or "old_docstring" in globals()):
+            old_docstring = ""
+        old_docstring_dismantler = DocstringDismantler(docstring=old_docstring or "")
+        developer_changes = old_docstring_dismantler.compare_docstrings(new_docstring_dismantler)
+        if len(developer_changes) > 0:
+            print(
+                f"=============\n{code_obj.name} in {pathlib.Path(code_obj.filename).stem}\n============="
+            )
+        for developer_change in developer_changes:
+            print(developer_change)
+
+        self.repo.git.checkout(self.current_commit)
+        git_stash_list = self.repo.git.stash("list")
+        if len(git_stash_list) > 0:
+            self.repo.git.stash("pop")
+            self.repo.git.stash("clear")
+
+        if developer_changes is None:
+            print()
+        return developer_changes
+
     def validate_code_integrity(self):
         for file_before, file_after in self.cmp_files:
             file_before_no_comments = self.remove_comments(file_before)
@@ -557,23 +619,3 @@ class RepoController:
             head_branch=new_branch,
             base_branch=self.branch,
         )
-
-        # if repo_path is local filepath:
-        # if config['Default']['local_repo_behaviour'] == "commit":
-        # commit changes
-        # elif config['Default']['local_repo_behaviour'] == "amend":
-        # amend commit
-        # elif config['Default']['local_repo_behaviour'] == "stage":
-        # stage changes
-        # elif config['Default']['local_repo_behaviour'] == "none":
-        # pass
-        # else:
-        # raise error
-        # elif repo_path is GitHub link:
-        # if config['Default']['remote_repo_behaviour'] == "pull_request":
-        # create pull request
-        # elif config['Default']['remote_repo_behaviour'] == "push":
-        # push changes
-        # else:
-        # raise error
-        # TODO implement config
