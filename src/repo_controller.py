@@ -9,7 +9,6 @@ import shutil
 import sys
 from pathlib import Path
 
-import astunparse
 import validators
 from dotenv import load_dotenv
 from git import Actor, Repo
@@ -21,6 +20,47 @@ from code_representation import (
     MethodObject,
     ModuleObject,
 )
+
+import helpers
+
+
+class CodeIntegrityViolationError(Exception):
+    """
+    Exception raised when code integrity was violated.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+class UnknownCodeObjectError(Exception):
+    """
+    Exception raised when a code object has an unknown type.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+class EmptyRepositoryError(Exception):
+    """
+    Exception raised when the repository is empty.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
 
 
 class RepoController:
@@ -58,7 +98,8 @@ class RepoController:
 
         self.username = username
         self.pull_request_token = pull_request_token
-        if repo_owner is None:
+        self.repo_owner = repo_owner
+        if self.repo_owner is None:
             self.repo_owner = username
 
         self.is_remote_repo = validators.url(repo_path)
@@ -140,13 +181,12 @@ class RepoController:
                 self.repo_url = "https://" + self.repo_url[4:-4]
             self.repo = Repo.clone_from(self.repo_url, self.working_dir)
             self.repo.git.checkout(self.branch)
+            self.logger.info(f"Checked out branch {self.repo.active_branch.name}")
             assert not self.repo.bare
-        elif self.debug:
-            self.repo = Repo(self.working_dir)
-            return
         else:
-            self.clear_working_dir()
-            self.repo = Repo.clone_from(self.repo_url, self.working_dir)
+            # self.clear_working_dir()
+            self.repo = Repo(self.working_dir)
+            # self.repo = Repo.clone_from(self.repo_url, self.working_dir)
             self.repo.git.checkout(self.branch)
             assert not self.repo.bare
 
@@ -207,7 +247,7 @@ class RepoController:
         :raises Exception("End of docstring not found"): raised when the end of the docstring cannot be located
         """
         # TODO use ast.get_source_code_segment() and/or look into asttokens
-        self.repo.git.checkout(self.current_commit)
+        # self.repo.git.checkout(self.current_commit) # TODO was this necessary?
 
         code_obj = code_representer.get(code_obj_id)
         with open(file=code_obj.filename, mode="r") as f:
@@ -249,7 +289,7 @@ class RepoController:
                     self.logger.error(
                         f"Unkown code_obj type {type(code_obj)} in {inspect.currentframe().f_code.co_name}"
                     )
-                    raise NotImplementedError
+                    raise UnknownCodeObjectError
 
                 # get start of signature
                 for i in range(start_pos, len(lines)):
@@ -315,7 +355,14 @@ class RepoController:
             new_path = shutil.copy(filename, new_location)
             self.cmp_files.append([filename, new_path])
 
-    def insert_docstring(self, filename: str, start: int, end: int, new_docstring: str):
+    def insert_docstring(
+        self,
+        filename: str,
+        start: int,
+        end: int,
+        new_docstring: str,
+        old_docstring: str | None = None,
+    ):
         """
         Insert the new docstring. Lines between start and end will be overridden. Static method
 
@@ -331,23 +378,30 @@ class RepoController:
         self.save_file_for_comparison(filename)
         with open(filename, "r") as f:
             content = f.readlines()
-            before = content[:start]
-            after = content[end:]
-            new_content = "".join(before) + new_docstring + "\n" + "".join(after)
+            content_before = "".join(content)
+            if (
+                start == 0 and old_docstring is not None and len(old_docstring) > 6
+            ):  # module docstring
+                new_content = content_before.replace(old_docstring, new_docstring.strip('"""'))
+                # since this does not replace """ or ''', remove ''' and duplicate """
+                new_content.replace('""""""', '"""')
+                new_content.replace("'''", "")  # TODO might break stuff
+            else:
+                before = content[:start]
+                after = content[end:]
+                new_content = "".join(before) + new_docstring + "\n" + "".join(after)
+            if not helpers.remove_comments(new_content) == helpers.remove_comments(content_before):
+                self.logger.error(
+                    f"Code integrity was violated by replacing old docstring {old_docstring} with new docstring {new_docstring} at line {start} to {end} in file {filename}!"
+                )
+                raise CodeIntegrityViolationError("Code integrity violated")
 
             with open(filename, "w") as file:
                 file.write(new_content)
 
     def remove_comments(self, filename: str) -> str:
         with open(filename) as f:
-            sys.stderr = open(os.devnull, "w")
-            lines = astunparse.unparse(ast.parse(f.read())).split("\n")
-            sys.stderr = sys.__stderr__
-            content = []
-            for line in lines:
-                if line.lstrip()[:1] not in ("'", '"'):
-                    content.append(line)
-            content = "\n".join(content)
+            content = helpers.remove_comments(f.read())
             new_filename = filename.rstrip(".py") + "_no_comments.py"
             with open(new_filename, mode="w") as f:
                 f.write(content)
@@ -434,7 +488,7 @@ class RepoController:
             self.repo.git.push("--set-upstream", "origin", current)
             return new_branch
         self.logger.critical("Bare repository")
-        raise Exception("Bare repository")
+        raise EmptyRepositoryError("Bare repository")
 
     def create_pull_request(
         self,
@@ -464,7 +518,9 @@ class RepoController:
             load_dotenv()
             auth_token = os.getenv("GitHubAuthToken")
         github_object = Github(self.username, auth_token)
-        self.logger.info(f"Username: {self.username}\nRepository: {repo_name}")
+        self.logger.info(
+            f"Username: {self.username}\nRepository: {repo_name}\nhead branch: {head_branch}\nbase branch: {base_branch}"
+        )
         repo = github_object.get_repo(repo_name)
 
         pull_request = repo.create_pull(

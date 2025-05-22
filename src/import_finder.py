@@ -98,7 +98,7 @@ class ImportFinder:
             while i < min(len(source_file), len(split_path)) and source_file[i] == split_path[i]:
                 i += 1
             if i == len(source_file):
-                raise Exception("Import from the file that is importing")
+                raise CircularImportError("Import from the file that is importing")
             # match file part of import
             j = 0
             while (
@@ -114,6 +114,18 @@ class ImportFinder:
             return potential_matches
         else:
             return []
+
+
+class CircularImportError(Exception):
+    """
+    Exception raised when circular imports are detected.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
 
 
 if __name__ == "__main__":

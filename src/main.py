@@ -1,5 +1,6 @@
 import logging
 import os
+
 from dotenv import load_dotenv
 
 from code_representation import ClassObject, CodeRepresenter, MethodObject, ModuleObject
@@ -13,11 +14,10 @@ from extract_outdated_ids import extract_code_affected_by_change
 from get_context import CodeParser
 from gpt_input import GptOutput
 from gpt_interface import GptInterface
-from repo_controller import RepoController
+from repo_controller import CodeIntegrityViolationError, RepoController
+from save_data import save_data
 from validate_docstring import validate_docstring
 from validate_docstring_input import validate_docstring_input
-
-from save_data import save_data
 
 load_dotenv()
 
@@ -36,9 +36,10 @@ class AutoPyDoc:
         self,
         repo_path: str,
         username: str,
+        model_strategy_name: str,
+        model_strategy_params: dict[str, str],
         pull_request_token=None,
         branch: str = "main",
-        ollama_host: str = None,
         debug=False,
         repo_owner=None,
     ) -> None:  # repo_path will be required later
@@ -50,14 +51,9 @@ class AutoPyDoc:
         :type debug: boolean
         """
 
-        # initialize gpt interface early to fail early if model is unavailable or unable to load
-        # TODO: make name configurable (see factory for available model names)
-        # self.gpt_interface = GptInterface("mock")
-        # self.gpt_interface = GptInterface("local_deepseek", context_size=2**13)
-        self.gpt_interface = GptInterface("ollama", context_size=2**13, ollama_host=ollama_host)
-        # self.gpt_interface = GptInterface(
-        #     "gemini", context_size=2**13, gemini_api_key="xxxxxxxxxxxxxxxxxxxxxxxxxx"
-        # )
+        # Initialize gpt interface with the chosen strategy and its parameters early to fail early if model is unavailable or unable to load
+        self.logger.info(f"Using {model_strategy_name} strategy.")
+        self.gpt_interface = GptInterface(model_strategy_name, **model_strategy_params)
 
         # pull repo, create code representation, create dependencies
         self.debug = debug
@@ -118,24 +114,8 @@ class AutoPyDoc:
             ignore_dependencies=True, dry=True
         )
         self.gpt_interface.estimate(full_input=full_input_for_estimation)
-
-        save_data(
-            branch="semantic_validation",
-            code_type="",
-            code_name="",
-            code_id="",
-            content_type="total_objects_" + str(len(self.code_parser.code_representer.objects)),
-            data="",
-        )
         first_batch = self.code_parser.code_representer.generate_next_batch()
-        save_data(
-            branch="semantic_validation",
-            code_type="",
-            code_name="",
-            code_id="",
-            content_type="batch_" + str(len(first_batch)),
-            data="",
-        )
+
         if len(self.code_parser.code_representer.get_sent_to_gpt_ids()) == 0:
             self.logger.info("No need to do anything")
             quit()
@@ -155,8 +135,8 @@ class AutoPyDoc:
 
         # if every docstring is updated
         if not self.repo.validate_code_integrity():
-            self.logger.critical("Code integrity no longer given!!! aborting")
-            raise Exception("Code integrity no longer given!!! aborting")
+            self.logger.fatal("Code integrity no longer given!!! aborting")
+            raise CodeIntegrityViolationError("Code integrity no longer given!!! aborting")
             quit()  # saveguard in case someone tries to catch the exception and continue anyways
         self.logger.info("Code integrity validated")
 
@@ -175,25 +155,8 @@ class AutoPyDoc:
         )
 
         if result.no_change_necessary:
-            save_data(
-                branch="semantic_validation",
-                code_type=code_obj.code_type,
-                code_name=code_obj.name,
-                code_id=code_obj.id,
-                content_type="accurate",
-                data="",
-            )
+            code_obj.outdated = False
         else:
-            save_data(
-                branch="semantic_validation",
-                code_type=code_obj.code_type,
-                code_name=code_obj.name,
-                code_id=code_obj.id,
-                content_type="inaccurate",
-                data="",
-            )
-
-        if not result.no_change_necessary:
             # merge new docstring with developer comments
             developer_docstring_changes = self.extract_dev_comments(code_obj)
             if isinstance(code_obj, MethodObject):
@@ -238,56 +201,37 @@ class AutoPyDoc:
             # validate docstring syntax
             errors = validate_docstring(new_docstring)
             if len(errors) > 0:
-                save_data(
-                    branch="syntax_validation",
-                    code_type=code_obj.code_type,
-                    code_name=code_obj.name,
-                    code_id=code_obj.id,
-                    content_type="error",
-                    data=str(errors),
-                )
-                save_data(
-                    branch="syntax_validation",
-                    code_type=code_obj.code_type,
-                    code_name=code_obj.name,
-                    code_id=code_obj.id,
-                    content_type="new_docstring",
-                    data=new_docstring,
-                )
-                # TODO resent to GPT, with note. If this is the second time, don't update this docstring and put note in pull request description
+                # TODO re-sent to GPT, with note. If this is the second time, don't update this docstring and put note in pull request description
                 self.logger.warning("Docstring is not valid. Retry")
                 if hasattr(code_obj, "retry") and code_obj.retry > 0:
                     if code_obj.retry > 2:
-                        self.logger.error("Docstring is still invalid after 3 attempts")
-                        if not self.debug:
-                            raise NotImplementedError
+                        self.logger.error("Docstring is still invalid after 3 attempts. Skipping")
+                        code_obj.outdated = False
+                        code_obj.is_updated = True
+                        return
                     code_obj.retry += 1
                 else:
                     code_obj.retry = 1
                 return  # this prevents code_obj.outdated from being set to False and code_obj.is_updated from being set to True, causing it to be included in the next batch again. # TODO what about sent_to_gpt?
 
             # insert new docstring in the file
-            self.repo.insert_docstring(
-                filename=code_obj.filename,
-                start=start_pos,
-                end=end_pos,
-                new_docstring=new_docstring,
-            )
-            code_obj.update_docstring(new_docstring=new_docstring)
-
-            code_obj.is_updated = True
-        code_obj.outdated = False
+            try:
+                self.repo.insert_docstring(
+                    filename=code_obj.filename,
+                    start=start_pos,
+                    end=end_pos,
+                    new_docstring=new_docstring,
+                    old_docstring=code_obj.old_docstring,
+                )
+            except CodeIntegrityViolationError:
+                code_obj.send_to_gpt = False
+            else:
+                code_obj.update_docstring(new_docstring=new_docstring)
+                code_obj.is_updated = True
+                code_obj.outdated = False
         # if parts are still outdated
         next_batch = self.code_parser.code_representer.generate_next_batch()
         if len(next_batch) > 0:
-            save_data(
-                branch="semantic_validation",
-                code_type="",
-                code_name="",
-                code_id="",
-                content_type="batch_" + str(len(next_batch)),
-                data="",
-            )
             self.gpt_interface.process_batch(next_batch, callback=self.process_gpt_result)
 
     # TODO move elsewhere
@@ -304,7 +248,6 @@ class AutoPyDoc:
     # TODO move elsewhere
     def extract_dev_comments(self, code_obj):
         import ast
-        import os
         import pathlib
         import sys
 
@@ -403,8 +346,14 @@ if __name__ == "__main__":
     auto_py_doc.main(
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
-        ollama_host=os.getenv("OLLAMA_HOST", default=None),
+        model_strategy_name="ollama",
+        model_strategy_params={
+            "context_size": 2**13,
+            "ollama_host": os.getenv("OLLAMA_HOST", default="http://localhost:7280/"),
+        },
         branch="module_docstrings",
-        debug=True,
+        repo_owner="fbehrendt",
+        debug=False,
     )
+
     # auto_py_doc.main(repo_path="C:\\Users\\Fabian\Github\\bachelor_testing_repo", debug=True)

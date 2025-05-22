@@ -13,31 +13,24 @@ jobs:
     steps:
     - name: Install python
       run: sudo apt install -y python3
-    - name: login to github
-      run: |
-        echo "${{ secrets.FULL_ACCESS_TOKEN }}" | gh auth login --with-token
-        gh auth setup-git
-        git config --global user.name "<your username>"
-    - name: clone AutoPyDoc
-      run: |
-        cd /home/runner/work
-        git clone https://github.com/fbehrendt/AutoPyDoc.git
-        # you can use a different branch of AutoPyDoc by uncommenting and adjusting the line below
-        # git switch -c development origin/development
-        # git branch --show-current
-    - name: clone this repo
-      run: |
-        cd /home/runner/work/<target repo name>
-        git clone https://github.com/<username>/<target repo name>.git
-    - name: config git
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
-    - name: install dependencies
-      run: uv sync
-    - name: run AutoPyDoc
-      run: |
-        cd /home/runner/work/AutoPyDoc
-        uv run /home/runner/work/AutoPyDoc/src/main_cli.py /home/runner/work/<target repo name>/<target repo name> <username> "${{ secrets.PULL_REQUEST_TOKEN }}" "${GITHUB_REF##*/}" fbehrendt
+
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+      with:
+        # fetch all commits/branches/tags to be able to compare the current commit with the previous one
+        fetch-depth: 0
+
+    - name: Run AutoPyDoc using Action
+      uses: fbehrendt/AutoPyDoc@<action version>
+      with:
+        repo_path: "${{ github.workspace }}"
+        username: "AutoPyDoc"
+        repo_owner: ${{ github.repository_owner }}
+        pull_request_token: ${{ secrets.PULL_REQUEST_TOKEN }} # Manually created PAT with PR creation rights added as a repository secret
+        branch: ${{ github.ref_name }}
+        debug: 'true'
+        context_size: '8192'
+
+        # Strategy selection and its specific options
+        strategy: "ollama"
+        ollama_host: ${{ var.OLLAMA_HOSTNAME }} # Host path for ollama server added as a repository variable

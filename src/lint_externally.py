@@ -4,6 +4,18 @@ import os
 import sys
 
 
+class UnsupportedSyntaxError(Exception):
+    """
+    Exception raised when an unsupported syntax is requested.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
 def validate_docstring(docstring: str, syntax: str = "reStructuredText") -> list[str]:
     """
     Validate docstring
@@ -16,10 +28,10 @@ def validate_docstring(docstring: str, syntax: str = "reStructuredText") -> list
     :return: list of errors
     :return type: list[str]
 
-    :raises NotImplementedError: raised when the syntax is not reStructuredText, because no other syntax is implemented yet
+    :raises UnsupportedSyntaxError: raised when the syntax is not reStructuredText, because no other syntax is implemented yet
     """
     if syntax != "reStructuredText":
-        raise NotImplementedError
+        raise UnsupportedSyntaxError
     errors = restructuredtext_lint.lint(docstring)
     # filter out INFO level errors such as
     # "Unexpected possible title overline or transition.\nTreating it as ordinary text because it's so short."

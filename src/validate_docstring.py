@@ -1,6 +1,18 @@
 import restructuredtext_lint
 
 
+class UnsupportedSyntaxError(Exception):
+    """
+    Exception raised when an unsupported syntax is requested.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
 def validate_docstring(docstring: str, syntax: str = "reStructuredText") -> list[str]:
     """
     Validate docstring
@@ -13,10 +25,10 @@ def validate_docstring(docstring: str, syntax: str = "reStructuredText") -> list
     :return: list of errors
     :return type: list[str]
 
-    :raises NotImplementedError: raised when the syntax is not reStructuredText, because no other syntax is implemented yet
+    :raises UnsupportedSyntaxError: raised when the syntax is not reStructuredText, because no other syntax is implemented yet
     """
     if syntax != "reStructuredText":
-        raise NotImplementedError
+        raise UnsupportedSyntaxError
     errors = restructuredtext_lint.lint(docstring)
     # filter out INFO level errors such as
     # "Unexpected possible title overline or transition.\nTreating it as ordinary text because it's so short."
@@ -44,9 +56,7 @@ if __name__ == "__main__":
     ]
     return_type = "str"
     return_description = "The method returns a string"
-    exceptions = [
-        {"name": "InvalidInputException", "description": "The given input is invalid"}
-    ]
+    exceptions = [{"name": "InvalidInputException", "description": "The given input is invalid"}]
 
     docstring = " " * indentation_level + '"""'
     docstring += description + "\n"
@@ -54,15 +64,10 @@ if __name__ == "__main__":
     if len(params) > 0:
         docstring += "\n"
     for param in params:
-        docstring += (
-            " " * indentation_level
-            + f":param {param['name']}: {param['description']}\n"
-        )
+        docstring += " " * indentation_level + f":param {param['name']}: {param['description']}\n"
         if "default" in param.keys():
             docstring += " " * indentation_level + f" Default is {param['default']}\n"
-        docstring += (
-            " " * indentation_level + f":type {param['name']}: {param['type']}\n"
-        )
+        docstring += " " * indentation_level + f":type {param['name']}: {param['type']}\n"
     if len(params) > 0:
         docstring += "\n"
     if return_type or return_description:
@@ -70,8 +75,7 @@ if __name__ == "__main__":
         docstring += " " * indentation_level + f":rtype: {return_type}\n"
     for exception in exceptions:
         docstring += (
-            " " * indentation_level
-            + f":raises {exception['name']}: {exception['description']}\n"
+            " " * indentation_level + f":raises {exception['name']}: {exception['description']}\n"
         )
     if len(exceptions) > 0:
         docstring += "\n"

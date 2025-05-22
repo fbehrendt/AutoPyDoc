@@ -8,6 +8,7 @@ from docstring_input_selector import (
     DocstringInputClass,
     DocstringInputModule,
 )
+from repo_controller import UnknownCodeObjectError
 
 
 def validate_docstring_input(
@@ -157,5 +158,5 @@ def validate_docstring_input(
                 )
                 docstring_input.exceptions[exception] = "<failed to generate>"
     else:
-        raise NotImplementedError
+        raise UnknownCodeObjectError
     return docstring_input, pr_notes

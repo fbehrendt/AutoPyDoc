@@ -16,6 +16,44 @@ from gpt_input import (
 )
 
 
+class MultipleMatchesError(Exception):
+    """
+    Exception raised when multiple objects match.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
+class NoMatchError(Exception):
+    """
+    Exception raised when no match is found.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+class FrozenFieldError(Exception):
+    """
+    Exception raised when reassignment of a frozen field is attempted.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
 def frozen_field_support(cls):
     """
     Class decorator support dataclass field level freezing
@@ -44,7 +82,7 @@ def frozen_field_support(cls):
         try:
             current_value = getattr(this, name)
             if value != current_value:
-                raise Exception(f"Field '{name}' already has value= {current_value}")
+                raise FrozenFieldError(f"Field '{name}' already has value= {current_value}")
         except AttributeError:  # NOQA TODO
             # dataclass not initialized yet...
             pass
@@ -851,9 +889,9 @@ class CodeRepresenter:
             ):
                 matches.append(candidate)
         if len(matches) > 1:
-            raise Exception("More than one match")
+            raise MultipleMatchesError("More than one match")
         if len(matches) == 0:
-            raise Exception("No matches")
+            raise NoMatchError("No matches")
         return matches[0]
 
     def get_by_filename_and_name(self, filename: str, name: str) -> CodeObject:
@@ -875,11 +913,6 @@ class CodeRepresenter:
                 candidate.name == name  # TODO ambiguous
             ):
                 matches.append(candidate)
-        # if len(matches) > 1:
-        #    raise Exception("More than one match")
-        # if len(matches) == 0:
-        #    raise Exception("No matches")
-        # return matches[0]
         return matches
 
     def get_context_docstrings(self, code_obj_id: int) -> dict[int, str]:

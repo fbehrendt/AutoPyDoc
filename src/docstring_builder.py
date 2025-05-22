@@ -8,6 +8,8 @@ from code_representation import (
 )
 from docstring_input_selector import DocstringInput
 
+from repo_controller import UnknownCodeObjectError
+
 
 class DocstringBuilder:
     """Docstring Builder"""
@@ -23,6 +25,20 @@ class DocstringBuilder:
         :return type: DocstringBuilder
         """
         self.indentation_level = indentation_level
+
+    def enforce_indentation(self, string: str):
+        string = string.split("\n")
+        string = [" " * self.indentation_level + substring.lstrip() for substring in string]
+        return "\n".join(string)
+
+    def add_parantheses(self, string: str):
+        # make sure, the docstring does not contain """
+        string = string.replace('"""', "```")
+        if "\n" in string:
+            docstring = '"""\n' + string + '\n"""'
+        else:
+            docstring = '"""' + string + '"""'
+        return docstring
 
     def add_description(self, description: str) -> typing.Self:
         """
@@ -44,10 +60,9 @@ class DocstringBuilder:
         :return: docstring
         :return type: str
         """
-        docstring = " " * self.indentation_level + '"""\n'
-        docstring += " " * self.indentation_level + self.description + "\n"
-        docstring += " " * self.indentation_level + '"""'
-        return docstring
+        docstring = self.description
+        docstring = self.add_parantheses(docstring)
+        return self.enforce_indentation(docstring)
 
 
 class DocstringBuilderMethod(DocstringBuilder):
@@ -99,9 +114,7 @@ class DocstringBuilderMethod(DocstringBuilder):
         self.params.append(param)
         return self
 
-    def add_exception(
-        self, exception_name: str, exception_description: str
-    ) -> typing.Self:
+    def add_exception(self, exception_name: str, exception_description: str) -> typing.Self:
         """
         Add an exception
 
@@ -113,9 +126,7 @@ class DocstringBuilderMethod(DocstringBuilder):
         :return: self
         :return type: DocstringBuilder
         """
-        self.exceptions.append(
-            {"name": exception_name, "description": exception_description}
-        )
+        self.exceptions.append({"name": exception_name, "description": exception_description})
         return self
 
     def add_return(self, return_description: str, return_type: str) -> typing.Self:
@@ -141,55 +152,35 @@ class DocstringBuilderMethod(DocstringBuilder):
         :return: docstring
         :return type: str
         """
-        docstring = " " * self.indentation_level + '"""'
+        docstring = self.description
         if (
             len(self.params) > 0
-            or hasattr(self, "return_description")
-            or len(self.exceptions)
+            or not hasattr(self, "return_description")
+            or len(self.exceptions) == 0
         ):
-            docstring += "\n"
-            docstring += " " * self.indentation_level
-        docstring += self.description
-        if (
-            len(self.params) == 0
-            and not hasattr(self, "return_description")
-            and len(self.exceptions) == 0
-        ):
-            if "\n" in self.description:
-                docstring += "\n"
-            docstring += '"""'
-            return docstring
-        docstring += "\n\n"
+            docstring += "\n\n"
         for param in self.params:
             docstring += (
-                " " * self.indentation_level
-                + f":param {param['name']}: {param['description']}\n"
+                " " * self.indentation_level + f":param {param['name']}: {param['description']}\n"
             )
             if "default" in param.keys():
                 docstring += " " + f" Default is {param['default']}\n"
-            docstring += (
-                " " * self.indentation_level
-                + f":type {param['name']}: {param['type']}\n"
-            )
+            docstring += " " * self.indentation_level + f":type {param['name']}: {param['type']}\n"
         if len(self.params) > 0 and hasattr(self, "return_type"):
             docstring += "\n"
         if hasattr(self, "return_type") and hasattr(self, "return_description"):
-            docstring += (
-                " " * self.indentation_level + f":return: {self.return_description}\n"
-            )
+            docstring += " " * self.indentation_level + f":return: {self.return_description}\n"
             docstring += " " * self.indentation_level + f":rtype: {self.return_type}\n"
 
-        if (len(self.params) > 0 or hasattr(self, "return_type")) and len(
-            self.exceptions
-        ) > 0:
+        if (len(self.params) > 0 or hasattr(self, "return_type")) and len(self.exceptions) > 0:
             docstring += "\n"
         for exception in self.exceptions:
             docstring += (
                 " " * self.indentation_level
-                + f":raises {exception['name']}: {exception['description']}\n"
+                + f":raises {exception['name']}: {exception['description']}\n"  # according to restructuredtext_lint, the extra \n is necessary
             )
-        docstring += "\n"  # according to restructuredtext_lint, this is necessary
-        docstring += " " * self.indentation_level + '"""'
+        docstring = self.add_parantheses(docstring)
+        docstring = self.enforce_indentation(docstring)
         return docstring
 
 
@@ -271,17 +262,9 @@ class DocstringBuilderClass(DocstringBuilder):
         :return: docstring
         :return type: str
         """
-        docstring = " " * self.indentation_level + '"""'
+        docstring = self.description
         if len(self.class_attributes) > 0 or len(self.instance_attributes) > 0:
-            docstring += "\n"
-            docstring += " " * self.indentation_level
-        docstring += self.description
-        if len(self.class_attributes) == 0 and len(self.instance_attributes) == 0:
-            if "\n" in self.description:
-                docstring += "\n"
-            docstring += '"""'
-            return docstring
-        docstring += "\n\n"
+            docstring += "\n\n"
 
         for class_attribute in self.class_attributes:
             docstring += (
@@ -302,12 +285,11 @@ class DocstringBuilderClass(DocstringBuilder):
             )
             docstring += (
                 " " * self.indentation_level
-                + f":type {instance_attribute['name']}: {instance_attribute['type']}\n"
+                + f":type {instance_attribute['name']}: {instance_attribute['type']}\n"  # according to restructuredtext_lint, the extra \n is necessary
             )
 
-        docstring += "\n"  # according to restructuredtext_lint, this is necessary
-        docstring += " " * self.indentation_level + '"""'
-        return docstring
+        docstring = self.add_parantheses(docstring)
+        return self.enforce_indentation(docstring)
 
 
 class DocstringBuilderModule(DocstringBuilder):
@@ -326,9 +308,7 @@ class DocstringBuilderModule(DocstringBuilder):
         super().__init__(indentation_level=indentation_level)
         self.exceptions = []
 
-    def add_exception(
-        self, exception_name: str, exception_description: str
-    ) -> typing.Self:
+    def add_exception(self, exception_name: str, exception_description: str) -> typing.Self:
         """
         Add an exception
 
@@ -340,9 +320,7 @@ class DocstringBuilderModule(DocstringBuilder):
         :return: self
         :return type: DocstringBuilder
         """
-        self.exceptions.append(
-            {"name": exception_name, "description": exception_description}
-        )
+        self.exceptions.append({"name": exception_name, "description": exception_description})
         return self
 
     def build(self) -> str:
@@ -352,26 +330,17 @@ class DocstringBuilderModule(DocstringBuilder):
         :return: docstring
         :return type: str
         """
-        docstring = " " * self.indentation_level + '"""'
+        docstring = self.description
         if len(self.exceptions) > 0:
-            docstring += "\n"
-            docstring += " " * self.indentation_level
-        docstring += self.description
-        if len(self.exceptions) == 0:
-            if "\n" in self.description:
-                docstring += "\n"
-            docstring += '"""'
-            return docstring
-        docstring += "\n\n"
+            docstring += "\n\n"
 
         for exception in self.exceptions:
             docstring += (
                 " " * self.indentation_level
                 + f":raises {exception['name']}: {exception['description']}\n"
             )
-        docstring += "\n"
-        docstring += " " * self.indentation_level + '"""'
-        return docstring
+        docstring = self.add_parantheses(docstring)
+        return self.enforce_indentation(docstring)
 
 
 def create_docstring(
@@ -396,7 +365,6 @@ def create_docstring(
     :return: docstring for the CodeObject
     :return type: str
 
-    :raises NotImplementedError: raised when trying to access functionality that is not yet implemented
     """
 
     if isinstance(code_obj, MethodObject):
@@ -432,12 +400,8 @@ def create_docstring(
         for class_attribute_name in docstring_input.class_attributes.keys():
             docstring_builder.add_class_attribute(
                 class_attribute_name=class_attribute_name,
-                class_attribute_type=docstring_input.class_attribute_types[
-                    class_attribute_name
-                ],
-                class_attribute_description=docstring_input.class_attributes[
-                    class_attribute_name
-                ],
+                class_attribute_type=docstring_input.class_attribute_types[class_attribute_name],
+                class_attribute_description=docstring_input.class_attributes[class_attribute_name],
             )
         # instance attributes
         for instance_attribute_name in docstring_input.instance_attributes.keys():
@@ -462,5 +426,6 @@ def create_docstring(
                 exception_description=docstring_input.exceptions[exception],
             )
     else:
-        raise NotImplementedError
-    return docstring_builder.build()
+        raise UnknownCodeObjectError("Unknown code object")
+    new_docstring = docstring_builder.build()
+    return new_docstring

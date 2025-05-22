@@ -1,0 +1,132 @@
+name: "AutoPyDoc Action"
+description: "Runs AutoPyDoc to generate Python docstrings and create a Pull Request."
+author: "nralbrecht"
+
+inputs:
+  # Common options from your CLI's top-level group
+  repo_path:
+    description: "Repo path (passed to --repo-path). Defaults to the workspace of the calling workflow."
+    required: false
+    default: ${{ github.workspace }} # Uses default output path of the actions/checkout action
+  username:
+    description: "Username for PR attribution (passed to --username). Required by the script."
+    required: true
+  pull_request_token:
+    description: "GitHub token (PAT or GITHUB_TOKEN) for creating pull requests (passed to --pull-request-token or via GITHUB_TOKEN env var). Required by the script."
+    required: true
+  branch:
+    description: "Target branch in the repository (passed to --branch)."
+    required: false
+    default: ${{ github.ref_name }} # Uses the branch that triggered the workflow
+  repo_owner:
+    description: "Owner of the target repository (passed to --repo-owner). Defaults to the current repository owner. If not set, script defaults to username."
+    required: false
+    default: ${{ github.repository_owner }}
+  debug:
+    description: "Enable debug logging (passed as --debug flag)."
+    required: false
+    default: "false" # Action inputs are strings; use "true" or "false"
+  context_size:
+    description: "Context size for the LLM model (passed to --context-size)."
+    required: false
+    default: "8192" # Default from your CLI
+
+  # Strategy selection
+  strategy:
+    description: "The LLM strategy to use. Determines which subcommand is called. Options: ollama, gemini, local_deepseek, mock. [required]"
+    required: true
+
+  # Strategy-specific options
+  ollama_host:
+    description: "Full URL to Ollama host (e.g., http://localhost:11434). Passed to --ollama-host. Required if strategy is 'ollama'."
+    required: false
+  gemini_api_key:
+    description: "Google Gemini API Key. Passed to --gemini-api-key. Required if strategy is 'gemini'."
+    required: false
+  local_deepseek_device:
+    description: "Device for local_deepseek (GPT4All) model (e.g., 'gpu', 'cpu'). Passed to --device for local_deepseek strategy."
+    required: false
+
+branding:
+  icon: "book"
+  color: "blue"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v1
+
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config --global user.name "AutoPyDoc Bot"
+        git config --global user.email "autopydoc-bot@users.noreply.github.com"
+        echo "${{ inputs.pull_request_token }}" | gh auth login --with-token
+        gh auth setup-git
+
+    - name: Run AutoPyDoc
+      shell: bash
+      run: |
+        # Base cli command
+        # Assuming python project is in the github.action_path directory
+        CMD_PREFIX="uv run autopydoc"
+
+        # Common options
+        COMMON_OPTS="--repo-path \"${{ inputs.repo_path }}\""
+        COMMON_OPTS="${COMMON_OPTS} --username \"${{ inputs.username }}\""
+        COMMON_OPTS="${COMMON_OPTS} --pull-request-token \"${{ inputs.pull_request_token }}\""
+        COMMON_OPTS="${COMMON_OPTS} --branch \"${{ inputs.branch }}\""
+
+        if [[ -n "${{ inputs.repo_owner }}" ]]; then
+          COMMON_OPTS="${COMMON_OPTS} --repo-owner \"${{ inputs.repo_owner }}\""
+        fi
+
+        if [[ "${{ inputs.debug }}" == "true" ]]; then
+          COMMON_OPTS="${COMMON_OPTS} --debug"
+        fi
+
+        COMMON_OPTS="${COMMON_OPTS} --context-size ${{ inputs.context_size }}"
+
+        # Strategy subcommand and its specific options
+        STRATEGY_CMD_PART=""
+        case "${{ inputs.strategy }}" in
+          ollama)
+            STRATEGY_CMD_PART="ollama"
+            # ollama_host is required by the CLI subcommand
+            STRATEGY_CMD_PART="${STRATEGY_CMD_PART} --ollama-host \"${{ inputs.ollama_host }}\""
+            ;;
+          gemini)
+            STRATEGY_CMD_PART="gemini"
+            if [[ -z "${{ inputs.gemini_api_key }}" ]]; then
+              echo "::error title=Missing Gemini API Key::gemini_api_key input is required when strategy is "gemini"."
+              exit 1
+            fi
+            STRATEGY_CMD_PART="${STRATEGY_CMD_PART} --gemini-api-key \"${{ inputs.gemini_api_key }}\""
+            ;;
+          local_deepseek)
+            STRATEGY_CMD_PART="local_deepseek"
+            if [[ -n "${{ inputs.local_deepseek_device }}" ]]; then
+              STRATEGY_CMD_PART="${STRATEGY_CMD_PART} --device \"${{ inputs.local_deepseek_device }}\""
+            fi
+            ;;
+          mock)
+            STRATEGY_CMD_PART="mock"
+            # No specific options for mock other than common ones
+            ;;
+          *)
+            echo "::error title=Invalid Strategy::Unknown strategy: "${{ inputs.strategy }}". Must be one of: ollama, gemini, local_deepseek, mock."
+            exit 1
+            ;;
+        esac
+
+        FULL_COMMAND="${CMD_PREFIX} ${COMMON_OPTS} ${STRATEGY_CMD_PART}"
+
+        echo "::group::AutoPyDoc Execution Details"
+        # Attempt to redact secrets for logging. GitHub"s built-in redaction is usually effective for exact matches of secrets.
+        echo "Running command: ${FULL_COMMAND}"
+        echo "::endgroup::"
+
+        # Execute the command
+        eval "$FULL_COMMAND"
+      working-directory: ${{ github.action_path }}
