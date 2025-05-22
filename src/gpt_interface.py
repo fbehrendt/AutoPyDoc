@@ -15,23 +15,18 @@ class GptInterface:
         self.logger = logging.getLogger(self.__class__.__name__)
 
         if model_name == "ollama":
-            ollama_host = kwargs.get("ollama_host")
-
-            if ollama_host is not None:
-                try:
-                    response = requests.get(ollama_host)
-                    response.raise_for_status()
-                except Exception as e:
-                    self.model = ModelStrategyFactory.create_strategy("mock", **kwargs)
-                    self.logger.error(
-                        f"Failed to connect to ollama. Using mock strategy as a fallback. Error type: {type(e)}"
-                    )
-                else:
-                    self.logger.info(f"Using {model_name} strategy.")
-                    self.model = ModelStrategyFactory.create_strategy("ollama", **kwargs)
+            try:
+                ollama_host = kwargs.get("ollama_host")
+                response = requests.get(ollama_host)
+                response.raise_for_status()
+            except Exception as e:
+                self.model = ModelStrategyFactory.create_strategy("mock", **kwargs)
+                self.logger.error(
+                    f"Failed to connect to ollama. Using mock strategy as a fallback. Error type: {e}"
+                )
             else:
                 self.logger.info(f"Using {model_name} strategy.")
-                self.model = ModelStrategyFactory.create_strategy("mock", **kwargs)
+                self.model = ModelStrategyFactory.create_strategy("ollama", **kwargs)
         else:
             self.logger.info(f"Using {model_name} strategy.")
             self.model = ModelStrategyFactory.create_strategy(model_name, **kwargs)

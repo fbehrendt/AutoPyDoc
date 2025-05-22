@@ -56,6 +56,7 @@ dependencies = [
     { name = "pytest" },
     { name = "python-dotenv" },
     { name = "regex" },
+    { name = "requests" },
     { name = "restructuredtext-lint" },
     { name = "validators" },
 ]
@@ -80,6 +81,7 @@ requires-dist = [
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "regex", specifier = ">=2024.11.6" },
+    { name = "requests", specifier = ">=2.32.3" },
     { name = "restructuredtext-lint", specifier = ">=1.4.0" },
     { name = "validators", specifier = ">=0.34.0" },
 ]

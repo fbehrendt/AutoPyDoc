@@ -17,6 +17,7 @@ dependencies = [
   "pytest>=8.3.5",
   "python-dotenv>=1.0.1",
   "regex>=2024.11.6",
+  "requests>=2.32.3",
   "restructuredtext-lint>=1.4.0",
   "validators>=0.34.0",
 ]

@@ -1,7 +1,7 @@
 import logging
 import os
+
 from dotenv import load_dotenv
-import requests
 
 from code_representation import ClassObject, CodeRepresenter, MethodObject, ModuleObject
 from docstring_builder import create_docstring
@@ -14,7 +14,8 @@ from extract_outdated_ids import extract_code_affected_by_change
 from get_context import CodeParser
 from gpt_input import GptOutput
 from gpt_interface import GptInterface
-from repo_controller import RepoController, CodeIntegrityViolationError
+from repo_controller import CodeIntegrityViolationError, RepoController
+from save_data import save_data
 from validate_docstring import validate_docstring
 from validate_docstring_input import validate_docstring_input
 
@@ -346,7 +347,10 @@ if __name__ == "__main__":
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
         model_strategy_name="ollama",
-        model_strategy_params={"context_size": 2**13, "ollama_host": "http://87.122.16.11:7280/"},
+        model_strategy_params={
+            "context_size": 2**13,
+            "ollama_host": os.getenv("OLLAMA_HOST", default="http://localhost:7280/"),
+        },
         branch="module_docstrings",
         repo_owner="fbehrendt",
         debug=False,
