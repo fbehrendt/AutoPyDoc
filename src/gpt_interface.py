@@ -19,9 +19,6 @@ class GptInterface:
                 ollama_host = kwargs.get("ollama_host")
                 response = requests.get(ollama_host)
                 response.raise_for_status()
-
-                self.logger.info(f"Using {model_name} strategy.")
-                self.model = ModelStrategyFactory.create_strategy("ollama", **kwargs)
             except Exception as e:
                 self.model = ModelStrategyFactory.create_strategy("mock", **kwargs)
                 self.logger.error(
@@ -29,7 +26,7 @@ class GptInterface:
                 )
             else:
                 self.logger.info(f"Using {model_name} strategy.")
-                self.model = ModelStrategyFactory.create_strategy("mock", **kwargs)
+                self.model = ModelStrategyFactory.create_strategy("ollama", **kwargs)
         else:
             self.logger.info(f"Using {model_name} strategy.")
             self.model = ModelStrategyFactory.create_strategy(model_name, **kwargs)

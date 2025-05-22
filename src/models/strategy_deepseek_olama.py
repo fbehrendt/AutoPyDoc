@@ -1,11 +1,10 @@
-import re
 from base64 import b64encode
 from urllib.parse import urlparse, urlunparse
 
-import json5
 from ollama import Client
 
 import gpt_input
+import helpers
 from gpt_input import (
     GptInputCodeObject,
     GptOutput,
@@ -15,7 +14,6 @@ from gpt_input import (
 )
 from models.prompt_builder.deepseek_r1_prompt_builder import DeepseekR1PromptBuilder
 from save_data import save_data
-from src import helpers
 
 from .model_strategy import DocstringModelStrategy
 
@@ -605,6 +603,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
             return helpers.parse_first_json_object(result)
         except ValueError:
             raise ValueError("No JSON match found")
+
 
 def extract_authentication(url: str) -> tuple[str, dict[str, str]]:
     parsed_url = urlparse(url)
