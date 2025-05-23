@@ -15,15 +15,15 @@ def validate_docstring_input(
     docstring_input: DocstringInput, code_representer: CodeRepresenter, repo_path: str
 ):
     def generate_parent_chain(code_obj, code_representer: CodeRepresenter):
-        parent_chain = code_obj.name
+        parent_chain = code_obj.code_type + " " + code_obj.name
         code_obj_2 = code_obj
-        while code_obj_2.parent_id is not None:
+        while code_obj_2.parent_id is not None and code_obj_2.parent_id is not code_obj_2.module_id:
             code_obj_2 = code_representer.get(code_obj_2.parent_id)
-            parent_chain = code_obj_2.name + "->" + parent_chain
+            parent_chain = code_obj_2.code_type + " " + code_obj_2.name + " -> " + parent_chain
         return parent_chain
 
     def get_rel_filename(abs_filename, repo_path):
-        return abs_filename.lstrip(repo_path).lstrip("/").lstrip("\\")
+        return abs_filename.removeprefix(repo_path).lstrip("/").lstrip("\\\\")
 
     code_obj = code_representer.get(docstring_input.id)
     pr_notes = []
