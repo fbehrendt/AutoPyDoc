@@ -600,8 +600,8 @@ class ClassObject(CodeObject):
         """
         Add a class attribute
 
-        :param attribute_name: attribute name
-        :type attribute_name: str
+        :param attribute: attribute information (name, type)
+        :type attribute: dict[str, str]
         """
         if attribute["name"] not in [
             attr["name"] for attr in [*self.class_attributes, *self.instance_attributes]
@@ -612,8 +612,8 @@ class ClassObject(CodeObject):
         """
         Add an instance attribute
 
-        :param attribute_name: attribute name
-        :type attribute_name: str
+        :param attribute: attribute information (name, type)
+        :type attribute: dict[str, str]
         """
         if attribute["name"] not in [
             attr["name"] for attr in [*self.class_attributes, *self.instance_attributes]

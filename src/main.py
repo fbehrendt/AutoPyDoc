@@ -82,6 +82,7 @@ class AutoPyDoc:
         self.code_parser.extract_exceptions()
         self.code_parser.check_return_type()
         self.code_parser.extract_attributes()
+        self.code_parser.detect_outdated_code(repo_controller=self.repo)
 
         full_input_for_estimation = self.code_parser.code_representer.generate_next_batch(
             ignore_dependencies=True, dry=True
