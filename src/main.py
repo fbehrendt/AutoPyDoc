@@ -60,7 +60,8 @@ class AutoPyDoc:
         # pull repo, create code representation, create dependencies
         self.debug = debug
 
-        self.repo = RepoController(
+        # handles interactions with the target repository
+        self.repo_controller = RepoController(
             repo_path=repo_path,
             pull_request_token=pull_request_token,
             username=username,
@@ -69,20 +70,16 @@ class AutoPyDoc:
             debug=debug,
             repo_owner=repo_owner,
         )
+
+        # creates code representation
+        # extracts class and method calls, arguments, return types, exceptions, attributes and outdated code
         self.code_parser = CodeParser(
             code_representer=CodeRepresenter(),
-            working_dir=self.repo.working_dir,
-            debug=True,
-            files=self.repo.get_files_in_repo(),
+            repo_controller=self.repo_controller,
             logger=self.logger,
+            debug=True,
         )
-
-        self.code_parser.extract_class_and_method_calls()
-        self.code_parser.extract_args_and_return_type()
-        self.code_parser.extract_exceptions()
-        self.code_parser.check_return_type()
-        self.code_parser.extract_attributes()
-        self.code_parser.detect_outdated_code(repo_controller=self.repo)
+        self.code_parser.detect_outdated_code()
 
         full_input_for_estimation = self.code_parser.code_representer.generate_next_batch(
             ignore_dependencies=True, dry=True
@@ -108,13 +105,15 @@ class AutoPyDoc:
                 self.gpt_interface.process_batch(next_batch, callback=self.process_gpt_result)
 
         # if every docstring is updated
-        if not self.repo.validate_code_integrity():
+        if not self.repo_controller.validate_code_integrity():
             self.logger.fatal("Code integrity no longer given!!! aborting")
             raise CodeIntegrityViolationError("Code integrity no longer given!!! aborting")
             quit()  # saveguard in case someone tries to catch the exception and continue anyways
         self.logger.info("Code integrity validated")
 
-        self.repo.apply_changes(changed_files=self.code_parser.code_representer.get_changed_files())
+        self.repo_controller.apply_changes(
+            changed_files=self.code_parser.code_representer.get_changed_files()
+        )
         self.logger.info("Finished successfully")
 
     def process_gpt_result(self, result: GptOutput) -> None:
@@ -124,7 +123,7 @@ class AutoPyDoc:
         )
         code_obj = self.code_parser.code_representer.get(result.id)
 
-        start_pos, indentation_level, end_pos = self.repo.identify_docstring_location(
+        start_pos, indentation_level, end_pos = self.repo_controller.identify_docstring_location(
             code_obj.id, code_representer=self.code_parser.code_representer
         )
 
@@ -132,7 +131,7 @@ class AutoPyDoc:
             code_obj.outdated = False
         else:
             # merge new docstring with developer comments
-            developer_docstring_changes = self.repo.extract_dev_comments(code_obj)
+            developer_docstring_changes = self.repo_controller.extract_dev_comments(code_obj)
             if isinstance(code_obj, MethodObject):
                 docstring_input = DocstringInputSelectorMethod(
                     code_obj=code_obj,
@@ -159,9 +158,9 @@ class AutoPyDoc:
             docstring_input, new_pr_notes = validate_docstring_input(
                 docstring_input=docstring_input,
                 code_representer=self.code_parser.code_representer,
-                repo_path=self.repo.working_dir,
+                repo_path=self.repo_controller.working_dir,
             )
-            self.repo.pr_notes.extend(new_pr_notes)
+            self.repo_controller.pr_notes.extend(new_pr_notes)
 
             # build docstring
             new_docstring = create_docstring(
@@ -190,7 +189,7 @@ class AutoPyDoc:
 
             # insert new docstring in the file
             try:
-                self.repo.insert_docstring(
+                self.repo_controller.insert_docstring(
                     filename=code_obj.filename,
                     start=start_pos,
                     end=end_pos,
@@ -226,7 +225,7 @@ if __name__ == "__main__":
     auto_py_doc.main(
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
-        model_strategy_name="ollama",
+        model_strategy_name="mock",
         model_strategy_params={
             "context_size": 2**13,
             "ollama_host": os.getenv("OLLAMA_HOST", default="http://localhost:7280/"),

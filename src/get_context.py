@@ -80,10 +80,9 @@ class CodeParser:
     def __init__(
         self,
         code_representer: CodeRepresenter,
-        working_dir: str | None,
+        repo_controller: RepoController,
         logger,
         debug: bool = False,
-        files: list = [],
     ):
         """
         A code parser used to create dependencies between modules, classes and methods
@@ -95,13 +94,20 @@ class CodeParser:
         :param debug: toggle debug mode
         :type debug: bool"""
         self.code_representer = code_representer
-        self.working_dir = working_dir
+        self.repo_controller = repo_controller
+        self.working_dir = repo_controller.working_dir
         self.debug = debug
         self.logger = logger
         if self.working_dir is not None:
-            self.import_finder = ImportFinder(working_dir=working_dir, debug=self.debug)
-        for file in files:
+            self.import_finder = ImportFinder(working_dir=self.working_dir, debug=self.debug)
+        for file in self.repo_controller.get_files_in_repo():
             self.add_file(file)
+
+        self.extract_class_and_method_calls()
+        self.extract_args_and_return_type()
+        self.extract_exceptions()
+        self.check_return_type()
+        self.extract_attributes()
 
     def add_file(self, filename: str):
         """
@@ -680,16 +686,15 @@ class CodeParser:
             self.code_representer.set_outdated(module_obj.id)
             # module_obj.dev_comments = self.extract_dev_comments(module_obj)
 
-    def detect_outdated_code(self, repo_controller: RepoController):
-        repo_controller.repo.git.checkout(repo_controller.latest_commit_hash)
+    def detect_outdated_code(self):
+        self.repo_controller.repo.git.checkout(self.repo_controller.latest_commit_hash)
         self.code_parser_old = CodeParser(
             code_representer=CodeRepresenter(),
-            working_dir=repo_controller.working_dir,
-            debug=True,
-            files=repo_controller.get_files_in_repo(),
+            repo_controller=self.repo_controller,
             logger=self.logger,
+            debug=True,
         )
-        repo_controller.repo.git.checkout(repo_controller.current_commit)
+        self.repo_controller.repo.git.checkout(self.repo_controller.current_commit)
         outdated_ids = extract_code_affected_by_change(
             code_parser_old=self.code_parser_old, code_parser_new=self
         )
