@@ -128,7 +128,7 @@ class CodeParser:
             sys.stderr = sys.__stderr__
         except Exception as e:
             if e.args[0] == "invalid syntax":
-                self.logger.info(filename + " has invalid syntax and will be ignored")
+                self.logger.error(filename + " has invalid syntax and will be ignored")
                 return
         # TODO add to pull request
 
@@ -178,7 +178,7 @@ class CodeParser:
                     module_obj.add_method_id(method_obj.id)
                 self.extract_sub_classes_and_methods(code_obj_id=method_obj.id)
             elif isinstance(node, ast.Lambda):
-                self.logger.info("Skipping lambda")
+                self.logger.debug("Skipping lambda")
             elif isinstance(node, ast.ClassDef):
                 class_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)
@@ -243,7 +243,7 @@ class CodeParser:
                 outer_code_obj.add_method_id(method_obj.id)
                 self.extract_sub_classes_and_methods(code_obj_id=method_obj.id)
             elif isinstance(node, ast.Lambda):
-                self.logger.info("Skipping lambda")
+                self.logger.debug("Skipping lambda")
             elif isinstance(node, ast.ClassDef):
                 class_def_name = node.name
                 docstring = ast.get_docstring(node=node, clean=True)

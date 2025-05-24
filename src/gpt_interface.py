@@ -61,7 +61,7 @@ class GptInterface:
                         current_code_object
                     )
                 except Exception as e:
-                    self.logger.error(
+                    self.logger.warning(
                         "Error while determining if change is necessary. Retrying", exc_info=e
                     )
                     # retry
@@ -70,10 +70,11 @@ class GptInterface:
                             current_code_object
                         )
                     except Exception as e:
-                        self.logger.fatal(
-                            "Error while determining if change is necessary", exc_info=e
+                        self.logger.error(
+                            "Error while determining if change is necessary. Assuming change is necessary.",
+                            exc_info=e,
                         )
-                        raise e
+                        change_necessary = True
 
                 if not change_necessary:
                     output = GptOutput(
@@ -86,13 +87,19 @@ class GptInterface:
                     try:
                         output = self.model.generate_docstring(current_code_object)
                     except Exception as e:
-                        self.logger.error("Error while processing batch. Retrying", exc_info=e)
+                        self.logger.warning("Error while processing batch. Retrying", exc_info=e)
                         # retry
                         try:
                             output = self.model.generate_docstring(current_code_object)
                         except Exception as e:
-                            self.logger.fatal("Error while processing batch", exc_info=e)
-                            raise e
+                            self.logger.error(
+                                "Error while processing batch. Keeping old docstring", exc_info=e
+                            )
+                            output = GptOutput(
+                                current_code_object.id,
+                                no_change_necessary=True,
+                                description=False,
+                            )
                     callback(output)
             except KeyboardInterrupt as e:
                 raise e

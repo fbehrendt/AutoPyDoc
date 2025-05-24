@@ -95,8 +95,8 @@ class AutoPyDoc:
         # if parts are still outdated
         while len(self.code_parser.code_representer.get_outdated_ids()) > 0:
             missing_items = self.code_parser.code_representer.get_outdated_ids()
-            self.logger.info("Some parts are still missing updates")
-            self.logger.info("\n".join([str(item) for item in missing_items]))
+            self.logger.debug("Some parts are still missing updates")
+            self.logger.debug("\n".join([str(item) for item in missing_items]))
             # force generate all, ignore dependencies
             next_batch = self.code_parser.code_representer.generate_next_batch(
                 ignore_dependencies=True

@@ -27,6 +27,19 @@ from docstring_dismantler import DocstringDismantler
 import helpers
 
 
+class EndOfDocstringNotFoundError(Exception):
+    """
+    Exception raised when the end of a docstring cannot be found.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
 class CodeIntegrityViolationError(Exception):
     """
     Exception raised when code integrity was violated.
@@ -168,7 +181,7 @@ class RepoController:
             # shutil.move(self.working_dir, tmp)
             # shutil.rmtree(tmp)
             # shutil.rmtree(self.working_dir)
-            self.logger.error("Please remove working_dir folder manually, then rerun")
+            self.logger.fatal("Please remove working_dir folder manually, then rerun")
             quit()
         os.makedirs(self.working_dir)
 
@@ -335,10 +348,10 @@ class RepoController:
                             end_pos = j + 1
                             break
                         if j == len(lines) - 1:
-                            self.logger.warning(
+                            self.logger.error(
                                 f"End of docstring not found in file {code_obj.filename} for {code_obj.code_type} {code_obj.name}"
                             )
-                            end_pos = len(lines)
+                            raise EndOfDocstringNotFoundError
             else:
                 end_pos = start_pos
         return (start_pos, indentation_level, end_pos)
@@ -395,7 +408,7 @@ class RepoController:
                 new_content = "".join(before) + new_docstring + "\n" + "".join(after)
             if not helpers.remove_comments(new_content) == helpers.remove_comments(content_before):
                 self.logger.error(
-                    f"Code integrity was violated by replacing old docstring {old_docstring} with new docstring {new_docstring} at line {start} to {end} in file {filename}!"
+                    f"Code integrity would violated by replacing old docstring {old_docstring} with new docstring {new_docstring} at line {start} to {end} in file {filename}!"
                 )
                 raise CodeIntegrityViolationError("Code integrity violated")
 
@@ -486,7 +499,7 @@ class RepoController:
         Update latest_commit file in target repo. Create if none exists
         """
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
-        self.logger.info(f"Commit of docstring update: {current_commit}")
+        self.logger.debug(f"Commit of docstring update: {current_commit}")
         with open(self.latest_commit_file_name, mode="w") as f:
             f.write(current_commit)
         self.repo.index.add([self.latest_commit_file_name])
@@ -525,18 +538,18 @@ class RepoController:
             # verify staging area
             modified_files = self.repo.index.diff(None)
             count_modified_files = len(modified_files)
-            self.logger.info(
+            self.logger.debug(
                 f"Modified files: {count_modified_files}\n{'\n'.join([modified_file.b_path for modified_file in modified_files])}"
             )
 
             staged_files = self.repo.index.diff("HEAD")
             count_staged_files = len(staged_files)
-            self.logger.info(
+            self.logger.debug(
                 f"Staged files: {count_staged_files}\n {'\n'.join([staged_file.b_path for staged_file in staged_files])}"
             )
 
-            self.logger.info(f"Modified files: {count_modified_files}")
-            self.logger.info(f"Staged files: {count_staged_files}")
+            self.logger.debug(f"Modified files: {count_modified_files}")
+            self.logger.debug(f"Staged files: {count_staged_files}")
             if count_staged_files < 2:
                 self.logger.info("No files modified. Quitting")
                 quit()
@@ -584,7 +597,7 @@ class RepoController:
             load_dotenv()
             auth_token = os.getenv("GitHubAuthToken")
         github_object = Github(self.username, auth_token)
-        self.logger.info(
+        self.logger.debug(
             f"Username: {self.username}\nRepository: {repo_name}\nhead branch: {head_branch}\nbase branch: {base_branch}"
         )
         repo = github_object.get_repo(repo_name)
@@ -607,7 +620,7 @@ class RepoController:
         config.read("src/config.ini")
 
         current_commit = self.repo.head.commit.hexsha  # get most recent commit
-        self.logger.info(f"Commit before docstring update: {current_commit}")
+        self.logger.debug(f"Commit before docstring update: {current_commit}")
         new_branch = self.commit_to_new_branch(changed_files=changed_files)
 
         description = "Automatically created docstrings for recently changed code"
