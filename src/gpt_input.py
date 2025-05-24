@@ -53,6 +53,8 @@ class GptOutput:
     id: int = field(compare=True, hash=True)
     no_change_necessary: bool = field(compare=True, hash=True)
     description: str | bool = field(compare=False, hash=False)
+    validationerror: bool = field(compare=False, hash=False)
+    generationerror: bool = field(compare=False, hash=False)
 
 
 @dataclass(frozen=True)

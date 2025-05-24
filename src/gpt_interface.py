@@ -8,6 +8,8 @@ from gpt_input import (
     GptOutput,
 )
 from models import ModelStrategyFactory
+import pathlib
+import os
 
 
 class GptInterface:
@@ -55,6 +57,7 @@ class GptInterface:
                     current_code_object.docstring is None
                     or len(current_code_object.docstring.strip()) == 0
                 )
+                validationerror = False
 
                 try:
                     change_necessary = change_necessary or self.model.check_outdated(
@@ -75,17 +78,21 @@ class GptInterface:
                             exc_info=e,
                         )
                         change_necessary = True
+                        validationerror = True
 
                 if not change_necessary:
                     output = GptOutput(
                         current_code_object.id,
                         no_change_necessary=True,
                         description=False,
+                        validationerror=validationerror,
+                        generationerror=False,
                     )
                     callback(output)
                 else:
                     try:
                         output = self.model.generate_docstring(current_code_object)
+                        output.validationerror = validationerror
                     except Exception as e:
                         self.logger.warning("Error while processing batch. Retrying", exc_info=e)
                         # retry
@@ -99,6 +106,8 @@ class GptInterface:
                                 current_code_object.id,
                                 no_change_necessary=True,
                                 description=False,
+                                validationerror=validationerror,
+                                generationerror=True,
                             )
                     callback(output)
             except KeyboardInterrupt as e:

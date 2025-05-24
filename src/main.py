@@ -17,6 +17,8 @@ from repo_controller import CodeIntegrityViolationError, RepoController
 from validate_docstring import validate_docstring
 from validate_docstring_input import validate_docstring_input
 
+import helpers
+
 load_dotenv()
 
 logging.basicConfig(
@@ -126,6 +128,14 @@ class AutoPyDoc:
         start_pos, indentation_level, end_pos = self.repo_controller.identify_docstring_location(
             code_obj.id, code_representer=self.code_parser.code_representer
         )
+
+        # add pr notes for valitaion and generation errors
+        if result.validationerror:
+            new_pr_note = f"Failed to validate docstring of {code_obj.code_type} {code_obj.name} in {helpers.get_rel_filename(abs_filename=code_obj.filename, repo_path=self.repo_controller.working_dir)} -> {helpers.generate_parent_chain(code_obj=code_obj, code_representer=self.code_parser.code_representer)}. Regenerated docstring."
+            self.repo_controller.pr_notes.append(new_pr_note)
+        if result.generationerror:
+            new_pr_note = f"Failed to generate docstring of {code_obj.code_type} {code_obj.name} in {helpers.get_rel_filename(abs_filename=code_obj.filename, repo_path=self.repo_controller.working_dir)} -> {helpers.generate_parent_chain(code_obj=code_obj, code_representer=self.code_parser.code_representer)}. Keeping old docstring."
+            self.repo_controller.pr_notes.append(new_pr_note)
 
         if result.no_change_necessary:
             code_obj.outdated = False

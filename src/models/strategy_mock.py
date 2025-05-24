@@ -62,9 +62,7 @@ class MockStrategy(DocstringModelStrategy):
                 if randint(0, 6) == 0:
                     param_descriptions[param_name] = False
                 else:
-                    param_descriptions[param_name] = (
-                        "MOCK description for this parameter"
-                    )
+                    param_descriptions[param_name] = "MOCK description for this parameter"
 
             if randint(0, 6) == 0:
                 return_description = False
@@ -80,6 +78,8 @@ class MockStrategy(DocstringModelStrategy):
                 exception_descriptions=exception_descriptions,
                 return_description=return_description,
                 return_type=return_type,
+                validationerror=False,
+                generationerror=False,
             )
         elif isinstance(code_object, GptInputClassObject):
             class_attribute_types = {}
@@ -94,9 +94,7 @@ class MockStrategy(DocstringModelStrategy):
                 if randint(0, 6) == 0:
                     class_attribute_descriptions[attr["name"]] = False
                 else:
-                    class_attribute_descriptions[attr["name"]] = (
-                        "MOCK class attr description"
-                    )
+                    class_attribute_descriptions[attr["name"]] = "MOCK class attr description"
 
             instance_attribute_types = {}
             for attr in code_object.instance_attributes:
@@ -122,6 +120,8 @@ class MockStrategy(DocstringModelStrategy):
                 class_attribute_types=class_attribute_types,
                 instance_attribute_descriptions=instance_attribute_descriptions,
                 instance_attribute_types=instance_attribute_types,
+                validationerror=False,
+                generationerror=False,
             )
         elif isinstance(code_object, GptInputModuleObject):
             return GptOutputModule(
@@ -129,4 +129,6 @@ class MockStrategy(DocstringModelStrategy):
                 no_change_necessary=False,
                 description=description,
                 exception_descriptions=exception_descriptions,
+                validationerror=False,
+                generationerror=False,
             )

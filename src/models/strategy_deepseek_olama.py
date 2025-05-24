@@ -13,11 +13,8 @@ from gpt_input import (
     GptOutputModule,
 )
 from models.prompt_builder.deepseek_r1_prompt_builder import DeepseekR1PromptBuilder
-from save_data import save_data
 
 from .model_strategy import DocstringModelStrategy
-
-SAVE_DATA_BRANCH = "class_docstrings"
 
 
 class OllamaDeepseekR1Strategy(DocstringModelStrategy):
@@ -49,14 +46,6 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
     def check_outdated(self, code_object: GptInputCodeObject) -> bool:
         try:
             prompt = self.prompt_builder.build_check_outdated_prompt(code_object)
-            save_data(
-                branch=SAVE_DATA_BRANCH,
-                code_type=code_object.code_type,
-                code_name=code_object.name,
-                code_id=code_object.id,
-                content_type="validation_prompt",
-                data=prompt,
-            )  # update branch manually here
 
             self.logger.debug("Using prompt [%s]", prompt)
             self.logger.info("Starting checking existing docstring")
@@ -82,15 +71,6 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 print(chunk["response"], end="", flush=True)
                 generated_text += chunk["response"]
 
-            save_data(
-                branch=SAVE_DATA_BRANCH,
-                code_type=code_object.code_type,
-                code_name=code_object.name,
-                code_id=code_object.id,
-                content_type="validation_result",
-                data=generated_text,
-            )  # update branch manually here
-
             self.logger.info("Finished checking existing docstring [%s]", generated_text)
 
             docstring_matches = self._extract_check_outdated_output(generated_text)
@@ -104,15 +84,6 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
         if isinstance(code_object, gpt_input.GptInputMethodObject):
             try:
                 prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
-
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_prompt",
-                    data=prompt,
-                )  # update branch manually here
 
                 self.logger.debug("Using prompt [%s]", prompt)
                 self.logger.info("Starting docstring generation")
@@ -166,15 +137,6 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 for chunk in stream:
                     print(chunk["response"], end="", flush=True)
                     generated_text += chunk["response"]
-
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_result",
-                    data=generated_text,
-                )  # update branch manually here
 
                 self.logger.info("Finished docstring generation [%s]", generated_text)
 
@@ -275,6 +237,8 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                     return_description=return_description,
                     return_type=return_type,
                     exception_descriptions=exception_descriptions,
+                    validationerror=False,
+                    generationerror=False,
                 )
             except KeyboardInterrupt as e:
                 # Let user abort execution
@@ -291,15 +255,6 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
         elif isinstance(code_object, gpt_input.GptInputClassObject):
             try:
                 prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
-
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_prompt",
-                    data=prompt,
-                )  # update branch manually here
 
                 self.logger.debug("Using prompt [%s]", prompt)
                 self.logger.info("Starting docstring generation")
@@ -359,15 +314,6 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 for chunk in stream:
                     print(chunk["response"], end="", flush=True)
                     generated_text += chunk["response"]
-
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_result",
-                    data=generated_text,
-                )  # update branch manually here
 
                 self.logger.info("Finished docstring generation [%s]", generated_text)
 
@@ -458,6 +404,8 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                     class_attribute_types=class_attribute_types,
                     instance_attribute_descriptions=instance_attribute_descriptions,
                     instance_attribute_types=instance_attribute_types,
+                    validationerror=False,
+                    generationerror=False,
                 )
             except KeyboardInterrupt as e:
                 # Let user abort execution
@@ -474,15 +422,6 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
         elif isinstance(code_object, gpt_input.GptInputModuleObject):
             try:
                 prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
-
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_prompt",
-                    data=prompt,
-                )  # update branch manually here
 
                 self.logger.debug("Using prompt [%s]", prompt)
                 self.logger.info("Starting docstring generation")
@@ -520,15 +459,6 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
 
                 for chunk in stream:
                     generated_text += chunk["response"]
-
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_result",
-                    data=generated_text,
-                )  # update branch manually here
 
                 self.logger.info("Finished docstring generation [%s]", generated_text)
 
@@ -574,6 +504,8 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                     no_change_necessary=False,
                     description=module_description,
                     exception_descriptions=exception_descriptions,
+                    validationerror=False,
+                    generationerror=False,
                 )
             except KeyboardInterrupt as e:
                 # Let user abort execution
