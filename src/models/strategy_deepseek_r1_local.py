@@ -45,7 +45,7 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
         )
         self.gpt_model = GPT4All(model_name=self.model_name, device=device)
 
-        self.logger.info("Using device [%s], requested [%s]", self.gpt_model.device, device)
+        self.logger.debug("Using device [%s], requested [%s]", self.gpt_model.device, device)
 
         if self.gpt_model.device is None:
             raise Exception("Unable to load gpt model")
@@ -88,7 +88,7 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                     data=generated_text,
                 )  # update branch manually
 
-                self.logger.info("Finished checking existing docstring [%s]", generated_text)
+                self.logger.debug("Finished checking existing docstring [%s]", generated_text)
 
                 docstring_matches = self._extract_check_outdated_output(generated_text)
 
@@ -118,7 +118,7 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                         callback=generation_callback,
                     )
 
-                    self.logger.info("Finished docstring generation [%s]", generated_text)
+                    self.logger.debug("Finished docstring generation [%s]", generated_text)
 
                     generated_output = self._extract_generate_docstring_json_output(generated_text)
 
@@ -266,7 +266,7 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                         callback=generation_callback,
                     )
 
-                    self.logger.info("Finished docstring generation [%s]", generated_text)
+                    self.logger.debug("Finished docstring generation [%s]", generated_text)
 
                     generated_output = self._extract_generate_docstring_json_output(generated_text)
 
@@ -394,7 +394,7 @@ class LocalDeepseekR1Strategy(DocstringModelStrategy):
                         callback=generation_callback,
                     )
 
-                    self.logger.info("Finished docstring generation [%s]", generated_text)
+                    self.logger.debug("Finished docstring generation [%s]", generated_text)
 
                     generated_output = self._extract_generate_docstring_json_output(generated_text)
 

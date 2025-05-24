@@ -48,7 +48,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
             prompt = self.prompt_builder.build_check_outdated_prompt(code_object)
 
             self.logger.debug("Using prompt [%s]", prompt)
-            self.logger.info("Starting checking existing docstring")
+            self.logger.info("Start checking existing docstring")
 
             stream = self.client.generate(
                 model=self.model_name,
@@ -71,7 +71,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 print(chunk["response"], end="", flush=True)
                 generated_text += chunk["response"]
 
-            self.logger.info("Finished checking existing docstring [%s]", generated_text)
+            self.logger.debug("Finished checking existing docstring [%s]", generated_text)
 
             docstring_matches = self._extract_check_outdated_output(generated_text)
 
@@ -138,7 +138,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                     print(chunk["response"], end="", flush=True)
                     generated_text += chunk["response"]
 
-                self.logger.info("Finished docstring generation [%s]", generated_text)
+                self.logger.debug("Finished docstring generation [%s]", generated_text)
 
                 generated_output = self._extract_generate_docstring_json_output(generated_text)
 
@@ -315,7 +315,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                     print(chunk["response"], end="", flush=True)
                     generated_text += chunk["response"]
 
-                self.logger.info("Finished docstring generation [%s]", generated_text)
+                self.logger.debug("Finished docstring generation [%s]", generated_text)
 
                 generated_output = self._extract_generate_docstring_json_output(generated_text)
 
@@ -460,7 +460,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                 for chunk in stream:
                     generated_text += chunk["response"]
 
-                self.logger.info("Finished docstring generation [%s]", generated_text)
+                self.logger.debug("Finished docstring generation [%s]", generated_text)
 
                 generated_output = self._extract_generate_docstring_json_output(generated_text)
 

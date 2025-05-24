@@ -8,7 +8,7 @@ class ModelStrategyFactory:
 
     @staticmethod
     def create_strategy(model_type: str, **kwargs) -> DocstringModelStrategy:
-        ModelStrategyFactory.logger.info("Creating model strategy [%s]", model_type)
+        ModelStrategyFactory.logger.debug("Creating model strategy [%s]", model_type)
 
         if model_type == "local_deepseek":
             from .strategy_deepseek_r1_local import LocalDeepseekR1Strategy

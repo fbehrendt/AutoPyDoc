@@ -13,7 +13,6 @@ from gpt_input import (
     GptOutputModule,
 )
 from models.prompt_builder.deepseek_r1_prompt_builder import DeepseekR1PromptBuilder
-from save_data import save_data
 
 from .model_strategy import DocstringModelStrategy
 
@@ -21,8 +20,6 @@ CHECK_OUTDATED_JSON_OUTPUT_REGEX = (
     r'({\s*"analysis":\s*"(.*)"\s*,\s*"matches"\s*:\s*(true|false)\s*})'
 )
 DOCSTRING_GENERATION_JSON_OUTPUT_REGEX = r"{.+}"
-
-SAVE_DATA_BRANCH = "module_docstrings"
 
 
 class GoogleGeminiStrategy(DocstringModelStrategy):
@@ -51,14 +48,6 @@ class GoogleGeminiStrategy(DocstringModelStrategy):
     def check_outdated(self, code_object: GptInputCodeObject) -> bool:
         try:
             prompt = self.prompt_builder.build_check_outdated_prompt(code_object)
-            save_data(
-                branch=SAVE_DATA_BRANCH,
-                code_type=code_object.code_type,
-                code_name=code_object.name,
-                code_id=code_object.id,
-                content_type="validation_prompt",
-                data=prompt,
-            )  # update branch manually here
 
             self.logger.debug("Using prompt [%s]", prompt)
             self.logger.info("Starting checking existing docstring")
@@ -98,16 +87,7 @@ class GoogleGeminiStrategy(DocstringModelStrategy):
                 print(chunk.text, end="", flush=True)
                 generated_text += chunk.text
 
-            save_data(
-                branch=SAVE_DATA_BRANCH,
-                code_type=code_object.code_type,
-                code_name=code_object.name,
-                code_id=code_object.id,
-                content_type="validation_result",
-                data=generated_text,
-            )  # update branch manually here
-
-            self.logger.info("Finished checking existing docstring [%s]", generated_text)
+            self.logger.debug("Finished checking existing docstring [%s]", generated_text)
 
             docstring_matches = self._extract_check_outdated_output(generated_text)
 
@@ -123,15 +103,6 @@ class GoogleGeminiStrategy(DocstringModelStrategy):
 
                 self.logger.debug("Using prompt [%s]", prompt)
                 self.logger.info("Starting docstring generation")
-
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_prompt",
-                    data=prompt,
-                )  # update branch manually here
 
                 stream = self.client.models.generate_content_stream(
                     model=self.model_name,
@@ -191,16 +162,7 @@ class GoogleGeminiStrategy(DocstringModelStrategy):
                     print(chunk.text, end="", flush=True)
                     generated_text += chunk.text
 
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_result",
-                    data=generated_text,
-                )  # update branch manually here
-
-                self.logger.info("Finished docstring generation [%s]", generated_text)
+                self.logger.debug("Finished docstring generation [%s]", generated_text)
 
                 generated_output = self._extract_generate_docstring_json_output(generated_text)
 
@@ -322,17 +284,8 @@ class GoogleGeminiStrategy(DocstringModelStrategy):
             try:
                 prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
 
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_prompt",
-                    data=prompt,
-                )  # update branch manually here
-
                 self.logger.debug("Using prompt [%s]", prompt)
-                self.logger.info("Starting docstring generation")
+                self.logger.debug("Starting docstring generation")
 
                 stream = self.client.models.generate_content_stream(
                     model=self.model_name,
@@ -398,16 +351,7 @@ class GoogleGeminiStrategy(DocstringModelStrategy):
                     print(chunk.text, end="", flush=True)
                     generated_text += chunk.text
 
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_result",
-                    data=generated_text,
-                )  # update branch manually here
-
-                self.logger.info("Finished docstring generation [%s]", generated_text)
+                self.logger.debug("Finished docstring generation [%s]", generated_text)
 
                 generated_output = self._extract_generate_docstring_json_output(generated_text)
 
@@ -514,15 +458,6 @@ class GoogleGeminiStrategy(DocstringModelStrategy):
             try:
                 prompt = self.prompt_builder.build_generate_docstring_prompt(code_object)
 
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_prompt",
-                    data=prompt,
-                )  # update branch manually here
-
                 self.logger.debug("Using prompt [%s]", prompt)
                 self.logger.info("Starting docstring generation")
 
@@ -555,16 +490,7 @@ class GoogleGeminiStrategy(DocstringModelStrategy):
                 for chunk in stream:
                     generated_text += chunk.text
 
-                save_data(
-                    branch=SAVE_DATA_BRANCH,
-                    code_type=code_object.code_type,
-                    code_name=code_object.name,
-                    code_id=code_object.id,
-                    content_type="generation_result",
-                    data=generated_text,
-                )  # update branch manually here
-
-                self.logger.info("Finished docstring generation [%s]", generated_text)
+                self.logger.debug("Finished docstring generation [%s]", generated_text)
 
                 generated_output = self._extract_generate_docstring_json_output(generated_text)
 
