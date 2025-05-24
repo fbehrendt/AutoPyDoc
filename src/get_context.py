@@ -583,7 +583,6 @@ class CodeParser:
             ):
                 return
             if method_obj.return_type is None:
-                # print("check if method returns something")
                 for line in method_obj.code.split("\n"):
                     if line.lstrip().startswith("return"):
                         method_obj.missing_return_type = True

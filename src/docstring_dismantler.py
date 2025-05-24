@@ -5,16 +5,14 @@ class DocstringDismantler:
     def __init__(self, docstring: str):
         self.docstring = docstring
 
-        self.description_pattern = r"\n?[ ]*([^:]+)(?::param|:return|:raises|:class attribute|:instance attribute)?"
-
-        self.func_param_pattern = (
-            r"\n[ ]*:param (\w+): ([^\n]+)\n[ ]*:type (\w+): ([^\n]+)"
+        self.description_pattern = (
+            r"\n?[ ]*([^:]+)(?::param|:return|:raises|:class attribute|:instance attribute)?"
         )
+
+        self.func_param_pattern = r"\n[ ]*:param (\w+): ([^\n]+)\n[ ]*:type (\w+): ([^\n]+)"
         self.func_param_name_pattern = r"\n[ ]*:param (\w+):"
         self.func_param_description_pattern = r"\n[ ]*:param \w+: ([^\n]+)"
-        self.func_param_type_pattern = (
-            r"\n[ ]*:param \w+: [^\n]+\n[ ]*:type \w+: ([^\n]+)"
-        )
+        self.func_param_type_pattern = r"\n[ ]*:param \w+: [^\n]+\n[ ]*:type \w+: ([^\n]+)"
 
         self.func_return_pattern = r"\n[ ]*:return: ([^\n]+)\n[ ]*:rtype: ([^\n]+)"
 
@@ -38,9 +36,7 @@ class DocstringDismantler:
             r"\n[ ]*:instance attribute (\w+): ([^\n]+)\n[ ]*:type (\w+): ([^\n]+)"
         )
         self.instance_attr_name_pattern = r"\n[ ]*:instance attribute (\w+): [^\n]+"
-        self.instance_attr_description_pattern = (
-            r"\n[ ]*:instance attribute \w+: ([^\n]+)"
-        )
+        self.instance_attr_description_pattern = r"\n[ ]*:instance attribute \w+: ([^\n]+)"
         self.instance_attr_type_pattern = (
             r"\n[ ]*:instance attribute \w+: [^\n]+\n[ ]*:type \w+: ([^\n]+)"
         )
@@ -76,14 +72,6 @@ class DocstringDismantler:
             {"name": attr[0], "description": attr[1], "type": attr[3]}
             for attr in self.apply_pattern(self.instance_attr_pattern)
         ]
-
-        # print()
-        # print("Description", self.description)
-        # print("params", self.params)
-        # print("return", self.return_info)
-        # print("exceptions", self.exceptions)
-        # print("class attrs", self.class_attrs)
-        # print("instance attrs", self.instance_attrs)
 
     def apply_pattern(self, pattern):
         pattern = re.compile(pattern)
@@ -143,9 +131,7 @@ class DocstringDismantler:
                     }
                 )
         for new_param in docstring_unbuilder.params:
-            if new_param["name"] not in [
-                old_param["name"] for old_param in self.params
-            ]:
+            if new_param["name"] not in [old_param["name"] for old_param in self.params]:
                 differences.append(
                     {
                         "place": "parameters",
@@ -157,9 +143,7 @@ class DocstringDismantler:
                 )
 
         # compare return
-        if hasattr(docstring_unbuilder, "return_info") and not hasattr(
-            self, "return_info"
-        ):
+        if hasattr(docstring_unbuilder, "return_info") and not hasattr(self, "return_info"):
             differences.append(
                 {
                     "place": "return",
@@ -168,15 +152,10 @@ class DocstringDismantler:
                     "description": docstring_unbuilder.return_info["description"],
                 }
             )
-        if not hasattr(docstring_unbuilder, "return_info") and hasattr(
-            self, "return_info"
-        ):
+        if not hasattr(docstring_unbuilder, "return_info") and hasattr(self, "return_info"):
             differences.append({"place": "return", "change": "deleted"})
         if hasattr(docstring_unbuilder, "return_info") and hasattr(self, "return_info"):
-            if (
-                self.return_info["description"]
-                != docstring_unbuilder.return_info["description"]
-            ):
+            if self.return_info["description"] != docstring_unbuilder.return_info["description"]:
                 differences.append(
                     {
                         "place": "return",
@@ -198,8 +177,7 @@ class DocstringDismantler:
         # compare exceptions
         for old_exception in self.exceptions:
             if old_exception["name"] not in [
-                new_exception["name"]
-                for new_exception in docstring_unbuilder.exceptions
+                new_exception["name"] for new_exception in docstring_unbuilder.exceptions
             ]:
                 differences.append(
                     {
@@ -209,9 +187,7 @@ class DocstringDismantler:
                     }
                 )
                 continue
-            new_exception = get_by_name(
-                docstring_unbuilder.exceptions, old_exception["name"]
-            )
+            new_exception = get_by_name(docstring_unbuilder.exceptions, old_exception["name"])
             if old_exception["description"] != new_exception["description"]:
                 differences.append(
                     {
@@ -237,8 +213,7 @@ class DocstringDismantler:
         # compare class attributes
         for old_class_attr in self.class_attrs:
             if old_class_attr["name"] not in [
-                new_class_attr["name"]
-                for new_class_attr in docstring_unbuilder.class_attrs
+                new_class_attr["name"] for new_class_attr in docstring_unbuilder.class_attrs
             ]:
                 differences.append(
                     {
@@ -248,9 +223,7 @@ class DocstringDismantler:
                     }
                 )
                 continue
-            new_class_attr = get_by_name(
-                docstring_unbuilder.class_attrs, old_class_attr["name"]
-            )
+            new_class_attr = get_by_name(docstring_unbuilder.class_attrs, old_class_attr["name"])
             if old_class_attr["type"] != new_class_attr["type"]:
                 differences.append(
                     {
@@ -416,40 +389,31 @@ def compare_docstrings(old_docstring: str, new_docstring: str):
     # compare exceptions
     for old_exception in old_docstring_dismantler.exceptions:
         if old_exception["name"] not in [
-            new_exception["name"]
-            for new_exception in new_docstring_dismantler.exceptions
+            new_exception["name"] for new_exception in new_docstring_dismantler.exceptions
         ]:
-            differences.append(
-                "New docstring no longer has exception " + old_exception["name"]
-            )
+            differences.append("New docstring no longer has exception " + old_exception["name"])
             continue
-        new_exception = get_by_name(
-            new_docstring_dismantler.exceptions, old_exception["name"]
-        )
+        new_exception = get_by_name(new_docstring_dismantler.exceptions, old_exception["name"])
         if old_exception["description"] != new_exception["description"]:
             differences.append(
                 f"Description of exception {old_exception['name']} was changed to {new_exception['description']} from {old_exception['description']}"
             )
     for new_exception in new_docstring_dismantler.exceptions:
         if new_exception["name"] not in [
-            old_exception["name"]
-            for old_exception in old_docstring_dismantler.exceptions
+            old_exception["name"] for old_exception in old_docstring_dismantler.exceptions
         ]:
             differences.append("Docstring has new exception " + new_exception["name"])
 
     # compare class attributes
     for old_class_attr in old_docstring_dismantler.class_attrs:
         if old_class_attr["name"] not in [
-            new_class_attr["name"]
-            for new_class_attr in new_docstring_dismantler.class_attrs
+            new_class_attr["name"] for new_class_attr in new_docstring_dismantler.class_attrs
         ]:
             differences.append(
                 "New docstring no longer has class attribute " + old_class_attr["name"]
             )
             continue
-        new_class_attr = get_by_name(
-            new_docstring_dismantler.class_attrs, old_class_attr["name"]
-        )
+        new_class_attr = get_by_name(new_docstring_dismantler.class_attrs, old_class_attr["name"])
         if old_class_attr["type"] != new_class_attr["type"]:
             differences.append(
                 f"Type of class attribute {old_class_attr['name']} was changed to {new_class_attr['type']} from {old_class_attr['type']}"
@@ -460,12 +424,9 @@ def compare_docstrings(old_docstring: str, new_docstring: str):
             )
     for new_class_attr in new_docstring_dismantler.class_attrs:
         if new_class_attr["name"] not in [
-            old_class_attr["name"]
-            for old_class_attr in old_docstring_dismantler.class_attrs
+            old_class_attr["name"] for old_class_attr in old_docstring_dismantler.class_attrs
         ]:
-            differences.append(
-                "Docstring has new class attribute " + new_class_attr["name"]
-            )
+            differences.append("Docstring has new class attribute " + new_class_attr["name"])
 
     # compare instance attributes
     for old_instance_attr in old_docstring_dismantler.instance_attrs:
@@ -474,8 +435,7 @@ def compare_docstrings(old_docstring: str, new_docstring: str):
             for new_instance_attr in new_docstring_dismantler.instance_attrs
         ]:
             differences.append(
-                "New docstring no longer has instance attribute "
-                + old_instance_attr["name"]
+                "New docstring no longer has instance attribute " + old_instance_attr["name"]
             )
             continue
         new_instance_attr = get_by_name(
@@ -494,9 +454,7 @@ def compare_docstrings(old_docstring: str, new_docstring: str):
             old_instance_attr["name"]
             for old_instance_attr in old_docstring_dismantler.instance_attrs
         ]:
-            differences.append(
-                "Docstring has new instance attribute " + new_instance_attr["name"]
-            )
+            differences.append("Docstring has new instance attribute " + new_instance_attr["name"])
     return differences
 
 
@@ -514,7 +472,3 @@ if __name__ == "__main__":
         docstring_unbuilder=docstring_dismantler2
     )
     print(differences)
-    # if docstring_unbuilder1.description != docstring_unbuilder2.description:
-    #    print("Description has changed")
-    #    print("Old description:", docstring_unbuilder1.description)
-    #    print("New description:", docstring_unbuilder2.description)

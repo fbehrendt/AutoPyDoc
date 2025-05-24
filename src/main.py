@@ -21,16 +21,10 @@ import helpers
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="[%(asctime)s] %(levelname)8s: [%(name)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-
 
 class AutoPyDoc:
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
+        pass
 
     def main(
         self,
@@ -51,18 +45,27 @@ class AutoPyDoc:
         :type debug: boolean
         """
 
+        if debug:
+            logging.basicConfig(
+                level=logging.DEBUG,
+                format="[%(asctime)s] %(levelname)8s: [%(name)s] %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+        else:
+            logging.basicConfig(
+                level=logging.INFO,
+                format="[%(asctime)s] %(levelname)8s: [%(name)s] %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+        self.logger = logging.getLogger(__name__)
+
         # prevent runs on branches created by this tool
         if "_AutoPyDoc" in branch:
             self.logger.info("Attempt to run the tool on a branch created by it. Aborting!")
             quit()
 
-        if debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
         # Initialize gpt interface with the chosen strategy and its parameters early to fail early if model is unavailable or unable to load
-        self.gpt_interface = GptInterface(model_strategy_name, **model_strategy_params)
+        self.gpt_interface = GptInterface(model_strategy_name, debug=debug, **model_strategy_params)
 
         # pull repo, create code representation, create dependencies
         self.debug = debug

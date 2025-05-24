@@ -7,7 +7,11 @@ class ModelStrategyFactory:
     logger = logging.getLogger("ModelStrategyFactory")
 
     @staticmethod
-    def create_strategy(model_type: str, **kwargs) -> DocstringModelStrategy:
+    def create_strategy(model_type: str, debug: bool, **kwargs) -> DocstringModelStrategy:
+        if debug:
+            ModelStrategyFactory.logger.setLevel(logging.DEBUG)
+        else:
+            ModelStrategyFactory.logger.setLevel(logging.INFO)
         ModelStrategyFactory.logger.debug("Creating model strategy [%s]", model_type)
 
         if model_type == "local_deepseek":

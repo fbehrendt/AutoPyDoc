@@ -8,13 +8,15 @@ from gpt_input import (
     GptOutput,
 )
 from models import ModelStrategyFactory
-import pathlib
-import os
 
 
 class GptInterface:
-    def __init__(self, model_name: str, **kwargs):
+    def __init__(self, model_name: str, debug: bool, **kwargs):
         self.logger = logging.getLogger(self.__class__.__name__)
+        if debug:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
 
         if model_name == "ollama":
             try:
@@ -30,8 +32,8 @@ class GptInterface:
                 self.logger.info(f"Using {model_name} strategy.")
                 self.model = ModelStrategyFactory.create_strategy("ollama", **kwargs)
         else:
-            self.logger.info(f"Using {model_name} strategy.")
-            self.model = ModelStrategyFactory.create_strategy(model_name, **kwargs)
+            self.logger.debug(f"Creating {model_name} strategy.")
+            self.model = ModelStrategyFactory.create_strategy(model_name, debug=debug, **kwargs)
 
     def estimate(self, full_input: list[GptInputCodeObject]):
         pass  # TODO fill this method

@@ -459,31 +459,28 @@ class RepoController:
                 # new method/class
                 return []
             if code_obj.old_docstring is not None and old_docstring == code_obj.old_docstring:
-                print("+++docstrings are equal+++")
+                self.logger.debug("+++docstrings are equal+++")
                 return []
 
         # if the file does not exist, all docstrings were made manually
-        print("---docstrings are different---")
+        self.logger.debug("---docstrings are different---")
         new_docstring_dismantler = DocstringDismantler(docstring=code_obj.old_docstring or "")
         if not ("old_docstring" in locals() or "old_docstring" in globals()):
             old_docstring = ""
         old_docstring_dismantler = DocstringDismantler(docstring=old_docstring or "")
         developer_changes = old_docstring_dismantler.compare_docstrings(new_docstring_dismantler)
         if len(developer_changes) > 0:
-            print(
+            self.logger.debug(
                 f"=============\n{code_obj.name} in {pathlib.Path(code_obj.filename).stem}\n============="
             )
         for developer_change in developer_changes:
-            print(developer_change)
+            self.logger.debug(developer_change)
 
         self.repo.git.checkout(self.current_commit)
         git_stash_list = self.repo.git.stash("list")
         if len(git_stash_list) > 0:
             self.repo.git.stash("pop")
             self.repo.git.stash("clear")
-
-        if developer_changes is None:
-            print()
         return developer_changes
 
     def validate_code_integrity(self):

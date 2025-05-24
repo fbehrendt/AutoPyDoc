@@ -48,7 +48,7 @@ class GptInputModuleObject(GptInputCodeObject):
     exceptions: set | None = field(default=None, compare=True, hash=True)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class GptOutput:
     id: int = field(compare=True, hash=True)
     no_change_necessary: bool = field(compare=True, hash=True)
@@ -57,7 +57,7 @@ class GptOutput:
     generationerror: bool = field(compare=False, hash=False)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class GptOutputMethod(GptOutput):
     parameter_types: dict[str, str | bool] = field(compare=False, hash=False)
     parameter_descriptions: dict[str, str | bool] = field(compare=False, hash=False)
@@ -66,7 +66,7 @@ class GptOutputMethod(GptOutput):
     return_type: str | bool | None = field(default=None, compare=False, hash=False)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class GptOutputClass(GptOutput):
     class_attribute_descriptions: dict[str, str | bool] = field(compare=False, hash=False)
     class_attribute_types: dict[str, str | bool] = field(compare=False, hash=False)
@@ -74,6 +74,6 @@ class GptOutputClass(GptOutput):
     instance_attribute_types: dict[str, str | bool] = field(compare=False, hash=False)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class GptOutputModule(GptOutput):
     exception_descriptions: dict[str, str | bool] = field(compare=False, hash=False)
