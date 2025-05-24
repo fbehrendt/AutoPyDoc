@@ -83,12 +83,14 @@ class AutoPyDoc:
 
         # creates code representation
         # extracts class and method calls, arguments, return types, exceptions, attributes and outdated code
+        self.logger.info("Creating code abstraction")
         self.code_parser = CodeParser(
             code_representer=CodeRepresenter(),
             repo_controller=self.repo_controller,
             logger=self.logger,
             debug=True,
         )
+        self.logger.info("Detecting outdated code")
         self.code_parser.detect_outdated_code()
 
         full_input_for_estimation = self.code_parser.code_representer.generate_next_batch(
@@ -112,6 +114,9 @@ class AutoPyDoc:
                 ignore_dependencies=True
             )
             if len(next_batch) > 0:
+                self.logger.info(
+                    f"Updating {len(next_batch)} docstrings, whose dependencies could not be resolved"
+                )
                 self.gpt_interface.process_batch(next_batch, callback=self.process_gpt_result)
 
         # if every docstring is updated
@@ -148,8 +153,12 @@ class AutoPyDoc:
         if result.no_change_necessary:
             code_obj.outdated = False
         else:
+            self.logger.info("Extracting manual docstring changes")
             # merge new docstring with developer comments
             developer_docstring_changes = self.repo_controller.extract_dev_comments(code_obj)
+            self.logger.info(
+                "Merging statically extracted information, manual docstring changes and GPT output"
+            )
             if isinstance(code_obj, MethodObject):
                 docstring_input = DocstringInputSelectorMethod(
                     code_obj=code_obj,
@@ -173,6 +182,7 @@ class AutoPyDoc:
                 ).get_result()
 
             # validate if docstring input was generated successfully
+            self.logger.info("Validating docstring components")
             docstring_input, new_pr_notes = validate_docstring_input(
                 docstring_input=docstring_input,
                 code_representer=self.code_parser.code_representer,
@@ -181,6 +191,7 @@ class AutoPyDoc:
             self.repo_controller.pr_notes.extend(new_pr_notes)
 
             # build docstring
+            self.logger.info("Building docstring")
             new_docstring = create_docstring(
                 code_obj=code_obj,
                 docstring_input=docstring_input,
@@ -190,6 +201,7 @@ class AutoPyDoc:
             )
 
             # validate docstring syntax
+            self.logger.info("Validating docstring syntax")
             errors = validate_docstring(new_docstring)
             if len(errors) > 0:
                 # TODO re-sent to GPT, with note. If this is the second time, don't update this docstring and put note in pull request description
@@ -206,6 +218,7 @@ class AutoPyDoc:
                 return  # this prevents code_obj.outdated from being set to False and code_obj.is_updated from being set to True, causing it to be included in the next batch again. # TODO what about sent_to_gpt?
 
             # insert new docstring in the file
+            self.logger.info("Inserting new docstring")
             try:
                 self.repo_controller.insert_docstring(
                     filename=code_obj.filename,
@@ -223,6 +236,9 @@ class AutoPyDoc:
         # if parts are still outdated
         next_batch = self.code_parser.code_representer.generate_next_batch()
         if len(next_batch) > 0:
+            self.logger.info(
+                f"Dependency resolved. {len(next_batch)} more docstrings can be validated/generated"
+            )
             self.gpt_interface.process_batch(next_batch, callback=self.process_gpt_result)
 
     # TODO move elsewhere

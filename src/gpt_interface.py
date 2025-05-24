@@ -52,8 +52,12 @@ class GptInterface:
         # inferr missing arg/return types
         # generate exception descriptions (?)
 
-        for current_code_object in batch:
+        for i, current_code_object in enumerate(batch):
+            self.logger.info(f"Validating/generating {i + 1}/{len(batch)}")
             try:
+                self.logger.info(
+                    f"Validating old docstring of {current_code_object.code_type} {current_code_object.name} in current batch"
+                )
                 # Only check docstring using gpt if a docstring is present
                 change_necessary = (
                     current_code_object.docstring is None
@@ -81,6 +85,16 @@ class GptInterface:
                         )
                         change_necessary = True
                         validationerror = True
+                    else:
+                        if change_necessary:
+                            self.logger.info("Docstring requires update")
+                        else:
+                            self.logger.info("Docstring still accurate")
+                else:
+                    if change_necessary:
+                        self.logger.info("Docstring requires update")
+                    else:
+                        self.logger.info("Docstring still accurate")
 
                 if not change_necessary:
                     output = GptOutput(
@@ -111,6 +125,10 @@ class GptInterface:
                                 validationerror=validationerror,
                                 generationerror=True,
                             )
+                        else:
+                            self.logger.info("Docstring generation finished")
+                    else:
+                        self.logger.info("Docstring generation finished")
                     callback(output)
             except KeyboardInterrupt as e:
                 raise e
