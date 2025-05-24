@@ -406,6 +406,10 @@ class RepoController:
         with open(filename) as f:
             content = helpers.remove_comments(f.read())
             new_filename = filename.rstrip(".py") + "_no_comments.py"
+            parent_dir = str(pathlib.Path().resolve())
+            rel_filename = helpers.get_rel_filename(new_filename, parent_dir)
+            new_filename = str(os.path.join(parent_dir, "no_comments", rel_filename))
+            os.makedirs(os.path.dirname(new_filename), exist_ok=True)
             with open(new_filename, mode="w") as f:
                 f.write(content)
             return new_filename

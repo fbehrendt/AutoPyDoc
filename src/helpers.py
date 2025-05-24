@@ -6,6 +6,7 @@ import ast
 import json5
 import astunparse
 
+
 def remove_comments(code):
     sys.stderr = open(os.devnull, "w")
     lines = astunparse.unparse(ast.parse(code)).split("\n")
@@ -17,6 +18,7 @@ def remove_comments(code):
     content = "\n".join(content)
     return content
 
+
 def parse_first_json_object(s: str):
     """
     Extract and parse the first JSON5 object in the string.
@@ -24,7 +26,7 @@ def parse_first_json_object(s: str):
     """
 
     # 1) Find the first opening brace
-    m = re.search(r'\{', s)
+    m = re.search(r"\{", s)
     if not m:
         raise ValueError("No JSON object found")
 
@@ -32,8 +34,8 @@ def parse_first_json_object(s: str):
 
     # 2) For each closing brace, try to parse substring
     for idx, ch in enumerate(s[start:], start=start):
-        if ch == '}':
-            candidate = s[start:idx+1]
+        if ch == "}":
+            candidate = s[start : idx + 1]
             try:
                 return json5.loads(candidate)
             except Exception:
@@ -42,3 +44,7 @@ def parse_first_json_object(s: str):
 
     # 3) If we exhaust the string without success, it wasn't valid JSON5
     raise ValueError("Couldn't parse a complete JSON object")
+
+
+def get_rel_filename(abs_filename, repo_path):
+    return abs_filename.removeprefix(repo_path).lstrip("/").lstrip("\\\\")

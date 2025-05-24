@@ -9,6 +9,7 @@ from docstring_input_selector import (
     DocstringInputModule,
 )
 from repo_controller import UnknownCodeObjectError
+from helpers import get_rel_filename
 
 
 def validate_docstring_input(
@@ -21,9 +22,6 @@ def validate_docstring_input(
             code_obj_2 = code_representer.get(code_obj_2.parent_id)
             parent_chain = code_obj_2.code_type + " " + code_obj_2.name + " -> " + parent_chain
         return parent_chain
-
-    def get_rel_filename(abs_filename, repo_path):
-        return abs_filename.removeprefix(repo_path).lstrip("/").lstrip("\\\\")
 
     code_obj = code_representer.get(docstring_input.id)
     pr_notes = []
