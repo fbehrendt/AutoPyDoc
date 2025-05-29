@@ -138,6 +138,14 @@ class RepoController:
         self.current_commit = self.repo.head.commit.hexsha
         self.get_latest_commit()
 
+        # create old repo state in old_state
+        self.old_state_dir = os.path.join(parent_dir, "old_state")
+        if os.path.exists(self.old_state_dir):
+            shutil.rmtree(self.old_state_dir)
+        shutil.copytree(self.working_dir, self.old_state_dir)
+        self.old_state_repo = Repo(self.old_state_dir)
+        self.old_state_repo.git.checkout(self.latest_commit_hash)
+
     def get_files_in_repo(self) -> list[str]:
         """
         Get all python files in the target repository
@@ -431,13 +439,16 @@ class RepoController:
     def extract_dev_comments(self, code_obj: CodeObject):
         developer_changes = []
 
-        self.repo.git.stash("save")
-        self.repo.git.checkout(self.latest_commit_hash)
+        # self.repo.git.stash("save")
+        # self.repo.git.checkout(self.latest_commit_hash)
 
         sys.stderr = open(os.devnull, "w")
         # if the file is new, all existing docstrings are manually generated
-        if os.path.isfile(code_obj.filename):
-            code_ast = ast.parse(open(code_obj.filename).read())
+        parent_dir = str(pathlib.Path().resolve())
+        rel_filename = helpers.get_rel_filename(code_obj.filename, parent_dir)
+        old_state_filename = str(os.path.join(parent_dir, "old_state", rel_filename))
+        if os.path.isfile(old_state_filename):
+            code_ast = ast.parse(open(old_state_filename).read())
             sys.stderr = sys.__stderr__
             old_docstring = -1
 
@@ -477,11 +488,11 @@ class RepoController:
         for developer_change in developer_changes:
             self.logger.debug(developer_change)
 
-        self.repo.git.checkout(self.current_commit)
-        git_stash_list = self.repo.git.stash("list")
-        if len(git_stash_list) > 0:
-            self.repo.git.stash("pop")
-            self.repo.git.stash("clear")
+        # self.repo.git.checkout(self.current_commit)
+        # git_stash_list = self.repo.git.stash("list")
+        # if len(git_stash_list) > 0:
+        #    self.repo.git.stash("pop")
+        #    self.repo.git.stash("clear")
         return developer_changes
 
     def validate_code_integrity(self):
