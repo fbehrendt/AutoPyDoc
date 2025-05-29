@@ -153,32 +153,23 @@ class DocstringBuilderMethod(DocstringBuilder):
         :return type: str
         """
         docstring = self.description
-        if (
-            len(self.params) > 0
-            or not hasattr(self, "return_description")
-            or len(self.exceptions) == 0
-        ):
+        if len(self.params) > 0 or hasattr(self, "return_description") or len(self.exceptions) > 0:
             docstring += "\n\n"
         for param in self.params:
-            docstring += (
-                " " * self.indentation_level + f":param {param['name']}: {param['description']}\n"
-            )
+            docstring += f":param {param['name']}: {param['description']}\n"
             if "default" in param.keys():
-                docstring += " " + f" Default is {param['default']}\n"
-            docstring += " " * self.indentation_level + f":type {param['name']}: {param['type']}\n"
+                docstring = docstring[:-1] + " " + f". Default is {param['default']}\n"
+            docstring += f":type {param['name']}: {param['type']}\n"
         if len(self.params) > 0 and hasattr(self, "return_type"):
             docstring += "\n"
         if hasattr(self, "return_type") and hasattr(self, "return_description"):
-            docstring += " " * self.indentation_level + f":return: {self.return_description}\n"
-            docstring += " " * self.indentation_level + f":rtype: {self.return_type}\n"
+            docstring += f":return: {self.return_description}\n"
+            docstring += f":rtype: {self.return_type}\n"
 
         if (len(self.params) > 0 or hasattr(self, "return_type")) and len(self.exceptions) > 0:
             docstring += "\n"
         for exception in self.exceptions:
-            docstring += (
-                " " * self.indentation_level
-                + f":raises {exception['name']}: {exception['description']}\n"  # according to restructuredtext_lint, the extra \n is necessary
-            )
+            docstring += f":raises {exception['name']}: {exception['description']}\n"  # according to restructuredtext_lint, the extra \n is necessary
         docstring = self.add_parantheses(docstring)
         docstring = self.enforce_indentation(docstring)
         return docstring
