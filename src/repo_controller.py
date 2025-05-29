@@ -297,6 +297,7 @@ class RepoController:
                         ):
                             start_pos = i + 1
                             break
+                start_line = lines[start_pos]
                 if isinstance(code_obj, MethodObject):
                     prefix = "def "
                 elif isinstance(code_obj, ClassObject):
