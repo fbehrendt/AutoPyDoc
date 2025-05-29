@@ -123,7 +123,7 @@ class AutoPyDoc:
         if not self.repo_controller.validate_code_integrity():
             self.logger.fatal("Code integrity no longer given!!! aborting")
             raise CodeIntegrityViolationError("Code integrity no longer given!!! aborting")
-            quit()  # saveguard in case someone tries to catch the exception and continue anyways
+            # quit()  # saveguard in case someone tries to catch the exception and continue anyways
         self.logger.info("Code integrity validated")
 
         self.repo_controller.apply_changes(
@@ -264,7 +264,7 @@ if __name__ == "__main__":
             "context_size": 2**13,
             "ollama_host": os.getenv("OLLAMA_HOST", default="http://localhost:7280/"),
         },
-        branch="module_docstrings",
+        branch="main",
         repo_owner="fbehrendt",
         debug=False,
     )
