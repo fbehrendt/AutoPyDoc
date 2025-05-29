@@ -21,7 +21,7 @@ def validate_docstring_input(
         # check description
         if isinstance(docstring_input.description, bool) and not docstring_input.description:
             pr_notes.append(
-                f"Please manully add a description for method {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                f"Please manually add a description for method {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
             )
             docstring_input.description = "<failed to generate>"
         # arguments
@@ -33,7 +33,7 @@ def validate_docstring_input(
                 and not docstring_input.arguments[param]
             ):
                 pr_notes.append(
-                    f"Please manully add a description for parameter {param} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Please manually add a description for parameter {param} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 docstring_input.arguments[param] = "<failed to generate>"
             if (
@@ -51,12 +51,12 @@ def validate_docstring_input(
                 and not docstring_input.return_description
             ):
                 pr_notes.append(
-                    f"Please manully add a return description in method {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Please manually add a return description in method {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 docstring_input.return_description = "<failed to generate>"
             if isinstance(docstring_input.return_type, bool) and not docstring_input.return_type:
                 pr_notes.append(
-                    f"Please manully add a return type in method {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Please manually add a return type in method {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 docstring_input.return_type = "<failed to generate>"
         # exceptions
@@ -66,14 +66,14 @@ def validate_docstring_input(
                 and not docstring_input.exceptions[exception]
             ):
                 pr_notes.append(
-                    f"Please manully add a description for exception {exception} in method {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Please manually add a description for exception {exception} in method {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 docstring_input.exceptions[exception] = "<failed to generate>"
     elif isinstance(docstring_input, DocstringInputClass):
         # description
         if isinstance(docstring_input.description, bool) and not docstring_input.description:
             pr_notes.append(
-                f"Please manully add a description for class {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                f"Please manually add a description for class {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
             )
             docstring_input.description = "<failed to generate>"
         # class attributes
@@ -86,7 +86,7 @@ def validate_docstring_input(
                 and not docstring_input.class_attributes[class_attribute_name]
             ):
                 pr_notes.append(
-                    f"Please manully add a description for class attribute {class_attribute_name} for class {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Please manually add a description for class attribute {class_attribute_name} for class {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 docstring_input.class_attributes[class_attribute_name] = "<failed to generate>"
             if (
@@ -110,7 +110,7 @@ def validate_docstring_input(
                 and not docstring_input.instance_attributes[instance_attribute_name]
             ):
                 pr_notes.append(
-                    f"Please manully add a description for instance attribute {instance_attribute_name} for class {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
+                    f"Please manually add a description for instance attribute {instance_attribute_name} for class {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}->{generate_parent_chain(code_obj=code_obj, code_representer=code_representer)}"
                 )
                 docstring_input.instance_attributes[instance_attribute_name] = (
                     "<failed to generate>"
@@ -134,7 +134,7 @@ def validate_docstring_input(
         # description
         if isinstance(docstring_input.description, bool) and not docstring_input.description:
             pr_notes.append(
-                f"Please manully add a description for module {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}"
+                f"Please manually add a description for module {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}"
             )
             docstring_input.description = "<failed to generate>"
         # exceptions
@@ -144,7 +144,7 @@ def validate_docstring_input(
                 and not docstring_input.exceptions[exception]
             ):
                 pr_notes.append(
-                    f"Please manully add a description for exception {exception} in module {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}"
+                    f"Please manually add a description for exception {exception} in module {code_obj.name} in {get_rel_filename(code_obj.filename, repo_path)}"
                 )
                 docstring_input.exceptions[exception] = "<failed to generate>"
     else:
