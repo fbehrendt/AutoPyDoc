@@ -1,10 +1,8 @@
-import re
-
-import json5
 from google import genai
 from google.genai import types
 
 import gpt_input
+import helpers
 from gpt_input import (
     GptInputCodeObject,
     GptOutput,
@@ -551,23 +549,15 @@ class GoogleGeminiStrategy(DocstringModelStrategy):
             raise Exception("Unexpected code object type")
 
     def _extract_check_outdated_output(self, result: str) -> bool:
-        match = re.search(CHECK_OUTDATED_JSON_OUTPUT_REGEX, result, re.DOTALL | re.IGNORECASE)
-
-        if match is None or match.group(1) is None:
+        try:
+            analysis_json = helpers.parse_first_json_object(result)
+        except ValueError:
             raise ValueError("No JSON match found")
-
-        analysis_json_str = match.group(1)
-        analysis_json = json5.loads(analysis_json_str)
 
         return "matches" in analysis_json and analysis_json["matches"]
 
     def _extract_generate_docstring_json_output(self, result: str) -> dict:
-        match = re.search(DOCSTRING_GENERATION_JSON_OUTPUT_REGEX, result, re.DOTALL | re.IGNORECASE)
-
-        if match is None:
+        try:
+            return helpers.parse_first_json_object(result)
+        except ValueError:
             raise ValueError("No JSON match found")
-
-        analysis_json_str = match.group(0)
-        analysis_json = json5.loads(analysis_json_str)
-
-        return analysis_json
