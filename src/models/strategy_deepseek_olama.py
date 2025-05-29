@@ -113,6 +113,21 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                                     "required": ["name", "type", "description"],
                                 },
                             },
+                            "exceptions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "exception_class": {
+                                            "type": "string",
+                                        },
+                                        "description": {
+                                            "type": "string",
+                                        },
+                                    },
+                                    "required": ["exception_class", "description"],
+                                },
+                            },
                             "returns": {
                                 "type": "object",
                                 "properties": {
@@ -126,7 +141,7 @@ class OllamaDeepseekR1Strategy(DocstringModelStrategy):
                                 "required": ["type", "description"],
                             },
                         },
-                        "required": ["description", "parameters", "returns"],
+                        "required": ["description", "parameters", "exceptions", "returns"],
                     },
                     stream=True,
                     options={"num_ctx": self.context_size, "temperature": 0.6},

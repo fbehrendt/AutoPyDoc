@@ -27,18 +27,12 @@ The docstring has to pass all of the following criteria to pass:
 - Docstring is not a mock
 
 Criteria not mentioned above shall not be considered! Especially, methods and subclasses do not have to be described and no examples have to be (but can be) included
-
-The code looks like the following:
-<code>
-{code}
-</code>
-
+{code_object_summary}
 The existing docstring is as follows:
 <existing-docstring>
 {existing_docstring}
 </existing-docstring>
 {context}
-
 Reason step by step to find out if the existing docstring matches the code, and put your final answer within <output-format syntax="json">{{
     "analysis": "<your_analysis_goes_here>",
     "matches": <true | false>
@@ -52,14 +46,8 @@ Reason step by step to find out if the existing docstring matches the code, and 
 You are an AI documentation assistant, and your task is to analyze the code of a Python function called {code_name}.
 The purpose of the analysis is to help developers and beginners understand the function and specific usage of the code.
 Use plain text (including all details), in a deterministic tone.
-
-The code looks like the following:
-<code>
-{code}
-</code>
-
+{code_object_summary}
 {context}
-
 Please note:
 - Write mainly in the english language. If necessary, you can write with some English words in the analysis and description to enhance the document's readability because you do not need to translate the function name or variable name into the target language.
 - Keep the text short and concise, and avoid unnecessary details.
@@ -77,6 +65,10 @@ Please reason step by step, and always summarize your final answer using the fol
         {{"name": "<parameter_name_2>", "type": "<parameter_type_2>", "description": "<description_for_parameter_2>"}},
         // ... more parameters as needed
     ],
+    "exceptions": [
+        {{"exception_class": "<method_exception_class_1>", "description": "<description_for_method_exception_1>"}}
+        // ... more exceptions as needed
+    ]
     "returns": {{"type": "<return_type>", "description": "<description_for_return_value>"}}
 }}</output-format>. Stick to this format WITHOUT EXCEPTIONS and write valid json with quoted fields.
 
@@ -100,6 +92,9 @@ Here is an example of the expected output format:
             "description": "Line length of the change"
         }}
     ],
+    "exceptions": [
+        {{"exception_class": "ValueError", "description": "Raised when change_start or change_length is out of bounds"}}
+    ],
     "returns": {{
         "type": "list[dict[str|int]]",
         "description": "list of method information as dict with keys type, filename, start, end, content"
@@ -117,10 +112,7 @@ Use plain text (including all details), in a deterministic tone.
 Provided context shall be used to better understand what the class does and does not need to be analyzed further than that.
 Do not generate descriptions for methods and subclasses.
 
-The code looks like the following:
-<code>
-{code}
-</code>
+{code_object_summary}
 
 {context}
 
@@ -145,22 +137,24 @@ Please reason step by step, and always summarize your final answer using the fol
     ]
 }}</output-format>. Stick to this format WITHOUT EXCEPTIONS and write valid json with quoted fields.
 
+Here is an example of the expected output format:
+<output-example syntax="json">{{
+    "description": "A Python module that provides logging functionality, extending the standard logging module with custom loggers and handlers.",
+    "exceptions": [
+        {{"exception_class": "ImportError", "description": "Raised when attempting to import a module that does not exist or is not accessible."}},
+        {{"exception_class": "AttributeError", "description": "Raised when an object or class attribute is accessed that does not exist."}}
+    ]
+}}</output-example>
+
 <think>
 """
-        # TODO: add example back
 
         self.generate_module_docstring_prompt_template = """
 You are an AI documentation assistant, and your task is to analyze the code of a Python module called {code_name}.
 The purpose of the analysis is to help developers and beginners understand the module and specific usage of the code.
 Use plain text (including all details), in a deterministic tone.
-
-The code looks like the following:
-<code>
-{code}
-</code>
-
+{code_object_summary}
 {context}
-
 Please note:
 - Write mainly in the english language. If necessary, you can write with some English words in the analysis and description to enhance the document's readability because you do not need to translate the function name or variable name into the target language.
 - Keep the text short and concise, and avoid unnecessary details.
@@ -174,44 +168,47 @@ Please reason step by step, and always summarize your final answer using the fol
     "description": "<docstring_description>",
     "exceptions": [
         {{"exception_class": "<module_exception_class_1>", "description": "<description_for_module_exception_1>"}}
-        // ... more class attributes as needed
+        // ... more exceptions as needed
     ]
 }}</output-format>. Stick to this format WITHOUT EXCEPTIONS and write valid json with quoted fields.
+
+Here is an example of the expected output format:
+<output-example syntax="json">{{
+    "description": "A Python module that provides logging functionality, extending the standard logging module with custom loggers and handlers.",
+    "exceptions": [
+        {{"exception_class": "ImportError", "description": "Raised when attempting to import a module that does not exist or is not accessible."}},
+        {{"exception_class": "AttributeError", "description": "Raised when an object or class attribute is accessed that does not exist."}}
+    ]
+}}</output-example>
 
 <think>
 """
 
-    # TODO: add example back
-
     def build_check_outdated_prompt(self, code_object: GptInputCodeObject) -> str:
         existing_docstring = code_object.docstring
+
+        code_object_summary = self._build_code_object_summary(code_object)
 
         prompt_length_without_context = len(
             self.check_outdated_prompt_template.format(
                 code_type=code_object.code_type,
                 code_name=code_object.name,
-                code=code_object.code,
                 existing_docstring=existing_docstring,
+                code_object_summary=code_object_summary,
                 context="",
             )
         )
         max_context_length = self.context_size - prompt_length_without_context
-        code_part = code_object.code[: min(max_context_length, len(code_object.code))]
-        max_context_length_excluding_code = max_context_length - len(code_part)
 
-        context = self._build_context_from_code_object(
-            code_object, max_context_length_excluding_code, include_code_object=False
-        )
-        self.logger.debug(
-            "Code Context length [%d/%d]", len(context), max_context_length_excluding_code
-        )
+        context = self._build_context_from_code_object(code_object, max_context_length)
+        self.logger.debug("Code Context length [%d/%d]", len(context), max_context_length)
 
         return self.check_outdated_prompt_template.format(
             code_type=code_object.code_type,
             code_name=code_object.name,
-            code=code_part,
             existing_docstring=existing_docstring,
-            context="",  # context[:max_context_length_excluding_code], TODO revert
+            code_object_summary=code_object_summary,
+            context=context[:max_context_length],
         )
 
     def build_generate_docstring_prompt(self, code_object: GptInputCodeObject) -> str:
@@ -224,22 +221,24 @@ Please reason step by step, and always summarize your final answer using the fol
         else:
             raise Exception("Unexpected code object type")
 
+        code_object_summary = self._build_code_object_summary(code_object)
+
         prompt_length_without_context = len(
-            prompt_template.format(context="", code_name=code_object.name, code=code_object.code)
+            prompt_template.format(
+                code_name=code_object.name,
+                code_object_summary=code_object_summary,
+                context="",
+            )
         )
         max_context_length = self.context_size - prompt_length_without_context
-        code_part = code_object.code[: min(max_context_length, len(code_object.code))]
-        max_context_length_excluding_code = max_context_length - len(code_part)
 
-        context = self._build_context_from_code_object(
-            code_object, max_context_length_excluding_code
-        )
+        context = self._build_context_from_code_object(code_object, max_context_length)
         self.logger.debug("Code Context length [%d/%d]", len(context), max_context_length)
 
         return prompt_template.format(
-            context="",  # context[:max_context_length], TODO revert
             code_name=code_object.name,
-            code=code_object.code,
+            code_object_summary=code_object_summary,
+            context=context[:max_context_length],
         )
 
     # Helper to map context ids to objects
@@ -286,7 +285,7 @@ Please reason step by step, and always summarize your final answer using the fol
         return ""
 
     def _build_context_from_code_object(
-        self, code_object: GptInputCodeObject, max_length: int, include_code_object=True
+        self, code_object: GptInputCodeObject, max_length: int
     ) -> str:
         if isinstance(code_object, GptInputMethodObject):
             context_summary = ""
@@ -330,47 +329,26 @@ Please reason step by step, and always summarize your final answer using the fol
                 )
             )
 
-            if include_code_object:
-                method_summary = f"""
-The method to generate the docstring for:
-<method name="{code_object.name}">
-{code_object.code}
-</method>
-"""
-            else:
-                method_summary = ""
-
-            biggest_context = f"""
-{method_summary}
-
+            big_context = f"""
 The context of the method is as follows:
 <related-code>
 {context_summary}
 {parent_context_summary}
 </related-code>
 """
-            if len(biggest_context) <= max_length:
-                return biggest_context
+            if len(big_context) <= max_length:
+                return big_context
 
-            medium_context = f"""
-{method_summary}
-
+            small_context = f"""
 The context of the method is as follows:
 <related-code>
 {parent_context_summary}
 </related-code>
 """
-            if len(medium_context) <= max_length:
-                return medium_context
-
-            small_context = method_summary
             if len(small_context) <= max_length:
                 return small_context
 
-            if len(code_object.code) <= max_length:
-                return code_object.code
-            else:
-                return code_object.code[: max_length - 3] + "..."
+            return ""
         elif isinstance(code_object, GptInputClassObject):
             context_summary = ""
 
@@ -416,19 +394,7 @@ The context of the method is as follows:
                         class_id, code_object.context_objects, "child-class"
                     )
 
-            if include_code_object:
-                class_summary = f"""
-The class to generate the docstring for:
-<class name="{code_object.name}">
-{code_object.code}
-</class>
-"""
-            else:
-                class_summary = ""
-
-            biggest_context = f"""
-{class_summary}
-
+            big_context = f"""
 The context of the class is as follows:
 <related-code>
 {context_summary}
@@ -436,30 +402,20 @@ The context of the class is as follows:
 {child_context_summary}
 </related-code>
 """
-            if len(biggest_context) <= max_length:
-                return biggest_context
+            if len(big_context) <= max_length:
+                return big_context
 
-            medium_context = f"""
-{class_summary}
-
+            small_context = f"""
 The context of the class is as follows:
 <related-code>
 {parent_inheritance_summary}
 {child_context_summary}
 </related-code>
 """
-            if len(medium_context) <= max_length:
-                return medium_context
-
-            small_context = class_summary
             if len(small_context) <= max_length:
                 return small_context
 
-            if len(code_object.code) <= max_length:
-                return code_object.code
-            else:
-                return code_object.code[: max_length - 3] + "..."
-
+            return ""
         elif isinstance(code_object, GptInputModuleObject):
             child_context_summary = ""
             if code_object.context_objects:
@@ -472,34 +428,47 @@ The context of the class is as follows:
                         class_id, code_object.context_objects, "child-class"
                     )
 
-            if include_code_object:
-                module_summary = f"""
-The module to generate the docstring for:
-<module name="{code_object.name}">
-{code_object.code}
-</module>
-"""
-            else:
-                module_summary = ""
-
-            biggest_context = f"""
-{module_summary}
-
+            big_context = f"""
 The context of the module is as follows:
 <related-code>
 {child_context_summary}
 </related-code>
 """
-            if len(biggest_context) <= max_length:
-                return biggest_context
+            if len(big_context) <= max_length:
+                return big_context
 
-            small_context = module_summary
-            if len(small_context) <= max_length:
-                return small_context
+            return ""
+        else:
+            raise Exception("Unexpected code object type")
 
-            if len(code_object.code) <= max_length:
-                return code_object.code
-            else:
-                return code_object.code[: max_length - 3] + "..."
+    def _build_code_object_summary(self, code_object: GptInputCodeObject) -> str:
+        if isinstance(code_object, GptInputMethodObject):
+            summary = f"""
+The method to generate the docstring for:
+<code-object type="method" name="{code_object.name}" parameters="{",".join(code_object.parameters)}" exceptions="{",".join(code_object.exceptions)}">
+{code_object.code}
+</code-object>
+"""
+            return summary
+
+        elif isinstance(code_object, GptInputClassObject):
+            summary = f"""
+The class to generate the docstring for:
+<code-object type="class" name="{code_object.name}" instance_attributes="{",".join(map(lambda a: a["name"], code_object.instance_attributes))}" class_attributes="{",".join(map(lambda a: a["name"], code_object.class_attributes))}" >
+{code_object.code}
+</code-object>
+"""
+            return summary
+
+        elif isinstance(code_object, GptInputModuleObject):
+            code_object.exceptions
+            summary = f"""
+The module to generate the docstring for:
+<code-object type="module" name="{code_object.name}" exceptions="{",".join(code_object.exceptions)}">
+{code_object.code}
+</code-object>
+"""
+            return summary
+
         else:
             raise Exception("Unexpected code object type")
