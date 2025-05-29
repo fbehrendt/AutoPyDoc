@@ -513,12 +513,16 @@ class RepoController:
         if self.repo is not None:
             # create new branch
             new_branch = self.branch + "_AutoPyDoc"
-            if new_branch not in [ref.name for ref in self.repo.references]:
+            if "origin/" + new_branch not in [
+                ref.name for ref in self.repo.references
+            ] and new_branch not in [ref.name for ref in self.repo.references]:
                 current = self.repo.create_head(new_branch)
                 current.checkout()
             else:
                 i = 1
-                while new_branch in [ref.name for ref in self.repo.references]:
+                while "origin/" + new_branch in [
+                    ref.name for ref in self.repo.references
+                ] and new_branch not in [ref.name for ref in self.repo.references]:
                     new_branch = self.branch + "_AutoPyDoc_" + str(i)
                     i += 1
 
