@@ -165,6 +165,8 @@ class AutoPyDoc:
                     gpt_result=result,
                     developer_docstring_changes=developer_docstring_changes,
                     indentation_level=indentation_level,
+                    code_representer=self.code_parser.code_representer,
+                    repo_path=self.repo_controller.working_dir,
                 )
             if isinstance(code_obj, ClassObject):
                 docstring_input_selector = DocstringInputSelectorClass(
@@ -172,6 +174,8 @@ class AutoPyDoc:
                     gpt_result=result,
                     developer_docstring_changes=developer_docstring_changes,
                     indentation_level=indentation_level,
+                    code_representer=self.code_parser.code_representer,
+                    repo_path=self.repo_controller.working_dir,
                 )
             if isinstance(code_obj, ModuleObject):
                 docstring_input_selector = DocstringInputSelectorModule(
@@ -179,6 +183,8 @@ class AutoPyDoc:
                     gpt_result=result,
                     developer_docstring_changes=developer_docstring_changes,
                     indentation_level=indentation_level,
+                    code_representer=self.code_parser.code_representer,
+                    repo_path=self.repo_controller.working_dir,
                 )
             docstring_input = docstring_input_selector.get_result()
             self.repo_controller.pr_notes.extend(docstring_input_selector.get_pr_notes())
@@ -261,7 +267,7 @@ if __name__ == "__main__":
     auto_py_doc.main(
         repo_path="https://github.com/fbehrendt/bachelor_testing_repo_small",
         username="fbehrendt",
-        model_strategy_name="mock",
+        model_strategy_name="ollama",
         model_strategy_params={
             "context_size": 2**13,
             "ollama_host": os.getenv("OLLAMA_HOST", default="http://localhost:7280/"),

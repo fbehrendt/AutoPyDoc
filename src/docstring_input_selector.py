@@ -55,12 +55,12 @@ class DocstringInputSelectorMethod:
         self.indentation_level = indentation_level
         self.code_representer = code_representer
         self.repo_path = repo_path
+        self.pr_notes = []
         self.docstring_input = DocstringInputMethod(id=code_obj.id)
         self.__select_description()
         self.__select_parameters()
         self.__select_exceptions()
         self.__select_return_info()
-        self.pr_notes = []
 
     def get_result(self):
         return self.docstring_input
@@ -84,7 +84,10 @@ class DocstringInputSelectorMethod:
                     f"Used manually modified docstring description for {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
                 )
                 break
-        if len(self.docstring_input.description) < 10:
+        if (
+            isinstance(self.docstring_input.description, str)
+            and len(self.docstring_input.description) < 10
+        ):
             self.docstring_input.description = self.gpt_result.description
 
     def __select_parameters(self):
@@ -193,17 +196,31 @@ class DocstringInputSelectorMethod:
 
 
 class DocstringInputSelectorModule:
-    def __init__(self, code_obj, gpt_result, developer_docstring_changes, indentation_level):
+    def __init__(
+        self,
+        code_obj,
+        gpt_result,
+        developer_docstring_changes,
+        indentation_level,
+        code_representer,
+        repo_path,
+    ):
         self.code_obj = code_obj
         self.gpt_result = gpt_result
         self.developer_docstring_changes = developer_docstring_changes
         self.indentation_level = indentation_level
+        self.code_representer = code_representer
+        self.repo_path = repo_path
+        self.pr_notes = []
         self.docstring_input = DocstringInputModule(id=code_obj.id)
         self.__select_description()
         self.__select_exceptions()
 
     def get_result(self):
         return self.docstring_input
+
+    def get_pr_notes(self):
+        return self.pr_notes
 
     def __select_description(self):
         # description
@@ -222,7 +239,10 @@ class DocstringInputSelectorModule:
                     f"Used manually modified docstring description for {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
                 )
                 break
-        if len(self.docstring_input.description) < 10:
+        if (
+            isinstance(self.docstring_input.description, str)
+            and len(self.docstring_input.description) < 10
+        ):
             self.docstring_input.description = self.gpt_result.description
 
     def __select_exceptions(self):
@@ -254,11 +274,22 @@ class DocstringInputSelectorModule:
 
 
 class DocstringInputSelectorClass:
-    def __init__(self, code_obj, gpt_result, developer_docstring_changes, indentation_level):
+    def __init__(
+        self,
+        code_obj,
+        gpt_result,
+        developer_docstring_changes,
+        indentation_level,
+        code_representer,
+        repo_path,
+    ):
         self.code_obj = code_obj
         self.gpt_result = gpt_result
         self.developer_docstring_changes = developer_docstring_changes
         self.indentation_level = indentation_level
+        self.code_representer = code_representer
+        self.repo_path = repo_path
+        self.pr_notes = []
         self.docstring_input = DocstringInputClass(id=code_obj.id)
         self.__select_description()
         self.__select_class_attributes()
@@ -266,6 +297,9 @@ class DocstringInputSelectorClass:
 
     def get_result(self):
         return self.docstring_input
+
+    def get_pr_notes(self):
+        return self.pr_notes
 
     def __select_description(self):
         # description
@@ -282,7 +316,10 @@ class DocstringInputSelectorClass:
                     f"Used manually modified docstring description for {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
                 )
                 break
-        if len(self.docstring_input.description) < 10:
+        if (
+            isinstance(self.docstring_input.description, str)
+            and len(self.docstring_input.description) < 10
+        ):
             self.docstring_input.description = self.gpt_result.description
 
     def __select_class_attributes(self):
