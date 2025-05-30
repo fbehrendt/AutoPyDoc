@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from helpers import get_rel_filename, generate_parent_chain
 
 
 @dataclass
@@ -39,21 +40,36 @@ class DocstringInputModule:
 
 
 class DocstringInputSelectorMethod:
-    def __init__(self, code_obj, gpt_result, developer_docstring_changes, indentation_level):
+    def __init__(
+        self,
+        code_obj,
+        gpt_result,
+        developer_docstring_changes,
+        indentation_level,
+        code_representer,
+        repo_path,
+    ):
         self.code_obj = code_obj
         self.gpt_result = gpt_result
         self.developer_docstring_changes = developer_docstring_changes
         self.indentation_level = indentation_level
+        self.code_representer = code_representer
+        self.repo_path = repo_path
         self.docstring_input = DocstringInputMethod(id=code_obj.id)
         self.__select_description()
         self.__select_parameters()
         self.__select_exceptions()
         self.__select_return_info()
+        self.pr_notes = []
 
     def get_result(self):
         return self.docstring_input
 
+    def get_pr_notes(self):
+        return self.pr_notes
+
     def __select_description(self):
+        self.docstring_input.description = self.gpt_result.description
         # description
         for developer_docstring_change in self.developer_docstring_changes:
             if (
@@ -63,6 +79,9 @@ class DocstringInputSelectorMethod:
             ):
                 self.docstring_input.description = developer_docstring_change["new"].replace(
                     "\n", "\n" + " " * self.indentation_level
+                )
+                self.pr_notes.append(
+                    f"Used manually modified docstring description for {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
                 )
                 break
         if len(self.docstring_input.description) < 10:
@@ -76,12 +95,10 @@ class DocstringInputSelectorMethod:
             self.docstring_input.arguments[argument["name"]] = (
                 self.gpt_result.parameter_descriptions[argument["name"]]
             )
-            if "type" in argument.keys():
-                self.docstring_input.argument_types[argument["name"]] = argument["type"]
-            else:
-                self.docstring_input.argument_types[argument["name"]] = (
-                    self.gpt_result.parameter_types[argument["name"]]
-                )
+
+            self.docstring_input.argument_types[argument["name"]] = self.gpt_result.parameter_types[
+                argument["name"]
+            ]
             for developer_docstring_change in self.developer_docstring_changes:
                 if (
                     developer_docstring_change["place"] == "parameters"
@@ -94,23 +111,33 @@ class DocstringInputSelectorMethod:
                         self.docstring_input.argument_types[argument["name"]] = (
                             developer_docstring_change["type"]
                         )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring parameter description & type for {argument['name']} in method {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
+                        )
                     elif developer_docstring_change["change"] == "type":
                         self.docstring_input.argument_types[argument["name"]] = (
                             developer_docstring_change["new"]
+                        )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring parameter type for {argument['name']} in method {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
                         )
                     elif developer_docstring_change["change"] == "description":
                         self.docstring_input.arguments[argument["name"]] = (
                             developer_docstring_change["new"]
                         )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring parameter description for {argument['name']} in method {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
+                        )
                     break
+            if "type" in argument.keys():
+                self.docstring_input.argument_types[argument["name"]] = argument["type"]
 
     def __select_return_info(self):
-        if self.code_obj.return_type is None and self.code_obj.missing_return_type:
-            self.docstring_input.return_type = self.gpt_result.return_type
-        else:
-            self.docstring_input.return_type = self.code_obj.return_type
+        # pre set to gpt results
+        self.docstring_input.return_type = self.gpt_result.return_type
         self.docstring_input.return_description = self.gpt_result.return_description
 
+        # override with dev comment if available
         for developer_docstring_change in self.developer_docstring_changes:
             if developer_docstring_change["place"] == "return":
                 if developer_docstring_change["change"] == "added":
@@ -118,11 +145,24 @@ class DocstringInputSelectorMethod:
                     self.docstring_input.return_description = developer_docstring_change[
                         "description"
                     ]
+                    self.pr_notes.append(
+                        f"Used manually modified docstring return description & type for method {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
+                    )
                 elif developer_docstring_change["change"] == "type":
                     self.docstring_input.return_type = developer_docstring_change["new"]
+                    self.pr_notes.append(
+                        f"Used manually modified docstring return type for {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
+                    )
                 elif developer_docstring_change["change"] == "description":
                     self.docstring_input.return_description = developer_docstring_change["new"]
+                    self.pr_notes.append(
+                        f"Used manually modified docstring return description for {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
+                    )
                 break
+
+        # override type with statically extracted type if available
+        if self.code_obj.return_type is not None and not self.code_obj.missing_return_type:
+            self.docstring_input.return_type = self.code_obj.return_type
 
     def __select_exceptions(self):
         # exceptions
@@ -139,9 +179,15 @@ class DocstringInputSelectorMethod:
                         self.docstring_input.exceptions[exception_name] = (
                             developer_docstring_change["description"]
                         )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring exception description for {exception_name} in {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
+                        )
                     if developer_docstring_change["change"] == "description":
                         self.docstring_input.exceptions[exception_name] = (
                             developer_docstring_change["new"]
+                        )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring exception description for {exception_name} in {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
                         )
                     break
 
@@ -161,6 +207,8 @@ class DocstringInputSelectorModule:
 
     def __select_description(self):
         # description
+        self.docstring_input.description = self.gpt_result.description
+
         for developer_docstring_change in self.developer_docstring_changes:
             if (
                 developer_docstring_change["place"] == "description"
@@ -169,6 +217,9 @@ class DocstringInputSelectorModule:
             ):
                 self.docstring_input.description = developer_docstring_change["new"].replace(
                     "\n", "\n" + " " * self.indentation_level
+                )
+                self.pr_notes.append(
+                    f"Used manually modified docstring description for {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
                 )
                 break
         if len(self.docstring_input.description) < 10:
@@ -189,9 +240,15 @@ class DocstringInputSelectorModule:
                         self.docstring_input.exceptions[exception_name] = (
                             developer_docstring_change["description"]
                         )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring exception description for {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
+                        )
                     elif developer_docstring_change["change"] == "description":
                         self.docstring_input.exceptions[exception_name] = (
                             developer_docstring_change["new"]
+                        )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring execption description for {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
                         )
                     break
 
@@ -220,6 +277,9 @@ class DocstringInputSelectorClass:
             ):
                 self.docstring_input.description = developer_docstring_change["new"].replace(
                     "\n", "\n" + " " * self.indentation_level
+                )
+                self.pr_notes.append(
+                    f"Used manually modified docstring description for {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
                 )
                 break
         if len(self.docstring_input.description) < 10:
@@ -256,13 +316,22 @@ class DocstringInputSelectorClass:
                         self.docstring_input.class_attributes[class_attribute_name] = (
                             developer_docstring_change["description"]
                         )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring class attribute description & type for {class_attribute_name} in {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
+                        )
                     elif developer_docstring_change["change"] == "type":
                         self.docstring_input.class_attribute_types[class_attribute_name] = (
                             developer_docstring_change["new"]
                         )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring class attribute type for {class_attribute_name} in {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
+                        )
                     elif developer_docstring_change["change"] == "description":
                         self.docstring_input.class_attributes[class_attribute_name] = (
                             developer_docstring_change["new"]
+                        )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring class attribute description for {class_attribute_name} in {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
                         )
                     break
 
@@ -297,12 +366,21 @@ class DocstringInputSelectorClass:
                         self.docstring_input.instance_attributes[instance_attribute_name] = (
                             developer_docstring_change["description"]
                         )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring instance attribute description & type for {instance_attribute_name} in {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
+                        )
                     elif developer_docstring_change["change"] == "type":
                         self.docstring_input.instance_attribute_types[instance_attribute_name] = (
                             developer_docstring_change["new"]
                         )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring instance attribute type for {instance_attribute_name} in {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
+                        )
                     elif developer_docstring_change["change"] == "description":
                         self.docstring_input.instance_attributes[instance_attribute_name] = (
                             developer_docstring_change["new"]
+                        )
+                        self.pr_notes.append(
+                            f"Used manually modified docstring instance attribute description for {instance_attribute_name} in {self.code_obj.code_type} {self.code_obj.name} in {get_rel_filename(self.code_obj.filename, self.repo_path)}->{generate_parent_chain(code_obj=self.code_obj, code_representer=self.code_representer)}"
                         )
                     break

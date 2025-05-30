@@ -160,26 +160,28 @@ class AutoPyDoc:
                 "Merging statically extracted information, manual docstring changes and GPT output"
             )
             if isinstance(code_obj, MethodObject):
-                docstring_input = DocstringInputSelectorMethod(
+                docstring_input_selector = DocstringInputSelectorMethod(
                     code_obj=code_obj,
                     gpt_result=result,
                     developer_docstring_changes=developer_docstring_changes,
                     indentation_level=indentation_level,
-                ).get_result()
+                )
             if isinstance(code_obj, ClassObject):
-                docstring_input = DocstringInputSelectorClass(
+                docstring_input_selector = DocstringInputSelectorClass(
                     code_obj=code_obj,
                     gpt_result=result,
                     developer_docstring_changes=developer_docstring_changes,
                     indentation_level=indentation_level,
-                ).get_result()
+                )
             if isinstance(code_obj, ModuleObject):
-                docstring_input = DocstringInputSelectorModule(
+                docstring_input_selector = DocstringInputSelectorModule(
                     code_obj=code_obj,
                     gpt_result=result,
                     developer_docstring_changes=developer_docstring_changes,
                     indentation_level=indentation_level,
-                ).get_result()
+                )
+            docstring_input = docstring_input_selector.get_result()
+            self.repo_controller.pr_notes.extend(docstring_input_selector.get_pr_notes())
 
             # validate if docstring input was generated successfully
             self.logger.info("Validating docstring components")
